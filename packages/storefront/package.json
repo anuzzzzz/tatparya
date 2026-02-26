@@ -1,0 +1,12 @@
+{
+  "name": "@tatparya/storefront",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Storefront: Phase 4'",
+    "build": "echo 'Storefront: Phase 4'"
+  },
+  "dependencies": {
+    "@tatparya/shared": "workspace:*"
+  }
+}

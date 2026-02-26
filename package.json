@@ -1,0 +1,25 @@
+{
+  "name": "tatparya",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-Native E-Commerce + WhatsApp Commerce Platform for India",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean",
+    "db:migrate": "cd infrastructure/supabase && supabase db push",
+    "db:reset": "cd infrastructure/supabase && supabase db reset",
+    "db:seed": "cd infrastructure/supabase && supabase db reset --seed",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@tatparya/whatsapp-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'WhatsApp Engine: Phase 6'",
+    "build": "echo 'WhatsApp Engine: Phase 6'"
+  },
+  "dependencies": {
+    "@tatparya/shared": "workspace:*"
+  }
+}

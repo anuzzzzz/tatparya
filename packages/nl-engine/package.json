@@ -1,0 +1,12 @@
+{
+  "name": "@tatparya/nl-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'NL Engine: Phase 3'",
+    "build": "echo 'NL Engine: Phase 3'"
+  },
+  "dependencies": {
+    "@tatparya/shared": "workspace:*"
+  }
+}
