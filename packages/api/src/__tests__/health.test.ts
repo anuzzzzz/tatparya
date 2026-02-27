@@ -24,8 +24,9 @@ describe('Health Router', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    // tRPC wraps in { result: { data: ... } }
-    expect(body.result.data.status).toBe('ok');
-    expect(body.result.data.version).toBe('0.1.0');
+    // tRPC v11 with superjson wraps in { result: { data: { json: ... } } }
+    const data = body.result.data.json;
+    expect(data.status).toBe('ok');
+    expect(data.version).toBe('0.1.0');
   });
 });

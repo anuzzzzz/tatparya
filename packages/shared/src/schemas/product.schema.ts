@@ -138,14 +138,4 @@ export const CreateCategoryInput = z.object({
   defaultHsnCode: HSNCode.optional(),
 });
 
-export const UpdateCategoryInput = z.object({
-  storeId: StoreId,
-  categoryId: EntityId,
-  name: z.string().min(1).max(100).trim().optional(),
-  parentId: EntityId.nullable().optional(),
-  verticalConfig: z.record(z.unknown()).optional(),
-  defaultHsnCode: HSNCode.optional(),
-});
-
 export type CreateCategoryInput = z.infer<typeof CreateCategoryInput>;
-export type UpdateCategoryInput = z.infer<typeof UpdateCategoryInput>;
