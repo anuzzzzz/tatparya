@@ -27,13 +27,13 @@ const EnvSchema = z.object({
   API_BASE_URL: z.string().url().default('http://localhost:3001'),
   STOREFRONT_BASE_URL: z.string().url().default('http://localhost:3000'),
 
-  // Anthropic (Claude) — Required for Phase 3+
-  ANTHROPIC_API_KEY: z.string().min(1),
+  // Anthropic (Claude) — Required for AI catalog features
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
 
-  // Cloudflare R2 — Required for Phase 3+
-  R2_ACCOUNT_ID: z.string().min(1),
-  R2_ACCESS_KEY_ID: z.string().min(1),
-  R2_SECRET_ACCESS_KEY: z.string().min(1),
+  // Cloudflare R2 — Required for image storage
+  R2_ACCOUNT_ID: z.string().min(1).optional(),
+  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   R2_BUCKET_NAME: z.string().default('tatparya-media'),
   R2_PUBLIC_URL: z.string().url().optional(),
 
