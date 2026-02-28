@@ -241,8 +241,19 @@ export const storeRouter = router({
         .replace(/-+/g, '-').replace(/^-|-$/g, '')
         + '-' + Date.now().toString(36);
 
-      // Use a fixed dev owner ID
-      const DEV_OWNER_ID = '00000000-0000-0000-0000-000000000000';
+      // Ensure a dev user exists (stores.owner_id FK → auth.users)
+      const DEV_OWNER_ID = '00000000-0000-0000-0000-000000000001';
+      try {
+        await ctx.serviceDb.auth.admin.createUser({
+          id: DEV_OWNER_ID,
+          email: 'dev@tatparya.in',
+          phone: '919876543210',
+          email_confirm: true,
+          phone_confirm: true,
+        });
+      } catch {
+        // Already exists — fine
+      }
 
       const defaultConfig = {
         design: {

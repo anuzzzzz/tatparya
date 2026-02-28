@@ -1,27 +1,19 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../env.js';
 import type { AiProductSuggestion } from '@tatparya/shared';
 
 // ============================================================
 // Catalog AI Service
-// Uses Claude Vision to analyze product photos and generate
-// complete product listings. This is the "magic moment".
+//
+// Analyzes product photos and generates complete listings.
+// Supports two providers:
+//   - openai  (GPT-4o) — default
+//   - anthropic (Claude Sonnet)
+//
+// Set AI_PROVIDER=openai or AI_PROVIDER=anthropic in .env.local
 // ============================================================
 
-let anthropic: Anthropic | null = null;
-
-function getAnthropicClient(): Anthropic {
-  if (!anthropic) {
-    if (!env.ANTHROPIC_API_KEY) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-    anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-  }
-  return anthropic;
-}
-
 // ============================================================
-// Vertical-specific prompts for richer product data
+// Vertical-specific prompts
 // ============================================================
 
 const VERTICAL_PROMPTS: Record<string, string> = {
@@ -75,6 +67,155 @@ Put these in verticalAttributes.`,
 };
 
 // ============================================================
+// Shared system prompt (same for both providers)
+// ============================================================
+
+function buildSystemPrompt(vertical: string, hints?: Record<string, unknown>): string {
+  const verticalPrompt = VERTICAL_PROMPTS[vertical] || '';
+  const hintsText = hints
+    ? `\nSeller provided hints: ${JSON.stringify(hints)}`
+    : '';
+
+  return `You are an expert e-commerce product catalog assistant for Indian sellers.
+You analyze product photos and generate complete, SEO-optimized product listings.
+
+Your output must be valid JSON matching this exact structure:
+{
+  "name": "Product name (max 300 chars, title case, include key attributes)",
+  "description": "Detailed product description (3-5 paragraphs, max 5000 chars). Mention materials, use cases, care instructions. Write for Indian buyers.",
+  "shortDescription": "One-line summary (max 200 chars) for product cards",
+  "tags": ["tag1", "tag2", ...],
+  "suggestedCategory": "Most specific category name",
+  "suggestedPrice": {
+    "min": 0,
+    "max": 0,
+    "confidence": "low|medium|high"
+  },
+  "seoMeta": {
+    "title": "SEO title (max 70 chars)",
+    "description": "SEO meta description (max 160 chars)",
+    "keywords": ["keyword1", "keyword2", ...]
+  },
+  "verticalAttributes": {},
+  "imageAlt": ["Alt text for image 1", "Alt text for image 2", ...],
+  "hsnCodeSuggestion": "4-8 digit HSN code if identifiable"
+}
+
+Rules:
+- Product names should be descriptive and include key attributes (color, material, style)
+- Descriptions should be written for Indian buyers, mentioning relevant occasions and use cases
+- Price suggestions should reflect Indian market pricing (not US/EU pricing)
+- Tags should include both English and common Hindi/regional terms buyers might search
+- HSN codes should be suggested based on product category
+- If you cannot determine something with confidence, omit it or mark confidence as "low"
+
+${verticalPrompt}
+${hintsText}
+
+CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
+}
+
+// ============================================================
+// OpenAI Provider (GPT-4o with vision)
+// ============================================================
+
+async function generateWithOpenAI(params: {
+  imageUrls: string[];
+  vertical: string;
+  hints?: Record<string, unknown>;
+}): Promise<string> {
+  const apiKey = env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured. Add it to .env.local');
+  }
+
+  const systemPrompt = buildSystemPrompt(params.vertical, params.hints);
+
+  // Build content array with images
+  const content: any[] = params.imageUrls.map((url) => ({
+    type: 'image_url',
+    image_url: { url, detail: 'high' },
+  }));
+
+  content.push({
+    type: 'text',
+    text: `Analyze ${params.imageUrls.length === 1 ? 'this product photo' : 'these product photos'} and generate a complete product listing for an Indian e-commerce store. The store vertical is "${params.vertical}".`,
+  });
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenAI API error (${response.status}): ${error}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+// ============================================================
+// Anthropic Provider (Claude Sonnet with vision)
+// ============================================================
+
+async function generateWithAnthropic(params: {
+  imageUrls: string[];
+  vertical: string;
+  hints?: Record<string, unknown>;
+}): Promise<string> {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+
+  const apiKey = env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is not configured. Add it to .env.local');
+  }
+
+  const client = new Anthropic({ apiKey });
+  const systemPrompt = buildSystemPrompt(params.vertical, params.hints);
+
+  const imageContent = params.imageUrls.map((url) => ({
+    type: 'image' as const,
+    source: { type: 'url' as const, url },
+  }));
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2000,
+    system: systemPrompt,
+    messages: [{
+      role: 'user',
+      content: [
+        ...imageContent,
+        {
+          type: 'text' as const,
+          text: `Analyze ${params.imageUrls.length === 1 ? 'this product photo' : 'these product photos'} and generate a complete product listing for an Indian e-commerce store. The store vertical is "${params.vertical}".`,
+        },
+      ],
+    }],
+  });
+
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('No text response from Claude');
+  }
+  return textBlock.text;
+}
+
+// ============================================================
 // Main: Generate product data from images
 // ============================================================
 
@@ -90,83 +231,20 @@ export async function generateProductFromImages(params: {
   language?: string;
 }): Promise<{ suggestion: AiProductSuggestion; confidence: number; processingTimeMs: number }> {
   const startTime = Date.now();
-  const client = getAnthropicClient();
+  const provider = env.AI_PROVIDER || 'openai';
 
-  const verticalPrompt = VERTICAL_PROMPTS[params.vertical] || '';
-  const hintsText = params.hints
-    ? `\nSeller provided hints: ${JSON.stringify(params.hints)}`
-    : '';
+  console.log(`[catalog-ai] Using ${provider} provider for ${params.imageUrls.length} images`);
 
-  const systemPrompt = `You are an expert e-commerce product catalog assistant for Indian sellers.
-You analyze product photos and generate complete, SEO-optimized product listings.
+  let rawText: string;
 
-Your output must be valid JSON matching this exact structure:
-{
-  "name": "Product name (max 300 chars, title case, include key attributes)",
-  "description": "Detailed product description (3-5 paragraphs, max 5000 chars). Mention materials, use cases, care instructions. Write for Indian buyers. Include Hindi keywords naturally if appropriate.",
-  "shortDescription": "One-line summary (max 200 chars) for product cards",
-  "tags": ["tag1", "tag2", ...],  // 5-15 relevant tags for search
-  "suggestedCategory": "Most specific category name",
-  "suggestedPrice": {
-    "min": 0,     // Minimum reasonable MRP in INR
-    "max": 0,     // Maximum reasonable MRP in INR
-    "confidence": "low|medium|high"
-  },
-  "seoMeta": {
-    "title": "SEO title (max 70 chars)",
-    "description": "SEO meta description (max 160 chars)",
-    "keywords": ["keyword1", "keyword2", ...]
-  },
-  "verticalAttributes": {},  // Vertical-specific attributes
-  "imageAlt": ["Alt text for image 1", "Alt text for image 2", ...],
-  "hsnCodeSuggestion": "4-8 digit HSN code if identifiable"
-}
-
-Rules:
-- Product names should be descriptive and include key attributes (color, material, style)
-- Descriptions should be written for Indian buyers, mentioning relevant occasions and use cases
-- Price suggestions should reflect Indian market pricing (not US/EU pricing)
-- Tags should include both English and common Hindi/regional terms buyers might search
-- HSN codes should be suggested based on product category (fashion = 6109 for t-shirts, 6204 for sarees, etc.)
-- If you cannot determine something with confidence, omit it or mark confidence as "low"
-
-${verticalPrompt}
-${hintsText}
-
-CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
-
-  // Build image content blocks
-  const imageContent: Anthropic.Messages.ImageBlockParam[] = params.imageUrls.map((url) => ({
-    type: 'image' as const,
-    source: {
-      type: 'url' as const,
-      url,
-    },
-  }));
-
-  const userMessage: Anthropic.Messages.ContentBlockParam[] = [
-    ...imageContent,
-    {
-      type: 'text' as const,
-      text: `Analyze ${params.imageUrls.length === 1 ? 'this product photo' : 'these product photos'} and generate a complete product listing for an Indian e-commerce store. The store vertical is "${params.vertical}".`,
-    },
-  ];
-
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  // Extract text response
-  const textBlock = response.content.find((b) => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('No text response from Claude');
+  if (provider === 'anthropic') {
+    rawText = await generateWithAnthropic(params);
+  } else {
+    rawText = await generateWithOpenAI(params);
   }
 
   // Parse JSON — strip any markdown fencing just in case
-  const cleanJson = textBlock.text
+  const cleanJson = rawText
     .replace(/^```json\s*/i, '')
     .replace(/```\s*$/, '')
     .trim();
@@ -175,11 +253,11 @@ CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
   try {
     parsed = JSON.parse(cleanJson);
   } catch (e) {
-    console.error('Failed to parse Claude response:', cleanJson.substring(0, 500));
+    console.error('Failed to parse AI response:', cleanJson.substring(0, 500));
     throw new Error(`Failed to parse AI response as JSON: ${(e as Error).message}`);
   }
 
-  // Calculate confidence based on response quality
+  // Calculate confidence
   let confidence = 0.7;
   if (parsed.name && parsed.description && parsed.tags?.length > 3) confidence += 0.1;
   if (parsed.suggestedPrice?.confidence === 'high') confidence += 0.1;
@@ -205,7 +283,6 @@ export async function generateBulkProducts(params: {
   const startTime = Date.now();
   const results: (AiProductSuggestion & { groupIndex: number })[] = [];
 
-  // Process sequentially to avoid rate limits (parallel with batching later)
   for (let i = 0; i < params.imageGroups.length; i++) {
     const group = params.imageGroups[i]!;
     try {
@@ -217,7 +294,6 @@ export async function generateBulkProducts(params: {
       results.push({ ...suggestion, groupIndex: i });
     } catch (err) {
       console.error(`Failed to generate product for group ${i}:`, err);
-      // Continue with other groups
     }
   }
 

@@ -27,8 +27,14 @@ const EnvSchema = z.object({
   API_BASE_URL: z.string().url().default('http://localhost:3001'),
   STOREFRONT_BASE_URL: z.string().url().default('http://localhost:3000'),
 
-  // Anthropic (Claude) — Required for AI catalog features
+  // Anthropic (Claude) — for AI catalog features
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+
+  // OpenAI (GPT) — alternative AI provider for catalog features
+  OPENAI_API_KEY: z.string().min(1).optional(),
+
+  // Which AI provider to use: 'openai' or 'anthropic'
+  AI_PROVIDER: z.enum(['openai', 'anthropic']).default('openai'),
 
   // Cloudflare R2 — Required for image storage
   R2_ACCOUNT_ID: z.string().min(1).optional(),
