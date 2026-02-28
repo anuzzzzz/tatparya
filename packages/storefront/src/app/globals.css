@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Default CSS Variables (overridden per-store via StoreProvider)
+   ============================================================ */
+:root {
+  --color-primary: #D4356A;
+  --color-secondary: #F8E8EE;
+  --color-accent: #8B1A3A;
+  --color-background: #FFFAF5;
+  --color-surface: #FFF5EE;
+  --color-text: #1A1A2E;
+  --color-text-muted: #6B6B80;
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-scale: 1;
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-lg: 12px;
+  --spacing-section: 2.5rem;
+  --spacing-container: 1rem;
+  --spacing-gap: 1rem;
+  --hero-overlay-opacity: 0.3;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+@layer base {
+  html {
+    font-size: calc(100% * var(--font-scale, 1));
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply antialiased;
+    font-family: var(--font-body);
+    color: var(--color-text);
+    background-color: var(--color-background);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  /* Hide scrollbar in some containers but keep functionality */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@layer utilities {
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bounce-in {
+    0% { opacity: 0; transform: scale(0.95); }
+    50% { transform: scale(1.02); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out both;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out both;
+  }
+  .animate-bounce-in {
+    animation: bounce-in 0.4s ease-out both;
+  }
+  .animate-stagger > * {
+    animation: slide-up 0.5s ease-out both;
+  }
+  .animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .animate-stagger > *:nth-child(2) { animation-delay: 60ms; }
+  .animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
+  .animate-stagger > *:nth-child(4) { animation-delay: 180ms; }
+  .animate-stagger > *:nth-child(5) { animation-delay: 240ms; }
+  .animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
+  .animate-stagger > *:nth-child(7) { animation-delay: 360ms; }
+  .animate-stagger > *:nth-child(8) { animation-delay: 420ms; }
+
+  /* Hover zoom for product images */
+  .img-hover-zoom {
+    overflow: hidden;
+  }
+  .img-hover-zoom img {
+    transition: transform 0.4s ease;
+  }
+  .img-hover-zoom:hover img {
+    transform: scale(1.06);
+  }
+
+  /* Subtle shadow for images */
+  .img-subtle-shadow {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Border frame style */
+  .img-border-frame {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 4px;
+  }
+}
+
+/* ============================================================
+   Component utilities
+   ============================================================ */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-medium transition-all duration-200;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: var(--radius);
+  }
+  .btn-primary:hover {
+    filter: brightness(0.9);
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-medium transition-all duration-200 border;
+    color: var(--color-text);
+    border-color: var(--color-text);
+    border-radius: var(--radius);
+    background: transparent;
+  }
+  .btn-secondary:hover {
+    background-color: var(--color-surface);
+  }
+
+  .container-store {
+    @apply w-full mx-auto px-4;
+    max-width: 1280px;
+  }
+
+  .badge-discount {
+    @apply text-xs font-bold px-2 py-0.5 uppercase tracking-wider;
+    background-color: var(--color-accent);
+    color: white;
+    border-radius: var(--radius-sm);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border text-sm outline-none transition-colors;
+    border-color: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+  }
+  .input-field:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+}
