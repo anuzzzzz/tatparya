@@ -142,4 +142,16 @@ export const productRouter = router({
       await repo.delete(input.storeId, input.variantId);
       return { success: true };
     }),
+
+  /**
+   * Dev-only: Update product without auth.
+   * TODO: Remove before production.
+   */
+  devUpdate: publicProcedure
+    .input(UpdateProductInput)
+    .mutation(async ({ ctx, input }) => {
+      const repo = new ProductRepository(ctx.serviceDb);
+      const { storeId, productId, ...updateData } = input;
+      return repo.update(storeId, productId, updateData);
+    }),
 });

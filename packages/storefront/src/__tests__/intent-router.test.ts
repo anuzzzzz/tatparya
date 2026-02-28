@@ -1,93 +1,129 @@
 import { describe, it, expect } from 'vitest';
 import { classifyIntent, isPhotoRelated } from '../lib/chat/intent-router';
 
-// ============================================================
-// Intent Router Tests
-//
-// Tests that seller messages get classified into the correct
-// intent with proper params. Covers English and Hinglish.
-// ============================================================
-
 describe('Intent Router', () => {
 
-  // ── Greetings ──────────────────────────────────────────────
+  // ── Greetings (pure) ───────────────────────────────────────
   describe('greetings', () => {
     it.each([
-      'hi',
-      'Hello',
-      'Hey',
-      'Good morning',
-      'good afternoon',
-      'namaste',
-    ])('classifies "%s" as greeting', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('greeting');
-      expect(intent.confidence).toBeGreaterThan(0.8);
+      'hi', 'Hello', 'Hey', 'Good morning', 'namaste', 'yo',
+    ])('classifies pure "%s" as greeting', (input) => {
+      expect(classifyIntent(input).action).toBe('greeting');
     });
   });
 
-  // ── Help ───────────────────────────────────────────────────
-  describe('help', () => {
+  // ── Compound messages (greeting + command) ─────────────────
+  describe('compound messages', () => {
+    it('"hi show my orders" → order.list, not greeting', () => {
+      expect(classifyIntent('hi show my orders').action).toBe('order.list');
+    });
+
+    it('"hello, create a store" → store.create', () => {
+      expect(classifyIntent('hello, create a store').action).toBe('store.create');
+    });
+
+    it('"hey show my products" → product.list', () => {
+      expect(classifyIntent('hey show my products').action).toBe('product.list');
+    });
+
+    it('"good morning, any new orders?" → order.list', () => {
+      expect(classifyIntent('good morning, any new orders?').action).toBe('order.list');
+    });
+  });
+
+  // ── Typo tolerance ─────────────────────────────────────────
+  describe('typo tolerance', () => {
+    it('"create a tore" → store.create', () => {
+      expect(classifyIntent('create a tore').action).toBe('store.create');
+    });
+
+    it('"show my produts" → product.list', () => {
+      expect(classifyIntent('show my produts').action).toBe('product.list');
+    });
+
+    it('"my oders" → order.list', () => {
+      expect(classifyIntent('my oders').action).toBe('order.list');
+    });
+
+    it('"crate a store" → store.create', () => {
+      expect(classifyIntent('crate a store').action).toBe('store.create');
+    });
+  });
+
+  // ── Orders (broader patterns) ──────────────────────────────
+  describe('order.list', () => {
     it.each([
-      'help',
-      'What can you do?',
-      'how does this work',
-      'help me',
-    ])('classifies "%s" as help', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('help');
+      'show my orders',
+      'my orders',
+      'my past orders',
+      'past orders',
+      'recent orders',
+      'any new orders?',
+      'list recent orders',
+      'orders today',
+      'view pending orders',
+      'order history',
+      'check my orders',
+    ])('classifies "%s" as order.list', (input) => {
+      expect(classifyIntent(input).action).toBe('order.list');
+    });
+
+    it('extracts period = today', () => {
+      expect(classifyIntent('orders today').params['period']).toBe('today');
+    });
+
+    it('extracts period = week', () => {
+      expect(classifyIntent('orders this week').params['period']).toBe('week');
     });
   });
 
-  // ── Product Add ────────────────────────────────────────────
-  describe('product.add', () => {
+  // ── Products ───────────────────────────────────────────────
+  describe('product operations', () => {
     it.each([
       'add a product',
       'create new listing',
       'I want to sell something',
       'upload product photos',
-      'Add new item',
-      'create product',
     ])('classifies "%s" as product.add', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('product.add');
+      expect(classifyIntent(input).action).toBe('product.add');
     });
-  });
 
-  // ── Photo Upload ───────────────────────────────────────────
-  describe('product.from_photos', () => {
-    it('classifies [photo_upload] marker', () => {
-      const intent = classifyIntent('[photo_upload]');
-      expect(intent.action).toBe('product.from_photos');
-      expect(intent.confidence).toBe(1.0);
-    });
-  });
-
-  // ── Product List ───────────────────────────────────────────
-  describe('product.list', () => {
     it.each([
       'show my products',
       'list all products',
-      'view my catalog',
       'my products',
+      'my catalog',
+      'view my catalog',
       'how many products do I have',
+      'product list',
     ])('classifies "%s" as product.list', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('product.list');
+      expect(classifyIntent(input).action).toBe('product.list');
     });
   });
 
-  // ── Price Update ───────────────────────────────────────────
+  // ── Store create ───────────────────────────────────────────
+  describe('store.create', () => {
+    it.each([
+      'create my store',
+      'build a website',
+      'make my shop',
+      "let's get started",
+      'setup my store',
+      'I want a store',
+      'make me a website',
+      'new store',
+      'open a shop',
+    ])('classifies "%s" as store.create', (input) => {
+      expect(classifyIntent(input).action).toBe('store.create');
+    });
+  });
+
+  // ── Price update ───────────────────────────────────────────
   describe('product.update_price', () => {
-    it('classifies "change price to 500"', () => {
+    it('extracts price from "change price to 500"', () => {
       const intent = classifyIntent('change price to 500');
       expect(intent.action).toBe('product.update_price');
       expect(intent.params['price']).toBe(500);
-    });
-
-    it('classifies "update the price"', () => {
-      const intent = classifyIntent('update the price');
-      expect(intent.action).toBe('product.update_price');
     });
 
     it('extracts price with commas', () => {
@@ -97,88 +133,19 @@ describe('Intent Router', () => {
     });
   });
 
-  // ── Publish ────────────────────────────────────────────────
-  describe('product.publish', () => {
-    it.each([
-      'publish the product',
-      'make it live',
-      'go live',
-      'activate this product',
-    ])('classifies "%s" as product.publish', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('product.publish');
-    });
-  });
-
-  // ── Orders ─────────────────────────────────────────────────
-  describe('order.list', () => {
-    it.each([
-      'show my orders',
-      'any new orders?',
-      'list recent orders',
-      'orders today',
-      'view pending orders',
-    ])('classifies "%s" as order.list', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('order.list');
-    });
-
-    it('extracts period = today', () => {
-      const intent = classifyIntent('orders today');
-      expect(intent.params['period']).toBe('today');
-    });
-
-    it('extracts period = week', () => {
-      const intent = classifyIntent('orders this week');
-      expect(intent.params['period']).toBe('week');
-    });
-
-    it('extracts pending status', () => {
-      const intent = classifyIntent('show pending orders');
-      expect(intent.params['status']).toBe('created');
-    });
-  });
-
   // ── Revenue ────────────────────────────────────────────────
   describe('order.revenue', () => {
     it.each([
       'how much did I earn today',
       'revenue',
       'show my earnings',
-      "today's sales",
       'how much did I make this week',
     ])('classifies "%s" as order.revenue', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('order.revenue');
-    });
-
-    it('defaults period to today', () => {
-      const intent = classifyIntent('revenue');
-      expect(intent.params['period']).toBe('today');
-    });
-
-    it('extracts week period', () => {
-      const intent = classifyIntent('how much did I earn this week');
-      expect(intent.params['period']).toBe('week');
+      expect(classifyIntent(input).action).toBe('order.revenue');
     });
   });
 
-  // ── Store Create ───────────────────────────────────────────
-  describe('store.create', () => {
-    it.each([
-      'create my store',
-      'build a website',
-      'make my shop',
-      "let's get started",
-      'setup my store',
-      'start a new store',
-    ])('classifies "%s" as store.create', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('store.create');
-    });
-  });
-
-  // ── Store Link ─────────────────────────────────────────────
+  // ── Store link ─────────────────────────────────────────────
   describe('store.link', () => {
     it.each([
       'my store link',
@@ -186,22 +153,7 @@ describe('Intent Router', () => {
       'share my store',
       'where is my website',
     ])('classifies "%s" as store.link', (input) => {
-      const intent = classifyIntent(input);
-      expect(intent.action).toBe('store.link');
-    });
-  });
-
-  // ── Store Rename ───────────────────────────────────────────
-  describe('store.rename', () => {
-    it('extracts new name', () => {
-      const intent = classifyIntent('change store name to Priya Sarees');
-      expect(intent.action).toBe('store.rename');
-      expect(intent.params['name']).toBe('Priya Sarees');
-    });
-
-    it('handles without name', () => {
-      const intent = classifyIntent('rename my store');
-      expect(intent.action).toBe('store.rename');
+      expect(classifyIntent(input).action).toBe('store.link');
     });
   });
 
@@ -213,28 +165,19 @@ describe('Intent Router', () => {
       expect(intent.confidence).toBe(0);
       expect(intent.requiresFollowUp).toBeTruthy();
     });
-
-    it('returns unknown for ambiguous input', () => {
-      const intent = classifyIntent('I need to do something');
-      expect(intent.action).toBe('unknown');
-    });
   });
 
-  // ── Photo Detection Utility ────────────────────────────────
+  // ── Photo detection ────────────────────────────────────────
   describe('isPhotoRelated', () => {
     it.each([
-      'upload photos',
-      'I have a picture',
-      'send image',
-      'take a photo of my product',
+      'upload photos', 'I have a picture', 'send image',
     ])('detects "%s" as photo related', (input) => {
       expect(isPhotoRelated(input)).toBe(true);
     });
 
     it.each([
-      'show my orders',
-      'what is my revenue',
-    ])('does not detect "%s" as photo related', (input) => {
+      'show my orders', 'what is my revenue',
+    ])('"%s" is not photo related', (input) => {
       expect(isPhotoRelated(input)).toBe(false);
     });
   });

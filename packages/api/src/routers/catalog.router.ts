@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, storeProcedure } from '../trpc/trpc.js';
+import { router, storeProcedure, publicProcedure } from '../trpc/trpc.js';
 import { CatalogGenerateInput, BulkCatalogInput } from '@tatparya/shared';
 import { generateProductFromImages, generateBulkProducts } from '../services/catalog-ai.service.js';
 import { ProductRepository } from '../repositories/product.repository.js';
@@ -222,6 +222,55 @@ export const catalogRouter = router({
         product: updated,
         suggestion: result.suggestion,
         regeneratedFields: input.regenerateFields,
+        processingTimeMs: result.processingTimeMs,
+      };
+    }),
+
+  // ============================================================
+  // Dev-only: Generate product from photos without auth.
+  // TODO: Remove before production.
+  // ============================================================
+  devGenerate: publicProcedure
+    .input(CatalogGenerateInput)
+    .mutation(async ({ ctx, input }) => {
+      const { storeId, imageUrls, vertical, hints, language } = input;
+
+      const result = await generateProductFromImages({
+        imageUrls,
+        vertical,
+        hints: hints || undefined,
+        language,
+      });
+
+      const { suggestion } = result;
+
+      const productRepo = new ProductRepository(ctx.serviceDb);
+      const slug = slugify(suggestion.name) + '-' + Date.now().toString(36);
+
+      const product = await productRepo.create(storeId, {
+        name: suggestion.name,
+        slug,
+        description: suggestion.description,
+        price: suggestion.suggestedPrice?.min || 0,
+        compareAtPrice: suggestion.suggestedPrice?.max || undefined,
+        status: 'draft',
+        tags: suggestion.tags || [],
+        images: imageUrls.map((url, i) => ({
+          id: `img-${i}`,
+          originalUrl: url,
+          alt: suggestion.imageAlt?.[i] || suggestion.name,
+          position: i,
+          enhancementStatus: 'pending' as const,
+        })),
+        verticalData: suggestion.verticalAttributes || {},
+        seoMeta: suggestion.seoMeta || {},
+        hsnCode: suggestion.hsnCodeSuggestion || undefined,
+      });
+
+      return {
+        suggestion,
+        productId: product.id,
+        confidence: result.confidence,
         processingTimeMs: result.processingTimeMs,
       };
     }),

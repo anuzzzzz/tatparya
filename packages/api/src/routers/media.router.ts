@@ -202,4 +202,63 @@ export const mediaRouter = router({
       await mediaRepo.delete(input.storeId, input.mediaAssetId);
       return { success: true };
     }),
+
+  /**
+   * Dev-only: Get upload URL without auth.
+   * TODO: Remove before production.
+   */
+  devGetUploadUrl: publicProcedure
+    .input(GetUploadUrlInput)
+    .mutation(async ({ ctx, input }) => {
+      const { storeId, fileName, contentType } = input;
+      const key = generateMediaKey(storeId, 'originals', fileName);
+
+      let uploadUrl: string;
+      let publicUrl: string;
+
+      if (isStorageConfigured()) {
+        const urls = await getPresignedUploadUrl(key, contentType);
+        uploadUrl = urls.uploadUrl;
+        publicUrl = urls.publicUrl;
+      } else {
+        const urls = getDevUploadUrl(key);
+        uploadUrl = urls.uploadUrl;
+        publicUrl = urls.publicUrl;
+      }
+
+      const mediaRepo = new MediaRepository(ctx.serviceDb);
+      const media = await mediaRepo.create(storeId, {
+        originalKey: key,
+        originalUrl: publicUrl,
+        fileName,
+        contentType,
+        fileSizeBytes: input.fileSizeBytes,
+      });
+
+      return { uploadUrl, publicUrl, key, mediaAssetId: media.id, expiresIn: 3600 };
+    }),
+
+  /**
+   * Dev-only: Confirm upload without auth.
+   * TODO: Remove before production.
+   */
+  devConfirmUpload: publicProcedure
+    .input(ConfirmUploadInput)
+    .mutation(async ({ ctx, input }) => {
+      const { storeId, mediaAssetId } = input;
+      const mediaRepo = new MediaRepository(ctx.serviceDb);
+      const media = await mediaRepo.findById(storeId, mediaAssetId);
+      if (!media) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Media asset not found' });
+      }
+
+      processImage({
+        storeId,
+        mediaAssetId,
+        originalKey: media.originalKey,
+        db: ctx.serviceDb,
+      }).catch(err => console.error('Image processing failed:', err));
+
+      return { mediaAssetId, status: 'processing' };
+    }),
 });

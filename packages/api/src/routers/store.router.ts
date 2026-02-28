@@ -144,6 +144,27 @@ export const storeRouter = router({
   }),
 
   /**
+   * Dev-only: List all stores (no auth).
+   * TODO: Remove before production.
+   */
+  devList: publicProcedure.query(async ({ ctx }) => {
+    const { data: stores, error } = await ctx.serviceDb
+      .from('stores')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: `Failed to list stores: ${error.message}`,
+      });
+    }
+
+    return (stores || []).map(mapStoreRow);
+  }),
+
+  /**
    * Update store details
    */
   update: protectedProcedure
@@ -203,6 +224,80 @@ export const storeRouter = router({
         .single();
 
       return { available: !data };
+    }),
+
+  /**
+   * Dev-only: Create store without auth.
+   * TODO: Remove before production.
+   */
+  devCreate: publicProcedure
+    .input(CreateStoreInput.omit({ slug: true }).extend({
+      slug: z.string().min(2).max(100).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const slug = input.slug || input.name
+        .toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-').replace(/^-|-$/g, '')
+        + '-' + Date.now().toString(36);
+
+      // Use a fixed dev owner ID
+      const DEV_OWNER_ID = '00000000-0000-0000-0000-000000000000';
+
+      const defaultConfig = {
+        design: {
+          layout: 'minimal',
+          palette: {
+            mode: 'generated' as const,
+            seed: '#D4356A',
+            primary: '#D4356A',
+            secondary: '#F8E8EE',
+            accent: '#8B1A3A',
+            background: '#FFFAF5',
+            surface: '#FFF5EE',
+            text: '#1A1A2E',
+            textMuted: '#6B6B80',
+          },
+          fonts: { display: 'Playfair Display', body: 'DM Sans', scale: 1.0 },
+        },
+        sections: { homepage: [], productPage: [] },
+        language: 'en',
+        currency: 'INR' as const,
+        integrations: {},
+      };
+
+      const defaultWhatsappConfig = {
+        enabled: false,
+        autoOrderNotifications: true,
+        optInAtCheckout: true,
+        maxPromoMessagesPerWeek: 3,
+      };
+
+      const { data: store, error } = await ctx.serviceDb
+        .from('stores')
+        .insert({
+          owner_id: DEV_OWNER_ID,
+          name: input.name,
+          slug,
+          vertical: input.vertical,
+          description: input.description || null,
+          store_config: defaultConfig,
+          whatsapp_config: defaultWhatsappConfig,
+          status: 'active',
+          gstin: input.gstin || null,
+          business_name: input.businessName || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to create store: ${error.message}`,
+        });
+      }
+
+      return mapStoreRow(store);
     }),
 });
 

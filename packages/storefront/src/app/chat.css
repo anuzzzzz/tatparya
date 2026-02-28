@@ -701,6 +701,195 @@
 .hidden { display: none; }
 
 /* ============================================================
+   Rich Cards (Product, Order, Stats)
+   ============================================================ */
+
+.chat-card {
+  background: #FFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 320px;
+}
+
+.chat-card-image {
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: #F5F5F5;
+}
+
+.chat-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-card-body {
+  padding: 0.75rem;
+}
+
+.chat-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  color: #999;
+}
+
+.chat-card-badge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.badge-draft { background: #F5F5F5; color: #999; }
+.badge-active { background: #ECFDF5; color: #059669; }
+.badge-shipped { background: #EFF6FF; color: #2563EB; }
+.badge-delivered { background: #ECFDF5; color: #059669; }
+.badge-cancelled { background: #FEF2F2; color: #DC2626; }
+
+.chat-card-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1A1A1A;
+  line-height: 1.3;
+  margin-bottom: 0.2rem;
+}
+
+.chat-card-desc {
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.5;
+  margin-bottom: 0.4rem;
+}
+
+.chat-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.chat-card-price-main {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+
+.chat-card-price-compare {
+  font-size: 0.75rem;
+  color: #BBB;
+  text-decoration: line-through;
+}
+
+.chat-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.chat-card-tag {
+  font-size: 0.62rem;
+  color: #888;
+  background: #F5F5F5;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.chat-card-period {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #999;
+  text-transform: capitalize;
+}
+
+.chat-card-actions {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-top: 1px solid #F5F5F5;
+}
+
+.chat-card-btn {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+  text-align: center;
+}
+
+.btn-primary-sm {
+  background: #1A1A1A;
+  color: white;
+  border: none;
+}
+
+.btn-primary-sm:hover { background: #333; }
+
+.btn-secondary-sm {
+  background: transparent;
+  color: #666;
+  border: 1px solid #EBEBEB;
+}
+
+.btn-secondary-sm:hover {
+  border-color: #1A1A1A;
+  color: #1A1A1A;
+}
+
+.chat-inline-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+/* ============================================================
+   Stats Grid
+   ============================================================ */
+
+.chat-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.chat-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  text-align: center;
+  padding: 0.4rem 0;
+}
+
+.chat-stat-label {
+  font-size: 0.62rem;
+  color: #999;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.chat-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+
+.chat-stat-change {
+  font-size: 0.62rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+/* ============================================================
    Mobile
    ============================================================ */
 

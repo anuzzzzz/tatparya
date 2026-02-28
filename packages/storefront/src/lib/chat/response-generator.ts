@@ -1,21 +1,36 @@
 import type { Intent } from './intent-router';
-import type { ChatMessage } from './types';
+import type { ChatMessage, ProductCardMessage, OrderCardMessage, StatsMessage } from './types';
 import { aiTextMessage, createMessageId } from './types';
+import type { ChatApiService } from './chat-api';
 
 // ============================================================
-// Response Generator
+// Response Generator — Phase C
 //
-// Takes a classified intent and generates the appropriate
-// chat response. Phase B: text responses only.
-// Phase C: will call tRPC and return rich cards.
+// Now calls real API endpoints via ChatApiService.
+// Returns both text messages and rich cards.
+// Falls back to helpful text when API calls fail.
 // ============================================================
 
-export function generateResponse(intent: Intent): ChatMessage {
+export async function generateResponse(
+  intent: Intent,
+  api: ChatApiService | null,
+): Promise<ChatMessage[]> {
+  // If no API available, return text-only fallback
+  if (!api) {
+    return [generateFallbackResponse(intent)];
+  }
+
   const handler = RESPONSE_HANDLERS[intent.action] || handleUnknown;
-  return handler(intent);
+
+  try {
+    return await handler(intent, api);
+  } catch (err) {
+    console.error('Response generation error:', err);
+    return [aiTextMessage('Something went wrong. Please try again.')];
+  }
 }
 
-type ResponseHandler = (intent: Intent) => ChatMessage;
+type ResponseHandler = (intent: Intent, api: ChatApiService) => Promise<ChatMessage[]>;
 
 const RESPONSE_HANDLERS: Record<string, ResponseHandler> = {
   greeting: handleGreeting,
@@ -40,22 +55,20 @@ const RESPONSE_HANDLERS: Record<string, ResponseHandler> = {
 };
 
 // ============================================================
-// Handlers
-// Phase B: Return helpful text.
-// Phase C: These will call tRPC and return rich cards.
+// Handlers — now async with real API calls
 // ============================================================
 
-function handleGreeting(_intent: Intent): ChatMessage {
+async function handleGreeting(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
   const greetings = [
     'Hello! What would you like to do today? You can add products, check orders, or manage your store.',
     'Hey there! Ready to work on your store? Upload product photos or ask me anything.',
-    'Hi! How can I help? You can upload photos to add products, view orders, or check your revenue.',
+    'Hi! How can I help? Upload photos to add products, check orders, or view your revenue.',
   ];
-  return aiTextMessage(greetings[Math.floor(Math.random() * greetings.length)]!);
+  return [aiTextMessage(greetings[Math.floor(Math.random() * greetings.length)]!)];
 }
 
-function handleHelp(_intent: Intent): ChatMessage {
-  return aiTextMessage(
+async function handleHelp(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  return [aiTextMessage(
     "Here's what I can help you with:\n\n" +
     '📸 Add Products — Upload photos and I\'ll create listings automatically\n' +
     '📦 Orders — View, ship, or cancel orders\n' +
@@ -63,161 +76,332 @@ function handleHelp(_intent: Intent): ChatMessage {
     '🏪 Store — Update your store name, settings, or get your store link\n' +
     '🏷️ Discounts — Create coupon codes\n' +
     '📂 Categories — Organize your products\n\n' +
-    'Just tell me what you need, or upload product photos to get started!',
-  );
+    'Upload product photos to get started!',
+  )];
 }
 
-function handleProductAdd(_intent: Intent): ChatMessage {
-  return aiTextMessage(
-    'Ready to add a product! Upload your product photos below — I\'ll analyze them and create a complete listing with name, description, price suggestion, and tags.\n\n' +
-    'You can upload one or multiple photos at once. Tap the 📎 icon or drag and drop.',
-  );
+async function handleProductAdd(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  return [aiTextMessage(
+    'Ready to add a product! Upload your product photos — I\'ll analyze them and create a complete listing with name, description, price suggestion, and tags.\n\n' +
+    'Tap the 📎 icon or drag and drop your photos.',
+  )];
 }
 
-function handleProductFromPhotos(_intent: Intent): ChatMessage {
-  // This is triggered when photos are uploaded.
-  // Phase C will actually call the catalog AI service here.
-  return aiTextMessage(
-    'Got your photos! Analyzing them now to create a product listing...\n\n' +
-    '⏳ This will take a few seconds. I\'ll generate the name, description, price range, tags, and category.',
-  );
+async function handleProductFromPhotos(_intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  // This is called from use-chat when photos are uploaded.
+  // The actual API call happens in use-chat which passes imageUrls.
+  // This handler returns the "analyzing" message.
+  return [aiTextMessage(
+    'Got your photos! Analyzing them to create a product listing...\n\nThis takes a few seconds — I\'ll generate the name, description, price range, and tags.',
+  )];
 }
 
-function handleProductList(_intent: Intent): ChatMessage {
-  // Phase C: Will call product.list and return product cards
-  return aiTextMessage(
-    'Let me fetch your products...\n\n' +
-    '📋 (Product list will appear here in Phase C — the API call will be wired up next.)',
-  );
+async function handleProductList(_intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const result = await api.listProducts();
+
+  if (!result.success) {
+    if (result.error?.includes('NO_STORE')) {
+      return [aiTextMessage('You don\'t have a store yet. Say "create my store" to get started!')];
+    }
+    return [aiTextMessage(`Couldn't fetch products: ${result.error}`)];
+  }
+
+  const data = result.data as { items: any[]; total: number };
+
+  if (!data.items || data.items.length === 0) {
+    return [aiTextMessage(
+      'You don\'t have any products yet. Upload photos to create your first listing!',
+    )];
+  }
+
+  const messages: ChatMessage[] = [
+    aiTextMessage(`You have ${data.total} product${data.total === 1 ? '' : 's'}:`),
+  ];
+
+  // Return product cards for the first 5
+  for (const item of data.items.slice(0, 5)) {
+    const card: ProductCardMessage = {
+      type: 'product_card',
+      id: createMessageId(),
+      role: 'ai',
+      product: {
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        price: item.price,
+        compareAtPrice: item.compareAtPrice,
+        imageUrl: item.images?.[0]?.originalUrl,
+        tags: item.tags,
+        status: item.status,
+        category: item.categoryName,
+      },
+      actions: [
+        item.status === 'draft'
+          ? { label: 'Publish', action: 'product.publish', params: { productId: item.id }, variant: 'primary' as const }
+          : { label: 'Unpublish', action: 'product.unpublish', params: { productId: item.id }, variant: 'secondary' as const },
+        { label: 'Edit Price', action: 'product.update_price', params: { productId: item.id }, variant: 'secondary' as const },
+      ],
+      timestamp: new Date(),
+    };
+    messages.push(card);
+  }
+
+  if (data.total > 5) {
+    messages.push(aiTextMessage(`Showing 5 of ${data.total}. Say "show more products" to see the rest.`));
+  }
+
+  return messages;
 }
 
-function handleProductUpdatePrice(intent: Intent): ChatMessage {
-  const price = intent.params['price'];
+async function handleProductUpdatePrice(intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const price = intent.params['price'] as number | undefined;
+  const productId = intent.params['productId'] as string | undefined;
+
+  if (price && productId) {
+    const result = await api.updateProduct(productId, { price });
+    if (result.success) {
+      return [aiTextMessage(`Done! Price updated to ₹${price.toLocaleString('en-IN')}.`)];
+    }
+    return [aiTextMessage(`Couldn't update price: ${result.error}`)];
+  }
+
   if (price) {
-    return aiTextMessage(
-      `I'll update the price to ₹${price}. Which product should I update? Send me the product name or say "the last one" if it's the product we just worked on.`,
-    );
+    return [aiTextMessage(
+      `I'll set the price to ₹${price.toLocaleString('en-IN')}. Which product? Tell me the name or say "the last one".`,
+    )];
   }
-  return aiTextMessage(
-    'Sure, I can update the price. What\'s the new price, and which product?',
-  );
+
+  return [aiTextMessage('What\'s the new price, and which product?')];
 }
 
-function handleProductPublish(_intent: Intent): ChatMessage {
-  // Phase C: Will call product.update with status: 'active'
-  return aiTextMessage(
-    'I\'ll publish that product and make it live on your store.\n\n' +
-    '✅ (This will work in Phase C when the API is wired up.)',
-  );
+async function handleProductPublish(intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const productId = intent.params['productId'] as string | undefined;
+
+  if (productId) {
+    const result = await api.publishProduct(productId);
+    if (result.success) {
+      const product = result.data as any;
+      return [aiTextMessage(`"${product.name}" is now live on your store! 🎉`)];
+    }
+    return [aiTextMessage(`Couldn't publish: ${result.error}`)];
+  }
+
+  return [aiTextMessage('Which product do you want to publish? Tell me the name or say "the last one".')];
 }
 
-function handleProductDelete(_intent: Intent): ChatMessage {
-  return aiTextMessage(
-    'Are you sure you want to delete this product? This action cannot be undone. Reply "yes" to confirm.',
-  );
+async function handleProductDelete(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  return [aiTextMessage(
+    'Are you sure you want to delete this product? This cannot be undone. Reply "yes, delete it" to confirm.',
+  )];
 }
 
-function handleOrderList(intent: Intent): ChatMessage {
-  const period = intent.params['period'];
-  const status = intent.params['status'];
+async function handleOrderList(intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const period = intent.params['period'] as string | undefined;
+  const status = intent.params['status'] as string | undefined;
 
-  let msg = 'Let me pull up your orders';
-  if (period) msg += ` from ${period}`;
-  if (status) msg += ` (${status})`;
-  msg += '...';
+  const result = await api.listOrders({ status, period });
 
-  // Phase C: Will call order.list and return order cards
-  return aiTextMessage(
-    msg + '\n\n📦 (Order list will appear here in Phase C.)',
-  );
+  if (!result.success) {
+    if (result.error?.includes('NO_STORE')) {
+      return [aiTextMessage('You don\'t have a store yet. Say "create my store" to get started!')];
+    }
+    return [aiTextMessage(`Couldn't fetch orders: ${result.error}`)];
+  }
+
+  const data = result.data as { items: any[]; total: number };
+
+  if (!data.items || data.items.length === 0) {
+    const timeMsg = period ? ` for ${period}` : '';
+    return [aiTextMessage(`No orders${timeMsg}. They'll show up here as soon as customers start buying!`)];
+  }
+
+  const messages: ChatMessage[] = [
+    aiTextMessage(`${data.total} order${data.total === 1 ? '' : 's'}${period ? ` (${period})` : ''}:`),
+  ];
+
+  for (const item of data.items.slice(0, 5)) {
+    const card: OrderCardMessage = {
+      type: 'order_card',
+      id: createMessageId(),
+      role: 'ai',
+      order: {
+        id: item.id,
+        orderNumber: item.orderNumber,
+        buyerName: item.buyer?.name || 'Customer',
+        total: item.total,
+        status: item.status,
+        itemCount: item.items?.length || 0,
+        createdAt: item.createdAt,
+      },
+      actions: item.status === 'paid' || item.status === 'processing'
+        ? [{ label: 'Ship', action: 'order.ship', params: { orderId: item.id }, variant: 'primary' as const }]
+        : undefined,
+      timestamp: new Date(),
+    };
+    messages.push(card);
+  }
+
+  return messages;
 }
 
-function handleOrderRevenue(intent: Intent): ChatMessage {
+async function handleOrderRevenue(intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
   const period = (intent.params['period'] as string) || 'today';
+  const result = await api.getRevenue(period);
 
-  // Phase C: Will call order.revenue and return a stats card
-  return aiTextMessage(
-    `Fetching your ${period}'s revenue...\n\n💰 (Revenue stats will appear here in Phase C.)`,
-  );
+  if (!result.success) {
+    if (result.error?.includes('NO_STORE')) {
+      return [aiTextMessage('You don\'t have a store yet. Say "create my store" to get started!')];
+    }
+    return [aiTextMessage(`Couldn't fetch revenue: ${result.error}`)];
+  }
+
+  const data = result.data as { totalRevenue: number; orderCount: number; avgOrderValue: number };
+
+  const statsMsg: StatsMessage = {
+    type: 'stats',
+    id: createMessageId(),
+    role: 'ai',
+    stats: [
+      { label: 'Revenue', value: `₹${(data.totalRevenue || 0).toLocaleString('en-IN')}` },
+      { label: 'Orders', value: data.orderCount || 0 },
+      { label: 'Avg. Order', value: `₹${(data.avgOrderValue || 0).toLocaleString('en-IN')}` },
+    ],
+    period,
+    timestamp: new Date(),
+  };
+
+  return [statsMsg];
 }
 
-function handleOrderShip(_intent: Intent): ChatMessage {
-  return aiTextMessage(
-    'I\'ll mark the order as shipped. Which order? Send me the order number, or say "the latest one".',
-  );
+async function handleOrderShip(intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  const orderId = intent.params['orderId'] as string | undefined;
+
+  if (orderId) {
+    // Phase C+: will call api.updateOrderStatus
+    return [aiTextMessage('Enter the tracking number (or say "skip" to ship without tracking):')];
+  }
+
+  return [aiTextMessage('Which order should I ship? Send me the order number, or say "the latest one".')];
 }
 
-function handleOrderCancel(_intent: Intent): ChatMessage {
-  return aiTextMessage(
+async function handleOrderCancel(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  return [aiTextMessage(
     'Which order would you like to cancel? Send me the order number. I\'ll ask for confirmation before cancelling.',
-  );
+  )];
 }
 
-function handleStoreSettings(_intent: Intent): ChatMessage {
-  // Phase C: Will fetch and display store config
-  return aiTextMessage(
-    'Here are the things you can update:\n\n' +
-    '• Store name\n' +
-    '• Store description\n' +
-    '• Store category/vertical\n' +
-    '• GSTIN and business details\n' +
-    '• Theme and design\n\n' +
-    'What would you like to change?',
-  );
+async function handleStoreSettings(_intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const result = await api.getStore();
+
+  if (!result.success) {
+    if (result.error?.includes('NO_STORE')) {
+      return [aiTextMessage('You don\'t have a store yet. Say "create my store" to get started!')];
+    }
+    return [aiTextMessage(`Couldn't fetch store details: ${result.error}`)];
+  }
+
+  const store = result.data as any;
+
+  return [aiTextMessage(
+    `Your store details:\n\n` +
+    `Name: ${store.name}\n` +
+    `Category: ${store.vertical}\n` +
+    `Status: ${store.status}\n` +
+    `Slug: ${store.slug}\n` +
+    (store.gstin ? `GSTIN: ${store.gstin}\n` : '') +
+    (store.businessName ? `Business: ${store.businessName}\n` : '') +
+    `\nWhat would you like to change?`,
+  )];
 }
 
-function handleStoreRename(intent: Intent): ChatMessage {
-  const name = intent.params['name'];
+async function handleStoreRename(intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const name = intent.params['name'] as string | undefined;
+
   if (name) {
-    // Phase C: Will call store.update with new name
-    return aiTextMessage(
-      `I'll rename your store to "${name}".\n\n✏️ (This will work in Phase C.)`,
-    );
+    const result = await api.updateStore({ name });
+    if (result.success) {
+      return [aiTextMessage(`Done! Your store is now called "${name}".`)];
+    }
+    return [aiTextMessage(`Couldn't rename store: ${result.error}`)];
   }
-  return aiTextMessage('What would you like to rename your store to?');
+
+  return [aiTextMessage('What would you like to rename your store to?')];
 }
 
-function handleStoreCreate(_intent: Intent): ChatMessage {
-  return aiTextMessage(
-    'Let\'s create your store! I need a few things to get started:\n\n' +
-    '1. What\'s your store name?\n' +
-    '2. What do you sell? (e.g. Fashion, Jewellery, Electronics, Food, Beauty)\n\n' +
-    'Tell me the store name first, and we\'ll go from there.',
-  );
+async function handleStoreCreate(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  return [aiTextMessage(
+    'Let\'s create your store! What should we call it?\n\nJust tell me the store name and I\'ll set it up.',
+  )];
 }
 
-function handleStoreLink(_intent: Intent): ChatMessage {
-  // Phase C: Will fetch actual store slug and build URL
-  return aiTextMessage(
-    'Your store link will be: https://your-store.tatparya.in\n\n' +
-    '🔗 (The actual link will show in Phase C once your store is created.)',
-  );
+async function handleStoreLink(_intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const result = await api.getStoreLink();
+
+  if (!result.success) {
+    if (result.error?.includes('NO_STORE')) {
+      return [aiTextMessage('You don\'t have a store yet. Say "create my store" to get started!')];
+    }
+    return [aiTextMessage(`Couldn't get store link: ${result.error}`)];
+  }
+
+  const data = result.data as { slug: string; url: string; name: string };
+
+  return [aiTextMessage(
+    `Here's your store link:\n\n🔗 ${data.url}\n\nShare this with your customers!`,
+  )];
 }
 
-function handleDiscountCreate(_intent: Intent): ChatMessage {
-  return aiTextMessage(
-    'Let\'s create a discount code! I need:\n\n' +
+async function handleDiscountCreate(_intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  return [aiTextMessage(
+    'Let\'s create a discount code! Tell me:\n\n' +
     '1. Code name (e.g. WELCOME10)\n' +
-    '2. Discount type — percentage or flat amount?\n' +
-    '3. Value — how much off?\n\n' +
-    'What code would you like to use?',
-  );
+    '2. Percentage or flat amount?\n' +
+    '3. How much off?\n\n' +
+    'For example: "Create a 10% discount code called WELCOME10"',
+  )];
 }
 
-function handleCategoryList(_intent: Intent): ChatMessage {
-  // Phase C: Will call category.getTree
-  return aiTextMessage(
-    'Let me fetch your categories...\n\n' +
-    '📂 (Category list will appear here in Phase C.)',
-  );
-}
+async function handleCategoryList(_intent: Intent, api: ChatApiService): Promise<ChatMessage[]> {
+  const result = await api.listCategories();
 
-function handleUnknown(intent: Intent): ChatMessage {
-  if (intent.requiresFollowUp) {
-    return aiTextMessage(intent.requiresFollowUp);
+  if (!result.success) {
+    if (result.error?.includes('NO_STORE')) {
+      return [aiTextMessage('You don\'t have a store yet. Say "create my store" to get started!')];
+    }
+    return [aiTextMessage(`Couldn't fetch categories: ${result.error}`)];
   }
-  return aiTextMessage(
-    'I\'m not sure I understand. Could you try rephrasing?\n\n' +
+
+  const categories = result.data as any[];
+
+  if (!categories || categories.length === 0) {
+    return [aiTextMessage('You don\'t have any categories yet. Products will be auto-categorized when I create them from photos.')];
+  }
+
+  const list = categories.map((c: any) => `• ${c.name} (${c.productCount || 0} products)`).join('\n');
+  return [aiTextMessage(`Your categories:\n\n${list}`)];
+}
+
+async function handleUnknown(intent: Intent, _api: ChatApiService): Promise<ChatMessage[]> {
+  if (intent.requiresFollowUp) {
+    return [aiTextMessage(intent.requiresFollowUp)];
+  }
+  return [aiTextMessage(
+    'I\'m not sure I understand. Could you rephrase?\n\n' +
     'You can upload product photos, ask about orders, check revenue, or type "help" to see everything I can do.',
-  );
+  )];
+}
+
+// ============================================================
+// Fallback when no API is available (used during loading)
+// ============================================================
+
+function generateFallbackResponse(intent: Intent): ChatMessage {
+  switch (intent.action) {
+    case 'greeting':
+      return aiTextMessage('Hello! Setting up your connection... please wait a moment.');
+    case 'help':
+      return aiTextMessage('I can help with products, orders, revenue, and store management. Give me a moment to connect...');
+    default:
+      return aiTextMessage('Just a moment — connecting to your store...');
+  }
 }
