@@ -27,15 +27,24 @@ const EnvSchema = z.object({
   API_BASE_URL: z.string().url().default('http://localhost:3001'),
   STOREFRONT_BASE_URL: z.string().url().default('http://localhost:3000'),
 
-  // Optional (for later phases)
-  ANTHROPIC_API_KEY: z.string().optional(),
-  R2_ACCOUNT_ID: z.string().optional(),
-  R2_ACCESS_KEY_ID: z.string().optional(),
-  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  // Anthropic (Claude) — Required for Phase 3+
+  ANTHROPIC_API_KEY: z.string().min(1),
+
+  // Cloudflare R2 — Required for Phase 3+
+  R2_ACCOUNT_ID: z.string().min(1),
+  R2_ACCESS_KEY_ID: z.string().min(1),
+  R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET_NAME: z.string().default('tatparya-media'),
+  R2_PUBLIC_URL: z.string().url().optional(),
+
+  // Payments (for later phases)
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+
+  // WhatsApp (for later phases)
   GUPSHUP_API_KEY: z.string().optional(),
+
+  // AI extras (for later phases)
   REPLICATE_API_TOKEN: z.string().optional(),
 });
 
@@ -50,6 +59,10 @@ function loadEnv() {
         ...process.env,
         SUPABASE_ANON_KEY: process.env['SUPABASE_ANON_KEY'] || 'test-anon-key',
         SUPABASE_SERVICE_ROLE_KEY: process.env['SUPABASE_SERVICE_ROLE_KEY'] || 'test-service-key',
+        ANTHROPIC_API_KEY: process.env['ANTHROPIC_API_KEY'] || 'test-anthropic-key',
+        R2_ACCOUNT_ID: process.env['R2_ACCOUNT_ID'] || 'test-r2-account',
+        R2_ACCESS_KEY_ID: process.env['R2_ACCESS_KEY_ID'] || 'test-r2-access',
+        R2_SECRET_ACCESS_KEY: process.env['R2_SECRET_ACCESS_KEY'] || 'test-r2-secret',
       });
     }
     process.exit(1);
