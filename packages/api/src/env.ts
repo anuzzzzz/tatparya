@@ -55,8 +55,12 @@ function loadEnv() {
     console.error(result.error.format());
     // In test mode, provide defaults
     if (process.env['NODE_ENV'] === 'test') {
+      // Filter out empty strings that fail validation (e.g. R2_PUBLIC_URL="")
+      const cleaned = Object.fromEntries(
+        Object.entries(process.env).filter(([, v]) => v !== '')
+      );
       return EnvSchema.parse({
-        ...process.env,
+        ...cleaned,
         SUPABASE_ANON_KEY: process.env['SUPABASE_ANON_KEY'] || 'test-anon-key',
         SUPABASE_SERVICE_ROLE_KEY: process.env['SUPABASE_SERVICE_ROLE_KEY'] || 'test-service-key',
         ANTHROPIC_API_KEY: process.env['ANTHROPIC_API_KEY'] || 'test-anthropic-key',
