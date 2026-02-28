@@ -90,6 +90,36 @@ export const EnhanceImagesInput = z.object({
 export type EnhanceImagesInput = z.infer<typeof EnhanceImagesInput>;
 
 // ============================================================
+// Catalog AI Router Inputs
+// ============================================================
+
+const Vertical = z.enum([
+  'fashion', 'fmcg', 'electronics', 'jewellery', 'beauty', 'food', 'home_decor', 'general',
+]);
+
+export const CatalogGenerateInput = z.object({
+  storeId: StoreId,
+  imageUrls: z.array(z.string().url()).min(1).max(10),
+  vertical: Vertical.optional(),
+  hints: z.record(z.unknown()).optional(),
+  language: z.enum(['en', 'hi', 'hinglish']).default('en'),
+});
+
+export type CatalogGenerateInput = z.infer<typeof CatalogGenerateInput>;
+
+export const BulkCatalogInput = z.object({
+  storeId: StoreId,
+  images: z.array(z.object({
+    urls: z.array(z.string().url()).min(1).max(10),
+    hints: z.string().optional(),
+  })).min(1).max(20),
+  vertical: Vertical.optional(),
+  autoCreateDrafts: z.boolean().default(true),
+});
+
+export type BulkCatalogInput = z.infer<typeof BulkCatalogInput>;
+
+// ============================================================
 // Media Asset Row
 // ============================================================
 
