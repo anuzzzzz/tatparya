@@ -46,7 +46,7 @@ export function designTokensToCssVars(tokens: DesignTokens): Record<string, stri
   vars['--spacing-gap'] = spacing.gap;
 
   // Hero
-  vars['--hero-overlay-opacity'] = String(tokens.hero.overlayOpacity);
+  vars['--hero-overlay-opacity'] = String(tokens.hero?.overlayOpacity ?? 0.3);
 
   return vars;
 }

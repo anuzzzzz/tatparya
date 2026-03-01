@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure, publicProcedure } from '../trpc/trpc.js';
-import { CreateStoreInput, UpdateStoreInput, GetStoreInput, StoreRow } from '@tatparya/shared';
+import { CreateStoreInput, UpdateStoreInput, GetStoreInput } from '@tatparya/shared';
 import { emitEvent } from '../lib/event-bus.js';
 
 export const storeRouter = router({
@@ -241,19 +241,8 @@ export const storeRouter = router({
         .replace(/-+/g, '-').replace(/^-|-$/g, '')
         + '-' + Date.now().toString(36);
 
-      // Ensure a dev user exists (stores.owner_id FK → auth.users)
-      const DEV_OWNER_ID = '00000000-0000-0000-0000-000000000001';
-      try {
-        await ctx.serviceDb.auth.admin.createUser({
-          id: DEV_OWNER_ID,
-          email: 'dev@tatparya.in',
-          phone: '919876543210',
-          email_confirm: true,
-          phone_confirm: true,
-        });
-      } catch {
-        // Already exists — fine
-      }
+      // Use existing dev user from auth.users
+      const DEV_OWNER_ID = '01e14d64-a028-4c4d-b6fe-7b13f4bbf007';
 
       const defaultConfig = {
         design: {
