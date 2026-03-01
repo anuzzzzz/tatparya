@@ -188,7 +188,7 @@ export class ChatApiService {
   // ── Media Upload ─────────────────────────────────────────
 
   async getUploadUrl(
-    fileName: string,
+    filename: string,
     contentType: string,
     fileSizeBytes?: number,
   ): Promise<ChatApiResult> {
@@ -196,7 +196,7 @@ export class ChatApiService {
       const storeId = this.requireStore();
       const result = await this.trpc.media.devGetUploadUrl.mutate({
         storeId,
-        fileName,
+        filename,
         contentType,
         fileSizeBytes,
       });
@@ -206,12 +206,12 @@ export class ChatApiService {
     }
   }
 
-  async confirmUpload(mediaAssetId: string): Promise<ChatApiResult> {
+  async confirmUpload(mediaId: string): Promise<ChatApiResult> {
     try {
       const storeId = this.requireStore();
       const result = await this.trpc.media.devConfirmUpload.mutate({
         storeId,
-        mediaAssetId,
+        mediaId,
       });
       return { success: true, data: result };
     } catch (err: any) {

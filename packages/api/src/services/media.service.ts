@@ -84,7 +84,7 @@ export class MediaService {
     if (!media) throw new Error(`Media asset not found: ${mediaId}`);
 
     // Mark as processing
-    await this.repo.updateEnhancement(storeId, mediaId, {
+    await this.repo.updateEnhancementStatus(storeId, mediaId, {
       enhancementStatus: 'processing',
     });
 
@@ -127,8 +127,7 @@ export class MediaService {
         updateData[`${variant}Url`] = url;
       }
 
-      await this.repo.updateEnhancement(storeId, mediaId, {
-        ...updateData as Record<string, string>,
+      await this.repo.updateEnhancementStatus(storeId, mediaId, {
         heroKey: updateData['heroKey'],
         heroUrl: updateData['heroUrl'],
         cardKey: updateData['cardKey'],
@@ -155,7 +154,7 @@ export class MediaService {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
 
-      await this.repo.updateEnhancement(storeId, mediaId, {
+      await this.repo.updateEnhancementStatus(storeId, mediaId, {
         enhancementStatus: 'failed',
         enhancementError: errorMsg,
       });

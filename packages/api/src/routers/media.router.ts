@@ -20,9 +20,9 @@ export const mediaRouter = router({
   getUploadUrl: storeProcedure
     .input(GetUploadUrlInput)
     .mutation(async ({ ctx, input }) => {
-      const { storeId, fileName, contentType } = input;
+      const { storeId, filename, contentType } = input;
 
-      const key = generateMediaKey(storeId, 'originals', fileName);
+      const key = generateMediaKey(storeId, 'originals', filename);
 
       let uploadUrl: string;
       let publicUrl: string;
@@ -38,12 +38,12 @@ export const mediaRouter = router({
         publicUrl = urls.publicUrl;
       }
 
-      // Create media asset record (status: uploaded)
+      // Create media asset record (status: pending)
       const mediaRepo = new MediaRepository(ctx.serviceDb);
       const media = await mediaRepo.create(storeId, {
         originalKey: key,
         originalUrl: publicUrl,
-        fileName,
+        filename,
         contentType,
         fileSizeBytes: input.fileSizeBytes,
       });
@@ -51,7 +51,7 @@ export const mediaRouter = router({
       await emitEvent('image.uploaded', storeId, {
         imageId: media.id,
         originalUrl: publicUrl,
-      }, { source: 'api', userId: ctx.user.id });
+      }, { source: 'api', userId: ctx.user!.id });
 
       return {
         uploadUrl,
@@ -69,32 +69,23 @@ export const mediaRouter = router({
   confirmUpload: storeProcedure
     .input(ConfirmUploadInput)
     .mutation(async ({ ctx, input }) => {
-      const { storeId, mediaAssetId, fileSizeBytes } = input;
+      const { storeId, mediaId } = input;
       const mediaRepo = new MediaRepository(ctx.serviceDb);
 
-      const media = await mediaRepo.findById(storeId, mediaAssetId);
+      const media = await mediaRepo.findById(storeId, mediaId);
       if (!media) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Media asset not found' });
-      }
-
-      // Update file size if provided
-      if (fileSizeBytes) {
-        await ctx.serviceDb
-          .from('media_assets')
-          .update({ file_size_bytes: fileSizeBytes })
-          .eq('id', mediaAssetId)
-          .eq('store_id', storeId);
       }
 
       // Kick off image processing pipeline in background
       processImage({
         storeId,
-        mediaAssetId,
+        mediaAssetId: mediaId,
         originalKey: media.originalKey,
         db: ctx.serviceDb,
       }).catch(err => console.error('Image processing failed:', err));
 
-      return { mediaAssetId, status: 'processing' };
+      return { mediaAssetId: mediaId, status: 'processing' };
     }),
 
   // ============================================================
@@ -104,7 +95,7 @@ export const mediaRouter = router({
     .input(z.object({
       storeId: z.string().uuid(),
       productId: z.string().uuid().optional(),
-      status: z.enum(['uploaded', 'processing', 'ready', 'failed']).optional(),
+      status: z.enum(['pending', 'processing', 'done', 'failed']).optional(),
       unlinked: z.boolean().optional(),
       page: z.number().int().positive().default(1),
       limit: z.number().int().min(1).max(100).default(50),
@@ -176,7 +167,10 @@ export const mediaRouter = router({
       }
 
       // Reset status and reprocess
-      await mediaRepo.updateStatus(input.storeId, input.mediaAssetId, 'uploaded');
+      await mediaRepo.updateEnhancementStatus(input.storeId, input.mediaAssetId, {
+        enhancementStatus: 'pending',
+        enhancementError: null,
+      });
 
       processImage({
         storeId: input.storeId,
@@ -210,8 +204,8 @@ export const mediaRouter = router({
   devGetUploadUrl: publicProcedure
     .input(GetUploadUrlInput)
     .mutation(async ({ ctx, input }) => {
-      const { storeId, fileName, contentType } = input;
-      const key = generateMediaKey(storeId, 'originals', fileName);
+      const { storeId, filename, contentType } = input;
+      const key = generateMediaKey(storeId, 'originals', filename);
 
       let uploadUrl: string;
       let publicUrl: string;
@@ -230,7 +224,7 @@ export const mediaRouter = router({
       const media = await mediaRepo.create(storeId, {
         originalKey: key,
         originalUrl: publicUrl,
-        fileName,
+        filename,
         contentType,
         fileSizeBytes: input.fileSizeBytes,
       });
@@ -245,20 +239,20 @@ export const mediaRouter = router({
   devConfirmUpload: publicProcedure
     .input(ConfirmUploadInput)
     .mutation(async ({ ctx, input }) => {
-      const { storeId, mediaAssetId } = input;
+      const { storeId, mediaId } = input;
       const mediaRepo = new MediaRepository(ctx.serviceDb);
-      const media = await mediaRepo.findById(storeId, mediaAssetId);
+      const media = await mediaRepo.findById(storeId, mediaId);
       if (!media) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Media asset not found' });
       }
 
       processImage({
         storeId,
-        mediaAssetId,
+        mediaAssetId: mediaId,
         originalKey: media.originalKey,
         db: ctx.serviceDb,
       }).catch(err => console.error('Image processing failed:', err));
 
-      return { mediaAssetId, status: 'processing' };
+      return { mediaAssetId: mediaId, status: 'processing' };
     }),
 });

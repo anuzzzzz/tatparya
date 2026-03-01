@@ -23,7 +23,7 @@ export async function processImage(input: ProcessImageInput): Promise<void> {
     // TODO: Full Sharp pipeline when R2 is configured
     // For now, mark as done so the dashboard/catalog flow isn't blocked
     const { error } = await db
-      .from('media')
+      .from('media_assets')
       .update({
         enhancement_status: 'done',
         updated_at: new Date().toISOString(),
@@ -42,7 +42,7 @@ export async function processImage(input: ProcessImageInput): Promise<void> {
 
     // Mark as failed
     await db
-      .from('media')
+      .from('media_assets')
       .update({
         enhancement_status: 'failed',
         enhancement_error: err instanceof Error ? err.message : 'Unknown error',
