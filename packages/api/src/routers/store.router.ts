@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure, publicProcedure } from '../trpc/trpc.js';
 import { CreateStoreInput, UpdateStoreInput, GetStoreInput } from '@tatparya/shared';
 import { emitEvent } from '../lib/event-bus.js';
+import { generateStoreDesign } from '../services/store-design-ai.service.js';
 
 export const storeRouter = router({
   /**
@@ -298,6 +299,80 @@ export const storeRouter = router({
       }
 
       return mapStoreRow(store);
+    }),
+
+  /**
+   * Dev-only: Generate store design from product photos.
+   * Call this after store creation + first photo upload.
+   * Updates the store's design config in place.
+   */
+  devGenerateDesign: publicProcedure
+    .input(z.object({
+      storeId: z.string().uuid(),
+      productImages: z.array(z.string().min(1)).min(1).max(5),
+      productInfo: z.object({
+        names: z.array(z.string()).optional(),
+        priceRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        tags: z.array(z.string()).optional(),
+      }).optional(),
+      sellerHints: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Get the store
+      const { data: store, error: fetchError } = await ctx.serviceDb
+        .from('stores')
+        .select('*')
+        .eq('id', input.storeId)
+        .single();
+
+      if (fetchError || !store) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Store not found' });
+      }
+
+      // Generate design from photos
+      const result = await generateStoreDesign({
+        storeName: store.name,
+        vertical: store.vertical,
+        productImages: input.productImages,
+        productInfo: input.productInfo,
+        sellerHints: input.sellerHints,
+      });
+
+      // Merge AI design into existing store config
+      const existingConfig = (store.store_config || {}) as Record<string, any>;
+      const newConfig = {
+        ...existingConfig,
+        design: result.design,
+        sections: existingConfig.sections || { homepage: [], productPage: [] },
+        language: existingConfig.language || 'en',
+        currency: existingConfig.currency || 'INR',
+        integrations: existingConfig.integrations || {},
+      };
+
+      // Update store with new design + bio
+      const { data: updated, error: updateError } = await ctx.serviceDb
+        .from('stores')
+        .update({
+          store_config: newConfig,
+          description: result.storeBio,
+        })
+        .eq('id', input.storeId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to update store design: ${updateError.message}`,
+        });
+      }
+
+      return {
+        store: mapStoreRow(updated),
+        heroTagline: result.heroTagline,
+        heroSubtext: result.heroSubtext,
+        processingTimeMs: result.processingTimeMs,
+      };
     }),
 });
 

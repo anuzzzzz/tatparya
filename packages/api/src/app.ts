@@ -16,6 +16,7 @@ export async function buildApp() {
       },
     },
     maxParamLength: 5000,
+    bodyLimit: 50 * 1024 * 1024, // 50MB for base64 image payloads
   });
 
   // CORS

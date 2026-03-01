@@ -200,38 +200,20 @@ export function useChat(): UseChatReturn {
         }
       }
 
-      // Upload files
-      const uploadedUrls: string[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]!;
-
-        const uploadResult = await api.getUploadUrl(file.name, file.type, file.size);
-
-        if (!uploadResult.success) {
-          console.warn('Media upload not available, using local URL');
-          uploadedUrls.push(localUrls[i]!);
-          continue;
-        }
-
-        const { uploadUrl, publicUrl, mediaAssetId } = uploadResult.data as any;
-
-        try {
-          await fetch(uploadUrl, {
-            method: 'PUT',
-            body: file,
-            headers: { 'Content-Type': file.type },
-          });
-          await api.confirmUpload(mediaAssetId);
-          uploadedUrls.push(publicUrl);
-        } catch {
-          console.warn('File upload failed, using local URL');
-          uploadedUrls.push(localUrls[i]!);
-        }
+      // Convert files to base64 data URLs (works without R2)
+      const imageDataUrls: string[] = [];
+      for (const file of files) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(file);
+        });
+        imageDataUrls.push(base64);
       }
 
-      // Call catalog AI
-      const catalogResult = await api.generateFromPhotos(uploadedUrls);
+      // Call catalog AI with base64 data URLs
+      const catalogResult = await api.generateFromPhotos(imageDataUrls);
 
       setIsTyping(false);
 
@@ -256,10 +238,10 @@ export function useChat(): UseChatReturn {
           description: suggestion.description,
           price: suggestion.suggestedPrice?.min || 0,
           compareAtPrice: suggestion.suggestedPrice?.max,
-          imageUrl: uploadedUrls[0],
+          imageUrl: localUrls[0],
           tags: suggestion.tags,
           status: 'draft',
-          category: suggestion.category,
+          category: suggestion.suggestedCategory,
         },
         actions: [
           { label: 'Publish', action: 'product.publish', params: { productId }, variant: 'primary' },
@@ -276,6 +258,28 @@ export function useChat(): UseChatReturn {
         productCard,
         aiTextMessage(`Product created as draft. ${note} Say "publish" to make it live, or "change price to ___" to adjust.`),
       ]);
+
+      // Trigger store design generation in background (Call 2)
+      // Uses the same photos to derive the store's visual identity
+      api.generateStoreDesign(
+        imageDataUrls,
+        {
+          names: [suggestion.name],
+          priceRange: suggestion.suggestedPrice
+            ? { min: suggestion.suggestedPrice.min, max: suggestion.suggestedPrice.max }
+            : undefined,
+          tags: suggestion.tags,
+        },
+      ).then((designResult) => {
+        if (designResult.success) {
+          const { heroTagline, heroSubtext } = designResult.data as any;
+          addMessages([
+            aiTextMessage(`✨ I've designed your store to match your brand! Visit your store to see the new look.`),
+          ]);
+        }
+      }).catch(() => {
+        // Design generation is optional — don't block the flow
+      });
 
     } catch (err) {
       console.error('Photo processing error:', err);

@@ -99,7 +99,7 @@ const Vertical = z.enum([
 
 export const CatalogGenerateInput = z.object({
   storeId: StoreId,
-  imageUrls: z.array(z.string().url()).min(1).max(10),
+  imageUrls: z.array(z.string().min(1)).min(1).max(10),
   vertical: Vertical.optional(),
   hints: z.record(z.unknown()).optional(),
   language: z.enum(['en', 'hi', 'hinglish']).default('en'),

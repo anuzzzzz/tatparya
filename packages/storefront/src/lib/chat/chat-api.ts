@@ -296,6 +296,29 @@ export class ChatApiService {
     }
   }
 
+  // ── Store Design AI ──────────────────────────────────────
+
+  async generateStoreDesign(
+    productImages: string[],
+    productInfo?: {
+      names?: string[];
+      priceRange?: { min: number; max: number };
+      tags?: string[];
+    },
+  ): Promise<ChatApiResult> {
+    try {
+      const storeId = this.requireStore();
+      const result = await this.trpc.store.devGenerateDesign.mutate({
+        storeId,
+        productImages,
+        productInfo,
+      });
+      return { success: true, data: result };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
   // ── Helpers ──────────────────────────────────────────────
 
   private periodToDateRange(period: string): { from: string; to: string } | undefined {

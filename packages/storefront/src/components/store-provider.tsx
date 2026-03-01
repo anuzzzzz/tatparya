@@ -43,7 +43,33 @@ export function StoreProvider({ store, children }: StoreProviderProps) {
   const [cartCount, setCartCount] = useState(0);
 
   const config = store.storeConfig as unknown as StoreConfig;
-  const design = config.design;
+  const rawDesign = config?.design || {};
+
+  // Deep defaults for design tokens — devCreate stores have minimal config
+  const design: DesignTokens = {
+    layout: rawDesign.layout || 'minimal',
+    palette: rawDesign.palette || {
+      mode: 'generated' as const,
+      seed: '#D4356A',
+      primary: '#D4356A',
+      secondary: '#F8E8EE',
+      accent: '#8B1A3A',
+      background: '#FFFAF5',
+      surface: '#FFF5EE',
+      text: '#1A1A2E',
+      textMuted: '#6B6B80',
+    },
+    fonts: rawDesign.fonts || { display: 'Playfair Display', body: 'DM Sans', scale: 1.0 },
+    hero: rawDesign.hero || { style: 'full_bleed', height: 'half', overlayOpacity: 0.3 },
+    productCard: rawDesign.productCard || { style: 'hover_reveal', showPrice: true, showRating: false, imageRatio: '3:4' },
+    nav: rawDesign.nav || { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: false },
+    collection: rawDesign.collection || { style: 'uniform_grid', columns: { mobile: 2, desktop: 4 }, pagination: 'infinite_scroll' },
+    checkout: rawDesign.checkout || { style: 'single_page', showTrustBadges: true, whatsappCheckout: false },
+    spacing: rawDesign.spacing || 'balanced',
+    radius: rawDesign.radius || 'rounded',
+    imageStyle: rawDesign.imageStyle || 'subtle_shadow',
+    animation: rawDesign.animation || 'fade',
+  } as DesignTokens;
 
   const queryClient = useMemo(() => new QueryClient({
     defaultOptions: {

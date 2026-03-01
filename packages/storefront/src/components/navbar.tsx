@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 export function Navbar() {
   const { store, design, cartCount } = useStore();
-  const nav = design.nav;
+  const nav = design.nav || { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: false };
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
