@@ -156,6 +156,21 @@ export class ChatApiService {
     }
   }
 
+  // ── Photo Triage (Call 0) ──────────────────────────────
+
+  async triagePhotos(thumbnailDataUrls: string[]): Promise<ChatApiResult> {
+    try {
+      const storeId = this.requireStore();
+      const result = await this.trpc.catalog.triagePhotos.mutate({
+        storeId,
+        thumbnailDataUrls,
+      });
+      return { success: true, data: result };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
   // ── Catalog AI (the magic moment) ────────────────────────
 
   async generateFromPhotos(

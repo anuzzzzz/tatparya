@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, storeProcedure, publicProcedure } from '../trpc/trpc.js';
 import { CatalogGenerateInput, BulkCatalogInput } from '@tatparya/shared';
 import { generateProductFromImages, generateBulkProducts } from '../services/catalog-ai.service.js';
+import { triagePhotos } from '../services/photo-triage-ai.service.js';
 import { ProductRepository } from '../repositories/product.repository.js';
 import { MediaRepository } from '../repositories/media.repository.js';
 import { emitEvent } from '../lib/event-bus.js';
@@ -14,6 +15,18 @@ function slugify(text: string): string {
 }
 
 export const catalogRouter = router({
+  // ============================================================
+  // Photo Triage (Call 0) — group photos by product
+  // ============================================================
+  triagePhotos: storeProcedure
+    .input(z.object({
+      storeId: z.string().uuid(),
+      thumbnailDataUrls: z.array(z.string()).min(1).max(20),
+    }))
+    .mutation(async ({ input }) => {
+      return triagePhotos(input.thumbnailDataUrls);
+    }),
+
   // ============================================================
   // Generate product from photos (the magic moment)
   // ============================================================

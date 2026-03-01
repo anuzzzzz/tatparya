@@ -143,6 +143,11 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     throw new Error(`Failed to parse store design AI response: ${(e as Error).message}`);
   }
 
+  // Validate and fix palette contrast (WCAG AA)
+  if (parsed.design?.palette) {
+    parsed.design.palette = validateAndFixPalette(parsed.design.palette);
+  }
+
   return {
     design: parsed.design,
     storeBio: parsed.storeBio || `Welcome to ${input.storeName}. Discover our curated collection.`,
@@ -217,7 +222,7 @@ async function callOpenAI(input: StoreDesignInput, userPrompt: string): Promise<
     throw new Error(`OpenAI API error (${response.status}): ${error}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.choices?.[0]?.message?.content || '';
 }
 
@@ -264,4 +269,94 @@ async function callAnthropic(input: StoreDesignInput, userPrompt: string): Promi
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') throw new Error('No text response');
   return textBlock.text;
+}
+
+// ============================================================
+// WCAG Contrast Validator
+//
+// AI-generated palettes occasionally produce low-contrast
+// combinations (yellow-on-white, light-gray-on-cream).
+// This catches them before the store goes live.
+//
+// WCAG AA requirements:
+// - Normal text on background: 4.5:1 minimum
+// - Large text / UI components on background: 3:1 minimum
+// ============================================================
+
+function relativeLuminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const linear = [r, g, b].map((c) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
+  );
+  return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
+}
+
+function contrastRatio(hex1: string, hex2: string): number {
+  const l1 = relativeLuminance(hex1);
+  const l2 = relativeLuminance(hex2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Darken or lighten a hex color to reach a target contrast ratio
+ * against the given background color.
+ */
+function adjustForContrast(color: string, background: string, targetRatio: number): string {
+  const bgLum = relativeLuminance(background);
+  const isLightBg = bgLum > 0.5;
+
+  let r = parseInt(color.slice(1, 3), 16);
+  let g = parseInt(color.slice(3, 5), 16);
+  let b = parseInt(color.slice(5, 7), 16);
+
+  // Adjust in steps toward black (light bg) or white (dark bg)
+  for (let i = 0; i < 50; i++) {
+    const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    if (contrastRatio(hex, background) >= targetRatio) return hex;
+
+    if (isLightBg) {
+      // Darken
+      r = Math.max(0, r - 5);
+      g = Math.max(0, g - 5);
+      b = Math.max(0, b - 5);
+    } else {
+      // Lighten
+      r = Math.min(255, r + 5);
+      g = Math.min(255, g + 5);
+      b = Math.min(255, b + 5);
+    }
+  }
+
+  // Fallback if we couldn't reach the target
+  return isLightBg ? '#1A1A2E' : '#F5F5F5';
+}
+
+function validateAndFixPalette(palette: any): any {
+  const fixed = { ...palette };
+
+  // Ensure we have valid hex colors to work with
+  if (!fixed.text || !fixed.background) return fixed;
+
+  // Text on background: WCAG AA (4.5:1)
+  if (contrastRatio(fixed.text, fixed.background) < 4.5) {
+    const bgLum = relativeLuminance(fixed.background);
+    fixed.text = bgLum > 0.5 ? '#1A1A2E' : '#F5F5F5';
+  }
+
+  // Muted text on background: 3:1 minimum (large text standard)
+  if (fixed.textMuted && contrastRatio(fixed.textMuted, fixed.background) < 3.0) {
+    const bgLum = relativeLuminance(fixed.background);
+    fixed.textMuted = bgLum > 0.5 ? '#6B6B80' : '#B0B0B0';
+  }
+
+  // Primary on background: 3:1 minimum (for buttons, links)
+  if (fixed.primary && contrastRatio(fixed.primary, fixed.background) < 3.0) {
+    fixed.primary = adjustForContrast(fixed.primary, fixed.background, 3.0);
+  }
+
+  return fixed;
 }
