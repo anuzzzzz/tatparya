@@ -13,6 +13,7 @@ import { generateResponse } from './response-generator';
 import { ChatApiService } from './chat-api';
 import { FlowManager } from './flow-manager';
 import { useSellerAuth } from './auth-provider';
+import { resizeAll } from './image-resizer';
 
 // ============================================================
 // Chat State Hook — with Flow Manager
@@ -166,7 +167,14 @@ export function useChat(): UseChatReturn {
   }, [addMessages, api, flowManager, lastProductId, setStoreId]);
 
   // ============================================================
-  // Send images → upload → catalog AI → product card
+  // Send images → resize → thumbnail-first upload → catalog AI
+  //
+  // Flow:
+  // 1. Resize all photos (OffscreenCanvas Worker, off main thread)
+  // 2. Fire in parallel:
+  //    a. Thumbnails as base64 → catalog AI (fast, ~75KB total)
+  //    b. Full images → R2 via presigned URLs (heavy, racing AI)
+  // 3. Show product card + trigger store design in background
   // ============================================================
   const sendImages = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
@@ -177,9 +185,7 @@ export function useChat(): UseChatReturn {
     ]);
 
     setIsTyping(true);
-    addMessages([aiTextMessage(
-      'Got your photos! Analyzing them to create a product listing... This takes a few seconds.',
-    )]);
+    addMessages([aiTextMessage('Processing your photos...')]);
 
     try {
       // Check if store exists
@@ -194,29 +200,55 @@ export function useChat(): UseChatReturn {
             )]);
             return;
           }
-          // Use the first store
           setStoreId(stores[0].id);
           api.setStoreId(stores[0].id);
         }
       }
 
-      // Convert files to base64 data URLs (works without R2)
-      const imageDataUrls: string[] = [];
-      for (const file of files) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsDataURL(file);
-        });
-        imageDataUrls.push(base64);
-      }
+      // ── Step 1: Resize all images (OffscreenCanvas Worker) ──
+      const resized = await resizeAll(files);
+      const thumbnailDataUrls = resized.map((r) => r.thumbDataUrl);
 
-      // Call catalog AI with base64 data URLs
-      const catalogResult = await api.generateFromPhotos(imageDataUrls);
+      // ── Step 2: Fire AI + R2 uploads in parallel ────────────
+      // Thumbnails → AI immediately (75KB total, fast)
+      // Full images → R2 presigned URLs (racing the AI call)
+      const [catalogResult, uploadResults] = await Promise.all([
+        // FAST PATH: Thumbnails as base64 in body → catalog AI
+        api.generateFromPhotos(thumbnailDataUrls),
+
+        // SLOW PATH: Full images to R2 via presigned URLs
+        Promise.all(resized.map(async (r) => {
+          const uploadUrlResult = await api.getUploadUrl(
+            r.filename,
+            'image/jpeg',
+            r.full.size,
+          );
+          if (!uploadUrlResult.success) {
+            console.warn('Upload URL failed:', uploadUrlResult.error);
+            return null;
+          }
+          const { uploadUrl, publicUrl, mediaAssetId } = uploadUrlResult.data as any;
+
+          // Upload full image directly to R2/local via presigned URL
+          try {
+            await fetch(uploadUrl, {
+              method: 'PUT',
+              body: r.full,
+              headers: { 'Content-Type': 'image/jpeg' },
+            });
+            // Confirm upload to trigger Sharp processing
+            await api.confirmUpload(mediaAssetId);
+            return { mediaId: mediaAssetId, publicUrl };
+          } catch (err) {
+            console.warn('R2 upload failed:', err);
+            return null;
+          }
+        })),
+      ]);
 
       setIsTyping(false);
 
+      // ── Step 3: Handle catalog AI result ────────────────────
       if (!catalogResult.success) {
         addMessages([aiTextMessage(
           `Couldn't generate product listing: ${catalogResult.error}\n\nTry again or add the product manually.`,
@@ -225,8 +257,13 @@ export function useChat(): UseChatReturn {
       }
 
       const { suggestion, productId, confidence } = catalogResult.data as any;
-
       if (productId) setLastProductId(productId);
+
+      // Use R2 URL if upload succeeded, otherwise fall back to thumbnail
+      const successfulUploads = uploadResults.filter(Boolean);
+      const displayImageUrl = successfulUploads.length > 0
+        ? (successfulUploads[0] as any).publicUrl
+        : localUrls[0];
 
       const productCard: ChatMessage = {
         type: 'product_card',
@@ -238,7 +275,7 @@ export function useChat(): UseChatReturn {
           description: suggestion.description,
           price: suggestion.suggestedPrice?.min || 0,
           compareAtPrice: suggestion.suggestedPrice?.max,
-          imageUrl: localUrls[0],
+          imageUrl: displayImageUrl,
           tags: suggestion.tags,
           status: 'draft',
           category: suggestion.suggestedCategory,
@@ -259,10 +296,9 @@ export function useChat(): UseChatReturn {
         aiTextMessage(`Product created as draft. ${note} Say "publish" to make it live, or "change price to ___" to adjust.`),
       ]);
 
-      // Trigger store design generation in background (Call 2)
-      // Uses the same photos to derive the store's visual identity
+      // ── Step 4: Trigger store design in background (Call 2) ──
       api.generateStoreDesign(
-        imageDataUrls,
+        thumbnailDataUrls,
         {
           names: [suggestion.name],
           priceRange: suggestion.suggestedPrice
@@ -272,9 +308,8 @@ export function useChat(): UseChatReturn {
         },
       ).then((designResult) => {
         if (designResult.success) {
-          const { heroTagline, heroSubtext } = designResult.data as any;
           addMessages([
-            aiTextMessage(`✨ I've designed your store to match your brand! Visit your store to see the new look.`),
+            aiTextMessage('✨ I\'ve designed your store to match your brand! Visit your store to see the new look.'),
           ]);
         }
       }).catch(() => {
