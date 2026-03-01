@@ -13,7 +13,7 @@ interface ProductCardProps {
     slug: string;
     price: number;
     compareAtPrice?: number | null;
-    images?: Array<{ cardUrl?: string; thumbnailUrl?: string; originalUrl: string; alt?: string }>;
+    images?: Array<{ heroUrl?: string; cardUrl?: string; thumbnailUrl?: string; originalUrl: string; alt?: string }>;
     tags?: string[];
   };
   index?: number;
@@ -27,6 +27,14 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const firstImage = product.images?.[0];
   const imgSrc = resolveImage(firstImage?.cardUrl || firstImage?.thumbnailUrl || firstImage?.originalUrl);
   const imgAlt = firstImage?.alt || product.name;
+
+  // Responsive srcSet for all card variants
+  const imgSrcSet = firstImage ? [
+    firstImage.thumbnailUrl && `${resolveImage(firstImage.thumbnailUrl)} 300w`,
+    firstImage.cardUrl && `${resolveImage(firstImage.cardUrl)} 600w`,
+    firstImage.heroUrl && `${resolveImage(firstImage.heroUrl)} 1200w`,
+  ].filter(Boolean).join(', ') || undefined : undefined;
+  const imgSizes = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw';
 
   const discount = product.compareAtPrice
     ? discountPercent(product.price, product.compareAtPrice)
@@ -54,6 +62,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className={cn('relative', ratioClass, imageStyleClass, 'bg-gray-100')} style={{ borderRadius: 'var(--radius)' }}>
           <img
             src={imgSrc}
+            srcSet={imgSrcSet}
+            sizes={imgSizes}
             alt={imgAlt}
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
@@ -84,6 +94,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className={cn('relative', ratioClass, imageStyleClass, 'bg-gray-100')} style={{ borderRadius: 'var(--radius-lg)' }}>
           <img
             src={imgSrc}
+            srcSet={imgSrcSet}
+            sizes={imgSizes}
             alt={imgAlt}
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
@@ -124,6 +136,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         >
           <img
             src={imgSrc}
+            srcSet={imgSrcSet}
+            sizes={imgSizes}
             alt={imgAlt}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

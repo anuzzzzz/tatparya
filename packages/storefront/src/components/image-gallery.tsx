@@ -36,6 +36,13 @@ export function ImageGallery({ images }: ImageGalleryProps) {
   const mainImage = images[current]!;
   const mainSrc = resolveImage(mainImage.heroUrl || mainImage.originalUrl);
 
+  // Build srcSet for responsive loading
+  const mainSrcSet = [
+    mainImage.thumbnailUrl && `${resolveImage(mainImage.thumbnailUrl)} 300w`,
+    mainImage.cardUrl && `${resolveImage(mainImage.cardUrl)} 600w`,
+    mainImage.heroUrl && `${resolveImage(mainImage.heroUrl)} 1200w`,
+  ].filter(Boolean).join(', ') || undefined;
+
   return (
     <div className="space-y-3">
       {/* Main image */}
@@ -50,6 +57,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         >
           <img
             src={mainSrc}
+            srcSet={mainSrcSet}
+            sizes="(max-width: 768px) 100vw, 50vw"
             alt={mainImage.alt || 'Product image'}
             className="w-full h-full object-cover"
             style={{ borderRadius: 'var(--radius-lg)' }}

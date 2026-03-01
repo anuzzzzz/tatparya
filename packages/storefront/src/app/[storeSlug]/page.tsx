@@ -26,10 +26,15 @@ export default async function StoreHomePage({ params }: HomePageProps) {
     // Categories might not exist yet
   }
 
+  // Pick the best product image for hero background
+  // Prefer heroUrl > originalUrl, from first product that has images
+  const productItems = (products as any).items || [];
+  const heroImage = pickHeroImage(productItems);
+
   return (
     <div>
       {/* Hero */}
-      <HeroSection />
+      <HeroSection imageUrl={heroImage} />
 
       {/* Categories (if any) */}
       {categories.length > 0 && (
@@ -58,11 +63,11 @@ export default async function StoreHomePage({ params }: HomePageProps) {
       {/* Featured Products */}
       <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
         <ProductGrid
-          products={(products as any).items || []}
+          products={productItems}
           title="Featured Products"
         />
 
-        {((products as any).items || []).length >= 8 && (
+        {productItems.length >= 8 && (
           <div className="text-center mt-8">
             <Link href={`${storeUrl}/collections/all`} className="btn-secondary text-sm">
               View All Products
@@ -72,4 +77,27 @@ export default async function StoreHomePage({ params }: HomePageProps) {
       </section>
     </div>
   );
+}
+
+/**
+ * Pick the best product image for the hero background.
+ * Prefers heroUrl (1200×1600) > originalUrl, skipping products with no images.
+ */
+function pickHeroImage(products: any[]): string | undefined {
+  for (const product of products) {
+    const images = product.images;
+    if (!images || !Array.isArray(images) || images.length === 0) continue;
+
+    const first = images[0];
+    // New format: object with url variants
+    if (typeof first === 'object' && first !== null) {
+      if (first.heroUrl) return first.heroUrl;
+      if (first.originalUrl) return first.originalUrl;
+    }
+    // Legacy format: plain URL string
+    if (typeof first === 'string' && first.startsWith('http')) {
+      return first;
+    }
+  }
+  return undefined;
 }
