@@ -133,6 +133,12 @@ export const StoreConfig = z.object({
     }).optional(),
     brandVibe: z.string().optional(),
   }).default({}),
+  /** AI-generated hero headline — specific to this brand */
+  heroTagline: z.string().optional(),
+  /** AI-generated hero subtext */
+  heroSubtext: z.string().optional(),
+  /** AI-generated store bio for the about section */
+  storeBio: z.string().optional(),
   language: z.string().default('en'),
   currency: z.literal('INR').default('INR'),
   integrations: z.object({

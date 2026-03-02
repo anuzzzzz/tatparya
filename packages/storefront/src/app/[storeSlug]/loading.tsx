@@ -1,29 +1,27 @@
 export default function StoreLoading() {
   return (
-    <div className="min-h-screen animate-pulse">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
       {/* Nav skeleton */}
-      <div className="h-14 border-b" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-full">
-          <div className="h-5 w-32 bg-gray-200 rounded" />
-          <div className="flex gap-3">
-            <div className="h-5 w-5 bg-gray-200 rounded" />
-            <div className="h-5 w-5 bg-gray-200 rounded" />
-          </div>
+      <div className="h-14 flex items-center justify-between px-6" style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-text) 6%, transparent)' }}>
+        <div className="skeleton h-5 w-32" />
+        <div className="flex gap-3">
+          <div className="skeleton h-5 w-5 rounded-full" />
+          <div className="skeleton h-5 w-5 rounded-full" />
         </div>
       </div>
 
       {/* Hero skeleton */}
-      <div className="h-[50vh] bg-gray-100" />
+      <div className="skeleton" style={{ height: '50vh' }} />
 
-      {/* Product grid skeleton */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="h-6 w-48 bg-gray-200 rounded mb-8" />
+      {/* Products skeleton */}
+      <div className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
+        <div className="skeleton h-6 w-48 mb-8" style={{ borderRadius: 'var(--radius)' }} />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i}>
-              <div className="aspect-[3/4] bg-gray-100 rounded-lg mb-3" />
-              <div className="h-4 w-3/4 bg-gray-200 rounded mb-1.5" />
-              <div className="h-4 w-1/3 bg-gray-200 rounded" />
+              <div className="skeleton mb-3" style={{ aspectRatio: '3/4', borderRadius: 'var(--radius)' }} />
+              <div className="skeleton h-4 w-3/4 mb-1.5" />
+              <div className="skeleton h-4 w-1/3" />
             </div>
           ))}
         </div>

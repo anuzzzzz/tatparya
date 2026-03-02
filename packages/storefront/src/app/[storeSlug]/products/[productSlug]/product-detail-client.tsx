@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ShoppingBag, Share2, MessageCircle, Minus, Plus, Check, Loader2 } from 'lucide-react';
 import { useStore } from '@/components/store-provider';
 import { VariantSelector } from '@/components/variant-selector';
+import { ProductTrustBadges } from '@/components/product-trust-badges';
 import { formatPrice, getCartId, cn } from '@/lib/utils';
 
 interface Variant {
@@ -78,8 +79,25 @@ export function ProductDetailClient({
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  const inquireOnWhatsApp = () => {
+    const whatsappPhone = (store.whatsappConfig as any)?.businessPhone;
+    if (!whatsappPhone) return;
+    const url = `${window.location.origin}/${storeSlug}/products/${product.slug}`;
+    const text = `Hi! I'm interested in "${product.name}" (${formatPrice(displayPrice)}). ${url}`;
+    window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   return (
     <div className="flex flex-col">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-[11px] mb-4" style={{ color: design.palette.textMuted }}>
+        <a href={`/${storeSlug}`} className="hover:opacity-70 transition-opacity">Home</a>
+        <span>/</span>
+        <a href={`/${storeSlug}/collections/all`} className="hover:opacity-70 transition-opacity">Shop</a>
+        <span>/</span>
+        <span style={{ color: design.palette.text }}>{product.name}</span>
+      </nav>
+
       {/* Tags */}
       {product.tags && product.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -204,16 +222,27 @@ export function ProductDetailClient({
           )}
         </button>
 
-        {/* Share buttons */}
+        {/* WhatsApp Inquiry + Share */}
         <div className="flex gap-2">
-          <button
-            onClick={shareOnWhatsApp}
-            className="btn-secondary flex-1 text-xs !py-2.5"
-            style={{ color: '#25D366', borderColor: '#25D366' }}
-          >
-            <MessageCircle size={14} />
-            Share on WhatsApp
-          </button>
+          {(store.whatsappConfig as any)?.businessPhone ? (
+            <button
+              onClick={inquireOnWhatsApp}
+              className="btn-secondary flex-1 text-xs !py-2.5"
+              style={{ color: '#25D366', borderColor: '#25D366' }}
+            >
+              <MessageCircle size={14} />
+              Ask about this product
+            </button>
+          ) : (
+            <button
+              onClick={shareOnWhatsApp}
+              className="btn-secondary flex-1 text-xs !py-2.5"
+              style={{ color: '#25D366', borderColor: '#25D366' }}
+            >
+              <MessageCircle size={14} />
+              Share on WhatsApp
+            </button>
+          )}
           <button
             onClick={() => {
               if (navigator.share) {
@@ -230,6 +259,9 @@ export function ProductDetailClient({
           </button>
         </div>
       </div>
+
+      {/* Trust Badges */}
+      <ProductTrustBadges />
     </div>
   );
 }

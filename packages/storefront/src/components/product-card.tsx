@@ -59,7 +59,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   if (cardConfig.style === 'compact') {
     return (
       <Link href={linkUrl} className="group block" style={staggerDelay}>
-        <div className={cn('relative', ratioClass, imageStyleClass, 'bg-gray-100')} style={{ borderRadius: 'var(--radius)' }}>
+        <div className={cn('relative', ratioClass, imageStyleClass, )} style={{ borderRadius: 'var(--radius)' }}>
           <img
             src={imgSrc}
             srcSet={imgSrcSet}
@@ -91,7 +91,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   if (cardConfig.style === 'editorial') {
     return (
       <Link href={linkUrl} className="group block" style={staggerDelay}>
-        <div className={cn('relative', ratioClass, imageStyleClass, 'bg-gray-100')} style={{ borderRadius: 'var(--radius-lg)' }}>
+        <div className={cn('relative', ratioClass, imageStyleClass, )} style={{ borderRadius: 'var(--radius-lg)' }}>
           <img
             src={imgSrc}
             srcSet={imgSrcSet}
@@ -131,7 +131,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
     return (
       <Link href={linkUrl} className="group block" style={staggerDelay}>
         <div
-          className={cn('relative overflow-hidden', ratioClass, 'bg-gray-100')}
+          className={cn('relative overflow-hidden', ratioClass, )}
           style={{ borderRadius: 'var(--radius)' }}
         >
           <img
@@ -176,7 +176,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   // Default: Minimal style
   return (
     <Link href={linkUrl} className="group block" style={staggerDelay}>
-      <div className={cn('relative', ratioClass, imageStyleClass, 'bg-gray-100')} style={{ borderRadius: 'var(--radius)' }}>
+      <div className={cn('relative', ratioClass, imageStyleClass, )} style={{ borderRadius: 'var(--radius)' }}>
         <img
           src={imgSrc}
           alt={imgAlt}

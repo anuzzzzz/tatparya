@@ -351,6 +351,9 @@ export const storeRouter = router({
       const newConfig = {
         ...existingConfig,
         design: result.design,
+        heroTagline: result.heroTagline,
+        heroSubtext: result.heroSubtext,
+        storeBio: result.storeBio,
         sections: existingConfig.sections || { homepage: [], productPage: [] },
         language: existingConfig.language || 'en',
         currency: existingConfig.currency || 'INR',

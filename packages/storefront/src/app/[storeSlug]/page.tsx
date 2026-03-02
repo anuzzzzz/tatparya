@@ -1,6 +1,9 @@
 import { api } from '@/lib/trpc';
 import { HeroSection } from '@/components/hero-section';
 import { ProductGrid } from '@/components/product-grid';
+import { TrustBar } from '@/components/trust-bar';
+import { AboutBrand } from '@/components/about-brand';
+import { NewsletterSection } from '@/components/newsletter-section';
 import Link from 'next/link';
 
 interface HomePageProps {
@@ -33,10 +36,13 @@ export default async function StoreHomePage({ params }: HomePageProps) {
 
   return (
     <div>
-      {/* Hero */}
+      {/* 1. Hero */}
       <HeroSection imageUrl={heroImage} />
 
-      {/* Categories (if any) */}
+      {/* 2. Trust Bar — COD, shipping, returns, secure */}
+      <TrustBar />
+
+      {/* 3. Categories (if any) */}
       {categories.length > 0 && (
         <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <h2 className="font-display text-xl md:text-2xl font-bold mb-6">
@@ -60,7 +66,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
         </section>
       )}
 
-      {/* Featured Products */}
+      {/* 4. Featured Products */}
       <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
         <ProductGrid
           products={productItems}
@@ -75,6 +81,12 @@ export default async function StoreHomePage({ params }: HomePageProps) {
           </div>
         )}
       </section>
+
+      {/* 5. About Brand (AI-generated bio) */}
+      <AboutBrand />
+
+      {/* 6. WhatsApp / Newsletter Signup */}
+      <NewsletterSection />
     </div>
   );
 }

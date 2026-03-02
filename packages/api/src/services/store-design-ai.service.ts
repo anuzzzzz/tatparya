@@ -99,9 +99,9 @@ You must return ONLY valid JSON matching this exact structure:
     "imageStyle": "raw|subtle_shadow|border_frame|hover_zoom|rounded",
     "animation": "none|fade|slide_up|staggered"
   },
-  "storeBio": "2-3 sentence store description for the homepage. Write for Indian buyers. Mention the brand's unique value.",
-  "heroTagline": "Short, punchy hero headline (5-8 words). Not generic — specific to the brand.",
-  "heroSubtext": "One line supporting text under the hero headline."
+  "storeBio": "2-3 sentence store description for the about section. Write for Indian buyers. Mention the brand's unique value. Be specific, not generic.",
+  "heroTagline": "Short, punchy hero headline (4-8 words). MUST be specific to this brand — not generic. Examples of GOOD taglines: 'Handwoven Silk, Timeless Grace', 'Bold Accessories for Bold Women', 'Farm to Kitchen, Pure & Fresh'. Examples of BAD taglines: 'Discover Our Collection', 'Welcome to Our Store', 'Shop the Latest'.",
+  "heroSubtext": "One line (max 15 words) supporting text under the hero. Should complement the tagline, not repeat it."
 }
 
 DESIGN PRINCIPLES:

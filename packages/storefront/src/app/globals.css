@@ -106,15 +106,41 @@
     transform: scale(1.06);
   }
 
-  /* Subtle shadow for images */
+  /* Subtle shadow for images — adapts to dark/light */
   .img-subtle-shadow {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--color-text) 8%, transparent);
   }
 
-  /* Border frame style */
+  /* Border frame style — adapts to dark/light */
   .img-border-frame {
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
     padding: 4px;
+  }
+
+  /* Placeholder shimmer for loading states */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-text) 5%, transparent) 25%,
+      color-mix(in srgb, var(--color-text) 10%, transparent) 50%,
+      color-mix(in srgb, var(--color-text) 5%, transparent) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Toast notification */
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .animate-toast-in {
+    animation: toast-in 0.3s ease-out both;
   }
 }
 
@@ -153,7 +179,7 @@
 
   .badge-discount {
     @apply text-xs font-bold px-2 py-0.5 uppercase tracking-wider;
-    background-color: var(--color-accent);
+    background-color: #E94560;
     color: white;
     border-radius: var(--radius-sm);
   }
