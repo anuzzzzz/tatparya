@@ -134,14 +134,13 @@ export class FlowManager {
 
   // ============================================================
   // Store Creation Flow
-  // Steps: ask_name → ask_vertical → creating → done
+  // Steps: ask_name → ask_vertical → ask_audience → ask_price_range → creating → done
   // ============================================================
 
   private async processStoreCreation(input: string, api: ChatApiService): Promise<ChatMessage[]> {
     const flow = this.currentFlow!;
 
     if (flow.step === 'ask_name') {
-      // Validate name
       if (input.length < 2) {
         return [aiTextMessage('Store name should be at least 2 characters. Try again:')];
       }
@@ -171,19 +170,46 @@ export class FlowManager {
     }
 
     if (flow.step === 'ask_vertical') {
-      // Map user input to vertical enum
       const vertical = mapVertical(input);
-
       flow.data['vertical'] = vertical;
+      flow.step = 'ask_audience';
+
+      return [aiTextMessage(
+        'Who are your typical customers? This helps me design the right look for your store.\n\n' +
+        'For example: "college girls", "working professionals", "mothers", "wholesale buyers"',
+      )];
+    }
+
+    if (flow.step === 'ask_audience') {
+      flow.data['audience'] = input;
+      flow.step = 'ask_price_range';
+
+      return [aiTextMessage(
+        'What\'s your typical price range? (e.g. "₹500-2000", "200-800", "under 1000")',
+      )];
+    }
+
+    if (flow.step === 'ask_price_range') {
+      const priceRange = parsePriceRange(input);
+      if (priceRange) {
+        flow.data['priceRange'] = priceRange;
+      }
+
       flow.step = 'creating';
+
+      // Build seller context for store config
+      const sellerContext: Record<string, unknown> = {};
+      if (flow.data['audience']) sellerContext['audience'] = flow.data['audience'];
+      if (flow.data['priceRange']) sellerContext['priceRange'] = flow.data['priceRange'];
 
       // Actually create the store
       const result = await api.createStore({
         name: flow.data['name'] as string,
-        vertical,
+        vertical: flow.data['vertical'] as string,
+        sellerContext,
       });
 
-      this.currentFlow = null; // Flow complete
+      this.currentFlow = null;
 
       if (!result.success) {
         return [aiTextMessage(`Couldn't create the store: ${result.error}\n\nPlease try again.`)];
@@ -357,4 +383,40 @@ function mapVertical(input: string): string {
   };
 
   return map[lower] || 'general';
+}
+
+/**
+ * Parse a price range from natural language input.
+ * Handles: "500-2000", "₹500-₹2000", "under 1000", "above 5000", "200 to 800"
+ */
+function parsePriceRange(input: string): { min: number; max: number } | null {
+  const cleaned = input.replace(/[₹,]/g, '').trim();
+
+  // Range: "500-2000", "500 to 2000", "500 - 2000"
+  const rangeMatch = cleaned.match(/(\d+)\s*(?:-|to)\s*(\d+)/i);
+  if (rangeMatch) {
+    return { min: parseInt(rangeMatch[1]!, 10), max: parseInt(rangeMatch[2]!, 10) };
+  }
+
+  // Under: "under 1000", "below 500", "less than 2000"
+  const underMatch = cleaned.match(/(?:under|below|less\s*than)\s*(\d+)/i);
+  if (underMatch) {
+    return { min: 0, max: parseInt(underMatch[1]!, 10) };
+  }
+
+  // Above: "above 5000", "over 3000", "more than 1000"
+  const aboveMatch = cleaned.match(/(?:above|over|more\s*than)\s*(\d+)/i);
+  if (aboveMatch) {
+    const min = parseInt(aboveMatch[1]!, 10);
+    return { min, max: min * 3 };
+  }
+
+  // Single number: "1000" — treat as approximate center
+  const singleMatch = cleaned.match(/^(\d+)$/);
+  if (singleMatch) {
+    const val = parseInt(singleMatch[1]!, 10);
+    return { min: Math.round(val * 0.5), max: Math.round(val * 1.5) };
+  }
+
+  return null;
 }

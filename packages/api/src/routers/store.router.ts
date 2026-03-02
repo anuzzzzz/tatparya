@@ -234,6 +234,11 @@ export const storeRouter = router({
   devCreate: publicProcedure
     .input(CreateStoreInput.omit({ slug: true }).extend({
       slug: z.string().min(2).max(100).optional(),
+      sellerContext: z.object({
+        audience: z.string().optional(),
+        priceRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        brandVibe: z.string().optional(),
+      }).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const slug = input.slug || input.name
@@ -262,6 +267,7 @@ export const storeRouter = router({
           fonts: { display: 'Playfair Display', body: 'DM Sans', scale: 1.0 },
         },
         sections: { homepage: [], productPage: [] },
+        sellerContext: (input as any).sellerContext || {},
         language: 'en',
         currency: 'INR' as const,
         integrations: {},

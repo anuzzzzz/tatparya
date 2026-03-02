@@ -40,6 +40,7 @@ export class ChatApiService {
     name: string;
     vertical: string;
     description?: string;
+    sellerContext?: Record<string, unknown>;
   }): Promise<ChatApiResult> {
     try {
       // Use devCreate (no auth required) for testing
@@ -47,6 +48,7 @@ export class ChatApiService {
         name: params.name,
         vertical: params.vertical,
         description: params.description,
+        sellerContext: params.sellerContext,
       });
 
       this.storeId = store.id;

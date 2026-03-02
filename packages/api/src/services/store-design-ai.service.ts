@@ -1,4 +1,5 @@
 import { env } from '../env.js';
+import { selectArchetype } from '../lib/archetypes.js';
 
 // ============================================================
 // Store Design AI Service
@@ -23,6 +24,11 @@ export interface StoreDesignInput {
     priceRange?: { min: number; max: number };
     tags?: string[];
   };
+  sellerContext?: {
+    audience?: string;
+    priceRange?: { min: number; max: number };
+    brandVibe?: string;
+  };
   sellerHints?: string;  // "I want a luxury feel" or "keep it minimal"
 }
 
@@ -31,6 +37,7 @@ export interface StoreDesignOutput {
   storeBio: string;
   heroTagline: string;
   heroSubtext: string;
+  archetypeId?: string;
   processingTimeMs: number;
 }
 
@@ -119,9 +126,12 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
   const startTime = Date.now();
   const provider = env.AI_PROVIDER || 'openai';
 
+  // Select archetype based on vertical + seller context
+  const archetype = selectArchetype(input.vertical, input.sellerContext);
+  console.log(`[store-design-ai] Selected archetype: ${archetype.id} for ${input.vertical}`);
   console.log(`[store-design-ai] Using ${provider} for store design generation`);
 
-  const userPrompt = buildUserPrompt(input);
+  const userPrompt = buildUserPrompt(input, archetype);
   let rawText: string;
 
   if (provider === 'anthropic') {
@@ -140,7 +150,16 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     parsed = JSON.parse(cleanJson);
   } catch (e) {
     console.error('[store-design-ai] Failed to parse:', cleanJson.substring(0, 500));
-    throw new Error(`Failed to parse store design AI response: ${(e as Error).message}`);
+    // Fallback: use archetype design directly
+    console.log('[store-design-ai] Falling back to archetype design');
+    return {
+      design: archetype.design as any,
+      storeBio: `Welcome to ${input.storeName}. Discover our curated collection.`,
+      heroTagline: input.storeName,
+      heroSubtext: 'Discover our latest collection',
+      archetypeId: archetype.id,
+      processingTimeMs: Date.now() - startTime,
+    };
   }
 
   // Validate and fix palette contrast (WCAG AA)
@@ -153,18 +172,30 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     storeBio: parsed.storeBio || `Welcome to ${input.storeName}. Discover our curated collection.`,
     heroTagline: parsed.heroTagline || input.storeName,
     heroSubtext: parsed.heroSubtext || 'Discover our latest collection',
+    archetypeId: archetype.id,
     processingTimeMs: Date.now() - startTime,
   };
 }
 
-function buildUserPrompt(input: StoreDesignInput): string {
+function buildUserPrompt(input: StoreDesignInput, archetype: { id: string; name: string; design: any }): string {
   let prompt = `Design a store for "${input.storeName}" in the "${input.vertical}" vertical.`;
+
+  // Include seller context
+  if (input.sellerContext?.audience) {
+    prompt += `\nTarget audience: ${input.sellerContext.audience}`;
+  }
+  if (input.sellerContext?.priceRange) {
+    prompt += `\nPrice range: ₹${input.sellerContext.priceRange.min} - ₹${input.sellerContext.priceRange.max}`;
+  }
+  if (input.sellerContext?.brandVibe) {
+    prompt += `\nBrand vibe: ${input.sellerContext.brandVibe}`;
+  }
 
   if (input.productInfo?.names?.length) {
     prompt += `\n\nProducts include: ${input.productInfo.names.slice(0, 5).join(', ')}`;
   }
   if (input.productInfo?.priceRange) {
-    prompt += `\nPrice range: ₹${input.productInfo.priceRange.min} - ₹${input.productInfo.priceRange.max}`;
+    prompt += `\nProduct price range: ₹${input.productInfo.priceRange.min} - ₹${input.productInfo.priceRange.max}`;
   }
   if (input.productInfo?.tags?.length) {
     prompt += `\nProduct tags: ${input.productInfo.tags.slice(0, 15).join(', ')}`;
@@ -173,7 +204,10 @@ function buildUserPrompt(input: StoreDesignInput): string {
     prompt += `\n\nSeller's preferences: "${input.sellerHints}"`;
   }
 
-  prompt += `\n\nAnalyze the product photos and generate a complete store design that matches this brand's aesthetic.`;
+  // Provide archetype as starting point for the AI
+  prompt += `\n\nUse this as a STARTING POINT (archetype: "${archetype.name}"), then customize the palette based on the actual product photos:\n${JSON.stringify(archetype.design, null, 2)}`;
+
+  prompt += `\n\nIMPORTANT: Override the palette colors above with colors extracted from the product photos. Keep the layout, fonts, and spacing from the archetype unless the photos suggest a different aesthetic.`;
 
   return prompt;
 }

@@ -125,6 +125,14 @@ export const StoreConfig = z.object({
   design: DesignTokens,
   sections: SectionsConfig.default({}),
   verticalOverrides: z.record(z.unknown()).default({}),
+  sellerContext: z.object({
+    audience: z.string().optional(),
+    priceRange: z.object({
+      min: z.number().min(0),
+      max: z.number().min(0),
+    }).optional(),
+    brandVibe: z.string().optional(),
+  }).default({}),
   language: z.string().default('en'),
   currency: z.literal('INR').default('INR'),
   integrations: z.object({
