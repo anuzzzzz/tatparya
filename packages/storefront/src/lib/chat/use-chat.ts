@@ -3,25 +3,30 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   type ChatMessage,
+  type TextMessage,
+  type ProductCardMessage,
+  type OrderCardMessage,
+  type StatsMessage,
   aiTextMessage,
   sellerTextMessage,
   sellerImageMessage,
   createMessageId,
 } from './types';
-import { classifyIntent, isPhotoRelated } from './intent-router';
-import { generateResponse } from './response-generator';
 import { ChatApiService } from './chat-api';
 import { FlowManager } from './flow-manager';
 import { useSellerAuth } from './auth-provider';
 import { resizeAll } from './image-resizer';
+import { DESIGN_ACTIONS } from '@tatparya/shared';
 
 // ============================================================
-// Chat State Hook — with Flow Manager
+// Chat State Hook — LLM Router Edition
 //
-// Flow manager handles multi-step conversations:
-// - "create my store" → ask name → ask vertical → create
-// - "change price" → ask which product → ask price → update
-// - Photo upload → upload to R2 → catalog AI → product card
+// sendMessage() → tRPC chat.process → Haiku → execute → respond
+// sendImages() → existing photo pipeline (UNCHANGED)
+//
+// The LLM router replaces the regex intent classifier.
+// The server handles: snapshot → Haiku → validate → execute.
+// The client handles: rendering responses + photo uploads.
 // ============================================================
 
 const WELCOME_MESSAGES: ChatMessage[] = [
@@ -49,12 +54,15 @@ export interface UseChatReturn {
   clearChat: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   lastProductId: string | null;
+  previousDesignConfig: Record<string, unknown> | null;
 }
 
 export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
   const [isTyping, setIsTyping] = useState(false);
   const [lastProductId, setLastProductId] = useState<string | null>(null);
+  const [previousDesignConfig, setPreviousDesignConfig] = useState<Record<string, unknown> | null>(null);
+  const [pendingActions, setPendingActions] = useState<unknown[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const flowManager = useRef(new FlowManager()).current;
   const { trpc, storeId, setStoreId } = useSellerAuth();
@@ -73,7 +81,117 @@ export function useChat(): UseChatReturn {
   }, [scrollToBottom]);
 
   // ============================================================
-  // Send text message
+  // Build conversation history from recent messages
+  // ============================================================
+  const buildConversationHistory = useCallback((msgs: ChatMessage[]) => {
+    return msgs
+      .filter((m): m is TextMessage => m.type === 'text')
+      .slice(-10)
+      .map((m) => ({
+        role: m.role === 'seller' ? ('seller' as const) : ('ai' as const),
+        content: m.text,
+      }));
+  }, []);
+
+  // ============================================================
+  // Render query results as rich chat messages
+  // ============================================================
+  const renderQueryResults = useCallback((queryResults: { type: string; data: any }[]): ChatMessage[] => {
+    const rendered: ChatMessage[] = [];
+
+    for (const qr of queryResults) {
+      switch (qr.type) {
+        case 'query.products': {
+          const items = qr.data?.items || [];
+          for (const item of items.slice(0, 5)) {
+            const card: ProductCardMessage = {
+              type: 'product_card',
+              id: createMessageId(),
+              role: 'ai',
+              product: {
+                id: item.id,
+                name: item.name,
+                description: item.description || '',
+                price: item.price,
+                compareAtPrice: item.compare_at_price,
+                imageUrl: item.images?.[0]?.originalUrl,
+                tags: item.tags,
+                status: item.status,
+              },
+              actions: [
+                item.status === 'draft'
+                  ? { label: 'Publish', action: 'product.publish', params: { productId: item.id }, variant: 'primary' as const }
+                  : { label: 'Unpublish', action: 'product.archive', params: { productId: item.id }, variant: 'secondary' as const },
+                { label: 'Edit Price', action: 'product.update_price', params: { productId: item.id }, variant: 'secondary' as const },
+              ],
+              timestamp: new Date(),
+            };
+            rendered.push(card);
+            if (item.id) setLastProductId(item.id);
+          }
+          break;
+        }
+
+        case 'query.orders': {
+          const items = qr.data?.items || [];
+          for (const item of items.slice(0, 5)) {
+            const card: OrderCardMessage = {
+              type: 'order_card',
+              id: createMessageId(),
+              role: 'ai',
+              order: {
+                id: item.id,
+                orderNumber: item.order_number,
+                buyerName: item.buyer_name || 'Customer',
+                total: item.total,
+                status: item.status,
+                itemCount: item.line_items?.length || 0,
+                createdAt: item.created_at,
+              },
+              actions: (item.status === 'paid' || item.status === 'processing')
+                ? [{ label: 'Ship', action: 'order.ship', params: { orderId: item.id }, variant: 'primary' as const }]
+                : undefined,
+              timestamp: new Date(),
+            };
+            rendered.push(card);
+          }
+          break;
+        }
+
+        case 'query.revenue': {
+          const data = qr.data;
+          if (!data) break;
+          const statsMsg: StatsMessage = {
+            type: 'stats',
+            id: createMessageId(),
+            role: 'ai',
+            stats: [
+              { label: 'Revenue', value: `₹${(data.totalRevenue || 0).toLocaleString('en-IN')}` },
+              { label: 'Orders', value: data.orderCount || 0 },
+              { label: 'Avg. Order', value: `₹${(data.avgOrderValue || 0).toLocaleString('en-IN')}` },
+            ],
+            period: data.period,
+            timestamp: new Date(),
+          };
+          rendered.push(statsMsg);
+          break;
+        }
+
+        case 'query.store_link': {
+          const data = qr.data;
+          if (!data) break;
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+          rendered.push(aiTextMessage(`🔗 ${baseUrl}/${data.slug}\n\nShare this with your customers!`));
+          break;
+        }
+      }
+    }
+
+    return rendered;
+  }, []);
+
+  // ============================================================
+  // Send text message → LLM Router (server-side)
   // ============================================================
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -83,23 +201,47 @@ export function useChat(): UseChatReturn {
     setIsTyping(true);
 
     try {
-      // ── If a flow is active, feed input to it ──────────────
+      // ── Handle pending confirmation ────────────────────────
+      if (pendingActions.length > 0) {
+        const isConfirm = /^(yes|y|confirm|do it|sure|go ahead|ok)$/i.test(trimmed);
+        const isCancel = /^(no|n|cancel|stop|nevermind|nah|nope)$/i.test(trimmed);
+
+        if (isConfirm && storeId) {
+          const result = await trpc.chat.confirm.mutate({
+            storeId,
+            actions: pendingActions,
+          });
+          setPendingActions([]);
+          setIsTyping(false);
+          addMessages([aiTextMessage(result.response)]);
+          return;
+        }
+
+        if (isCancel) {
+          setPendingActions([]);
+          setIsTyping(false);
+          addMessages([aiTextMessage('Cancelled. What else can I help with?')]);
+          return;
+        }
+
+        // Not a clear yes/no — clear pending and process as new message
+        setPendingActions([]);
+      }
+
+      // ── If flow manager is active (fallback store creation) ──
       if (flowManager.isActive()) {
         const flowResponses = await flowManager.processInput(trimmed, api, {
           lastProductId,
         });
 
-        // Check if store was created (update storeId)
         for (const msg of flowResponses) {
           if (msg.type === 'text' && msg.role === 'ai' && (msg.text as string).includes('is live!')) {
-            // Re-fetch stores to get the new storeId
             const storesResult = await api.listStores();
             if (storesResult.success) {
               const stores = storesResult.data as any[];
               if (stores.length > 0) {
-                const latest = stores[0];
-                setStoreId(latest.id);
-                api.setStoreId(latest.id);
+                setStoreId(stores[0].id);
+                api.setStoreId(stores[0].id);
               }
             }
           }
@@ -110,61 +252,97 @@ export function useChat(): UseChatReturn {
         return;
       }
 
-      // ── Classify intent ────────────────────────────────────
-      const intent = classifyIntent(trimmed);
+      // ── Call server LLM router ─────────────────────────────
+      const conversationHistory = buildConversationHistory(messages);
 
-      if (isPhotoRelated(trimmed) && intent.action !== 'product.add') {
-        intent.action = 'product.add';
-        intent.confidence = 0.85;
+      const result = await trpc.chat.process.mutate({
+        storeId: storeId || undefined,
+        message: trimmed,
+        conversationHistory,
+        hasPhotos: false,
+      });
+
+      setIsTyping(false);
+
+      // ── Cache previous design config before design actions ──
+      const designActionTypes = [...DESIGN_ACTIONS];
+      if (result.actions?.some((a: string) => designActionTypes.includes(a))) {
+        setPreviousDesignConfig((prev) => prev);
       }
 
-      // Inject lastProductId for contextual commands
-      if (['product.publish', 'product.update_price', 'product.delete'].includes(intent.action)) {
-        if (!intent.params['productId'] && lastProductId) {
-          intent.params['productId'] = lastProductId;
+      // ── Handle confirmation needed ─────────────────────────
+      if (result.confirmationNeeded) {
+        setPendingActions(result.pendingActions || []);
+        addMessages([
+          aiTextMessage(result.response),
+          {
+            type: 'action_buttons',
+            id: createMessageId(),
+            role: 'ai',
+            text: result.confirmationNeeded.summary || 'Confirm?',
+            actions: [
+              { label: 'Yes, do it', action: 'confirm', variant: 'primary' },
+              { label: 'Cancel', action: 'cancel', variant: 'secondary' },
+            ],
+            timestamp: new Date(),
+          },
+        ]);
+        return;
+      }
+
+      // ── Add AI response ────────────────────────────────────
+      const responseMessages: ChatMessage[] = [aiTextMessage(result.response)];
+
+      // ── Render query results as rich cards ──────────────────
+      if (result.queryResults) {
+        const rendered = renderQueryResults(result.queryResults);
+        responseMessages.push(...rendered);
+      }
+
+      // ── Show suggestions ───────────────────────────────────
+      if (result.suggestions && result.suggestions.length > 0) {
+        responseMessages.push({
+          type: 'action_buttons',
+          id: createMessageId(),
+          role: 'ai',
+          text: '',
+          actions: result.suggestions.map((s: any) => ({
+            label: s.label,
+            action: 'suggestion',
+            params: { text: s.description || s.label },
+            variant: 'secondary' as const,
+          })),
+          timestamp: new Date(),
+        });
+      }
+
+      addMessages(responseMessages);
+
+      // ── Check if store was created ─────────────────────────
+      if (result.actions?.includes('store.create') || result.actions?.includes('store.update_name')) {
+        const storesResult = await api.listStores();
+        if (storesResult.success) {
+          const stores = storesResult.data as any[];
+          if (stores.length > 0) {
+            setStoreId(stores[0].id);
+            api.setStoreId(stores[0].id);
+          }
         }
       }
 
-      // ── Handle intents that start flows ────────────────────
-      if (intent.action === 'store.create') {
-        setIsTyping(false);
+    } catch (err: any) {
+      console.error('Chat error:', err);
+      setIsTyping(false);
+
+      // ── Fallback: flow manager for store creation ──────────
+      if (/\b(create|start|build|make|setup|set up)\b.*\b(store|shop|website|dukaan)\b/i.test(trimmed)) {
         addMessages(flowManager.startStoreCreation());
         return;
       }
 
-      if (intent.action === 'product.update_price' && !intent.params['price']) {
-        setIsTyping(false);
-        addMessages(flowManager.startPriceUpdate(
-          (intent.params['productId'] as string) || lastProductId || undefined,
-        ));
-        return;
-      }
-
-      if (intent.action === 'order.ship' && !intent.params['orderId']) {
-        setIsTyping(false);
-        addMessages(flowManager.startOrderShip());
-        return;
-      }
-
-      // ── Regular intents → API call → response ──────────────
-      const responses = await generateResponse(intent, api);
-
-      // Track product IDs
-      for (const msg of responses) {
-        if (msg.type === 'product_card' && msg.product.id) {
-          setLastProductId(msg.product.id);
-        }
-      }
-
-      setIsTyping(false);
-      addMessages(responses);
-
-    } catch (err) {
-      console.error('Chat error:', err);
-      setIsTyping(false);
       addMessages([aiTextMessage('Something went wrong. Please try again.')]);
     }
-  }, [addMessages, api, flowManager, lastProductId, setStoreId]);
+  }, [addMessages, api, buildConversationHistory, flowManager, lastProductId, messages, pendingActions, renderQueryResults, storeId, setStoreId, trpc]);
 
   // ============================================================
   // Send images → resize → triage → per-group catalog AI → store design
@@ -401,6 +579,8 @@ export function useChat(): UseChatReturn {
   const clearChat = useCallback(() => {
     setMessages(WELCOME_MESSAGES);
     setLastProductId(null);
+    setPreviousDesignConfig(null);
+    setPendingActions([]);
     flowManager.cancel();
   }, [flowManager]);
 
@@ -412,5 +592,6 @@ export function useChat(): UseChatReturn {
     clearChat,
     messagesEndRef,
     lastProductId,
+    previousDesignConfig,
   };
 }
