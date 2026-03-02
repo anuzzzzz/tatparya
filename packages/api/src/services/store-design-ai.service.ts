@@ -327,7 +327,7 @@ function relativeLuminance(hex: string): number {
   return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
 }
 
-function contrastRatio(hex1: string, hex2: string): number {
+export function contrastRatio(hex1: string, hex2: string): number {
   const l1 = relativeLuminance(hex1);
   const l2 = relativeLuminance(hex2);
   const lighter = Math.max(l1, l2);
@@ -369,7 +369,7 @@ function adjustForContrast(color: string, background: string, targetRatio: numbe
   return isLightBg ? '#1A1A2E' : '#F5F5F5';
 }
 
-function validateAndFixPalette(palette: any): any {
+export function validateAndFixPalette(palette: any): any {
   const fixed = { ...palette };
 
   // Ensure we have valid hex colors to work with

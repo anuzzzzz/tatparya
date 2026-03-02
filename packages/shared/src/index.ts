@@ -10,6 +10,7 @@ export * from './schemas/media.schema.js';
 // Types
 export * from './types/events.types.js';
 export * from './types/config.types.js';
+export * from './types/chat.types.js';
 
 // Constants
 export * from './constants/gst-rates.js';

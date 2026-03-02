@@ -8,6 +8,7 @@ import { cartRouter } from '../routers/cart.router.js';
 import { discountRouter } from '../routers/discount.router.js';
 import { mediaRouter } from '../routers/media.router.js';
 import { catalogRouter } from '../routers/catalog.router.js';
+import { chatRouter } from '../routers/chat.router.js';
 
 export const appRouter = router({
   health: healthRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   discount: discountRouter,
   media: mediaRouter,
   catalog: catalogRouter,
+  chat: chatRouter,
 });
 
 export type AppRouter = typeof appRouter;
