@@ -335,12 +335,14 @@ export const storeRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Store not found' });
       }
 
-      // Generate design from photos
+      // Generate design from photos + seller context + archetype
+      const storeConfig = (store.store_config || {}) as Record<string, any>;
       const result = await generateStoreDesign({
         storeName: store.name,
         vertical: store.vertical,
         productImages: input.productImages,
         productInfo: input.productInfo,
+        sellerContext: storeConfig.sellerContext || undefined,
         sellerHints: input.sellerHints,
       });
 

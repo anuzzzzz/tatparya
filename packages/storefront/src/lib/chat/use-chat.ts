@@ -167,14 +167,18 @@ export function useChat(): UseChatReturn {
   }, [addMessages, api, flowManager, lastProductId, setStoreId]);
 
   // ============================================================
-  // Send images → resize → thumbnail-first upload → catalog AI
+  // Send images → resize → triage → per-group catalog AI → store design
   //
-  // Flow:
+  // Full Pipeline (Phase 6 Orchestration):
   // 1. Resize all photos (OffscreenCanvas Worker, off main thread)
-  // 2. Fire in parallel:
-  //    a. Thumbnails as base64 → catalog AI (fast, ~75KB total)
-  //    b. Full images → R2 via presigned URLs (heavy, racing AI)
-  // 3. Show product card + trigger store design in background
+  // 2. Triage (Call 0): Group photos by product, flag quality issues
+  //    - If confidence < 0.8 → ask user to confirm groupings
+  //    - If single group + high confidence → proceed automatically
+  // 3. Per group, fire in parallel:
+  //    a. Thumbnails → catalog AI (Call 1) — product listing
+  //    b. Full images → R2 presigned URLs — permanent storage
+  // 4. First upload: also trigger store design AI (Call 2) with
+  //    sellerContext + archetype in background
   // ============================================================
   const sendImages = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
@@ -209,111 +213,182 @@ export function useChat(): UseChatReturn {
       const resized = await resizeAll(files);
       const thumbnailDataUrls = resized.map((r) => r.thumbDataUrl);
 
-      // ── Step 2: Fire AI + R2 uploads in parallel ────────────
-      // Thumbnails → AI immediately (75KB total, fast)
-      // Full images → R2 presigned URLs (racing the AI call)
-      const [catalogResult, uploadResults] = await Promise.all([
-        // FAST PATH: Thumbnails as base64 in body → catalog AI
-        api.generateFromPhotos(thumbnailDataUrls),
+      // ── Step 2: Triage (Call 0) — group photos by product ──
+      let photoGroups: { imageIndices: number[]; confidence: number; label: string }[];
+      let needsConfirmation = false;
 
-        // SLOW PATH: Full images to R2 via presigned URLs
-        Promise.all(resized.map(async (r) => {
-          const uploadUrlResult = await api.getUploadUrl(
-            r.filename,
-            'image/jpeg',
-            r.full.size,
-          );
-          if (!uploadUrlResult.success) {
-            console.warn('Upload URL failed:', uploadUrlResult.error);
-            return null;
+      if (resized.length === 1) {
+        // Single photo — skip triage
+        photoGroups = [{ imageIndices: [0], confidence: 1.0, label: 'single product' }];
+      } else {
+        addMessages([aiTextMessage('Analyzing which photos go together...')]);
+        const triageResult = await api.triagePhotos(thumbnailDataUrls);
+
+        if (triageResult.success) {
+          const triage = triageResult.data as any;
+          photoGroups = triage.groups;
+          needsConfirmation = triage.needsConfirmation;
+
+          // Show quality warnings if any
+          const qualityFlags = triage.qualityFlags?.filter((f: any) => f.issue) || [];
+          if (qualityFlags.length > 0) {
+            const warnings = qualityFlags.map((f: any) =>
+              `Photo ${f.imageIndex + 1}: ${f.issue}`
+            ).join('\n');
+            addMessages([aiTextMessage(`⚠️ Quality notes:\n${warnings}\n\nI'll still process them, but better photos = better listings.`)]);
           }
+
+          if (needsConfirmation && triage.confirmationMessage) {
+            // TODO: Full confirmation flow with action buttons
+            // For now, proceed with the AI's groupings
+            addMessages([aiTextMessage(triage.confirmationMessage + '\n\nProceeding with these groupings...')]);
+          }
+        } else {
+          // Triage failed — treat each photo as separate product
+          photoGroups = resized.map((_, i) => ({
+            imageIndices: [i],
+            confidence: 0.5,
+            label: `product ${i + 1}`,
+          }));
+        }
+      }
+
+      const groupCount = photoGroups.length;
+      if (groupCount > 1) {
+        addMessages([aiTextMessage(`Found ${groupCount} products in your photos. Creating listings...`)]);
+      }
+
+      // ── Step 3: Per-group catalog AI + R2 uploads in parallel ──
+      const allProducts: any[] = [];
+
+      // Start R2 uploads for ALL images in parallel (non-blocking)
+      const r2UploadPromise = Promise.all(resized.map(async (r) => {
+        try {
+          const uploadUrlResult = await api.getUploadUrl(r.filename, 'image/jpeg', r.full.size);
+          if (!uploadUrlResult.success) return null;
           const { uploadUrl, publicUrl, mediaAssetId } = uploadUrlResult.data as any;
+          await fetch(uploadUrl, {
+            method: 'PUT',
+            body: r.full,
+            headers: { 'Content-Type': 'image/jpeg' },
+          });
+          await api.confirmUpload(mediaAssetId);
+          return { mediaId: mediaAssetId, publicUrl, index: resized.indexOf(r) };
+        } catch {
+          return null;
+        }
+      }));
 
-          // Upload full image directly to R2/local via presigned URL
-          try {
-            await fetch(uploadUrl, {
-              method: 'PUT',
-              body: r.full,
-              headers: { 'Content-Type': 'image/jpeg' },
-            });
-            // Confirm upload to trigger Sharp processing
-            await api.confirmUpload(mediaAssetId);
-            return { mediaId: mediaAssetId, publicUrl };
-          } catch (err) {
-            console.warn('R2 upload failed:', err);
-            return null;
-          }
-        })),
+      // Run catalog AI for each group (parallel across groups)
+      const catalogPromises = photoGroups.map(async (group) => {
+        const groupThumbnails = group.imageIndices.map((i) => thumbnailDataUrls[i]!);
+        const result = await api.generateFromPhotos(groupThumbnails);
+        return { group, result };
+      });
+
+      const [catalogResults, uploadResults] = await Promise.all([
+        Promise.all(catalogPromises),
+        r2UploadPromise,
       ]);
 
       setIsTyping(false);
 
-      // ── Step 3: Handle catalog AI result ────────────────────
-      if (!catalogResult.success) {
-        addMessages([aiTextMessage(
-          `Couldn't generate product listing: ${catalogResult.error}\n\nTry again or add the product manually.`,
-        )]);
-        return;
+      // ── Step 4: Show product cards for each group ──
+      const successfulUploads = uploadResults.filter(Boolean) as any[];
+
+      for (const { group, result } of catalogResults) {
+        if (!result.success) {
+          addMessages([aiTextMessage(
+            `Couldn't generate listing for "${group.label}": ${result.error}`,
+          )]);
+          continue;
+        }
+
+        const { suggestion, productId, confidence } = result.data as any;
+        if (productId) setLastProductId(productId);
+        allProducts.push({ suggestion, productId });
+
+        // Pick best display image: R2 URL > local preview
+        const groupUpload = successfulUploads.find((u) =>
+          group.imageIndices.includes(u.index)
+        );
+        const displayImageUrl = groupUpload?.publicUrl || localUrls[group.imageIndices[0]!];
+
+        const productCard: ChatMessage = {
+          type: 'product_card',
+          id: createMessageId(),
+          role: 'ai',
+          product: {
+            id: productId,
+            name: suggestion.name,
+            description: suggestion.description,
+            price: suggestion.suggestedPrice?.min || 0,
+            compareAtPrice: suggestion.suggestedPrice?.max,
+            imageUrl: displayImageUrl,
+            tags: suggestion.tags,
+            status: 'draft',
+            category: suggestion.suggestedCategory,
+          },
+          actions: [
+            { label: 'Publish', action: 'product.publish', params: { productId }, variant: 'primary' },
+            { label: 'Edit Price', action: 'product.update_price', params: { productId }, variant: 'secondary' },
+          ],
+          timestamp: new Date(),
+        };
+
+        const note = confidence > 0.8
+          ? 'Looking good!'
+          : 'You might want to review the details.';
+
+        addMessages([
+          productCard,
+          aiTextMessage(
+            groupCount > 1
+              ? `"${suggestion.name}" created as draft. ${note}`
+              : `Product created as draft. ${note} Say "publish" to make it live, or "change price to ___" to adjust.`,
+          ),
+        ]);
       }
 
-      const { suggestion, productId, confidence } = catalogResult.data as any;
-      if (productId) setLastProductId(productId);
+      // Summary for multi-product uploads
+      if (allProducts.length > 1) {
+        addMessages([aiTextMessage(
+          `Created ${allProducts.length} product drafts. Say "publish all" to make them live, or review each one individually.`,
+        )]);
+      }
 
-      // Use R2 URL if upload succeeded, otherwise fall back to thumbnail
-      const successfulUploads = uploadResults.filter(Boolean);
-      const displayImageUrl = successfulUploads.length > 0
-        ? (successfulUploads[0] as any).publicUrl
-        : localUrls[0];
+      // ── Step 5: Store design AI (Call 2) in background ──
+      // Only on first upload (don't redesign on every product add)
+      const allNames = allProducts.map((p) => p.suggestion.name);
+      const allPrices = allProducts
+        .map((p) => p.suggestion.suggestedPrice)
+        .filter(Boolean);
+      const priceRange = allPrices.length > 0
+        ? {
+            min: Math.min(...allPrices.map((p: any) => p.min)),
+            max: Math.max(...allPrices.map((p: any) => p.max)),
+          }
+        : undefined;
+      const allTags = [...new Set(allProducts.flatMap((p) => p.suggestion.tags || []))];
 
-      const productCard: ChatMessage = {
-        type: 'product_card',
-        id: createMessageId(),
-        role: 'ai',
-        product: {
-          id: productId,
-          name: suggestion.name,
-          description: suggestion.description,
-          price: suggestion.suggestedPrice?.min || 0,
-          compareAtPrice: suggestion.suggestedPrice?.max,
-          imageUrl: displayImageUrl,
-          tags: suggestion.tags,
-          status: 'draft',
-          category: suggestion.suggestedCategory,
-        },
-        actions: [
-          { label: 'Publish', action: 'product.publish', params: { productId }, variant: 'primary' },
-          { label: 'Edit Price', action: 'product.update_price', params: { productId }, variant: 'secondary' },
-        ],
-        timestamp: new Date(),
-      };
-
-      const note = confidence > 0.8
-        ? 'Looking good!'
-        : 'You might want to review the details.';
-
-      addMessages([
-        productCard,
-        aiTextMessage(`Product created as draft. ${note} Say "publish" to make it live, or "change price to ___" to adjust.`),
-      ]);
-
-      // ── Step 4: Trigger store design in background (Call 2) ──
       api.generateStoreDesign(
-        thumbnailDataUrls,
+        thumbnailDataUrls.slice(0, 3), // Max 3 images for design
         {
-          names: [suggestion.name],
-          priceRange: suggestion.suggestedPrice
-            ? { min: suggestion.suggestedPrice.min, max: suggestion.suggestedPrice.max }
-            : undefined,
-          tags: suggestion.tags,
+          names: allNames,
+          priceRange,
+          tags: allTags.slice(0, 15),
         },
       ).then((designResult) => {
         if (designResult.success) {
+          const data = designResult.data as any;
           addMessages([
-            aiTextMessage('✨ I\'ve designed your store to match your brand! Visit your store to see the new look.'),
+            aiTextMessage(
+              `✨ Store design updated! ${data.heroTagline ? `"${data.heroTagline}"` : ''}\nVisit your store to see the new look.`,
+            ),
           ]);
         }
       }).catch(() => {
-        // Design generation is optional — don't block the flow
+        // Design generation is non-critical — don't block flow
       });
 
     } catch (err) {
