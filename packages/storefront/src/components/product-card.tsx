@@ -47,6 +47,11 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
   const showSecondImage = cardTokens?.showSecondImage !== false && !!secondImgSrc;
   const showQuickAdd = cardTokens?.showQuickAdd !== false && !!onAddToCart;
 
+  // V3: Bespoke card styles from AI
+  const bespokeCard = design.bespokeStyles?.card || {};
+  const bespokeHoverTransform = bespokeCard.hoverTransform;
+  const bespokeShadowOnHover = bespokeCard.shadowOnHover;
+
   const linkUrl = `${storeUrl}/products/${product.slug}`;
 
   // Stagger delay

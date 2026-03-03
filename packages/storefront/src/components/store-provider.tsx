@@ -73,6 +73,8 @@ export function StoreProvider({ store, children }: StoreProviderProps) {
     heroTokens: rawDesign.heroTokens || { overlayGradient: 'cinematic-bottom', textPlacement: 'bottom-left', showScrollHint: true, slideTransition: 'crossfade' },
     cardTokens: rawDesign.cardTokens || { hoverEffect: 'zoom', showSecondImage: true, showQuickAdd: true, badgeStyle: 'pill', priceDisplay: 'stacked' },
     decorativeTokens: rawDesign.decorativeTokens || { dividerStyle: 'gradient-fade', sectionBgVariation: true, useGlassmorphism: true, textureOverlay: 'none' },
+    // V3: Bespoke AI-generated styles
+    bespokeStyles: rawDesign.bespokeStyles || { hero: {}, card: {}, signatureEffect: 'none' },
   } as DesignTokens;
 
   const queryClient = useMemo(() => new QueryClient({

@@ -83,6 +83,10 @@ export default async function StoreHomePage({ params }: HomePageProps) {
             {index > 0 && !isHeroType(sectionLayout[index - 1]?.type) && (
               <SectionDivider style={dividerStyle} />
             )}
+            {/* V3: vibeWeight spacing — irregular rhythm */}
+            {index > 0 && (
+              <div style={{ height: getVibeGap(section.vibeWeight) }} />
+            )}
             <SectionRenderer
               section={section}
               storeUrl={storeUrl}
@@ -103,6 +107,16 @@ export default async function StoreHomePage({ params }: HomePageProps) {
 
 function isHeroType(type?: string): boolean {
   return !!type && type.startsWith('hero_');
+}
+
+/** V3: Convert vibeWeight (0.2-2.0) to pixel gap for irregular spatial rhythm */
+function getVibeGap(weight?: number): string {
+  const w = weight ?? 1.0;
+  if (w <= 0.3) return '6px';    // Compressed
+  if (w <= 0.6) return '16px';   // Tight
+  if (w <= 1.1) return '0px';    // Normal (already handled by section padding)
+  if (w <= 1.6) return '48px';   // Expanded breathing room
+  return '80px';                  // Maximum expansion
 }
 
 // ============================================================
@@ -126,10 +140,24 @@ function SectionRenderer({
 }: SectionRendererProps) {
   const type = section.type;
 
-  // V2: Background alternation for visual rhythm
-  const bgStyle = useBgVariation && sectionIndex % 2 === 1
-    ? { backgroundColor: 'var(--color-surface)' }
-    : { backgroundColor: 'var(--color-background)' };
+  // V3: vibeWeight-based spacing (irregular rhythm)
+  const vibeWeight = (section as any).vibeWeight ?? 1.0;
+  const gapMap: Record<string, number> = { '0.2': 6, '0.5': 8, '1': 12, '1.5': 24, '2': 32 };
+  const closestKey = Object.keys(gapMap).reduce((prev, curr) =>
+    Math.abs(parseFloat(curr) - vibeWeight) < Math.abs(parseFloat(prev) - vibeWeight) ? curr : prev
+  );
+  const sectionPadding = `${gapMap[closestKey] || 12}px`;
+
+  // V3: Color intensity — 'high' means primary bg, white text (the "Surprise" moment)
+  const colorIntensity = (section as any).colorIntensity || 'low';
+  const isAccentSection = colorIntensity === 'high';
+
+  // V2: Background alternation for visual rhythm (overridden by accent section)
+  const bgStyle = isAccentSection
+    ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
+    : useBgVariation && sectionIndex % 2 === 1
+      ? { backgroundColor: 'var(--color-surface)' }
+      : { backgroundColor: 'var(--color-background)' };
 
   switch (type) {
     // ── Hero variants ──

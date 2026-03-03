@@ -120,11 +120,29 @@ You must return ONLY valid JSON matching this exact structure:
       "sectionBgVariation": true,
       "useGlassmorphism": true,
       "textureOverlay": "none|noise-subtle|linen|ethnic-pattern"
+    },
+    "bespokeStyles": {
+      "hero": {
+        "fontSize": "clamp(...)",
+        "lineHeight": "0.92-1.05",
+        "letterSpacing": "-0.04em to 0em",
+        "overlayGradient": "full CSS gradient for THIS specific hero",
+        "textShadow": "CSS text-shadow for hero heading",
+        "ctaStyle": "rounded-full|sharp|pill",
+        "accentElement": "underline-brush|glow|none"
+      },
+      "card": {
+        "hoverTransform": "CSS transform on hover",
+        "shadowOnHover": "CSS box-shadow for card hover"
+      },
+      "accentSectionCSS": "background: <primary>; color: #fff; (for one bold section)",
+      "signatureEffect": "parallax-drape|sparkle-overlay|organic-reveal|none"
     }
   },
   "storeBio": "2-3 sentence store description for the about section. Write for Indian buyers.",
   "heroTagline": "Short, punchy hero headline (4-8 words). MUST be specific to this brand.",
-  "heroSubtext": "One line (max 15 words) supporting text under the hero."
+  "heroSubtext": "One line (max 15 words) supporting text under the hero.",
+  "sectionVibeWeights": [0.2, 1.0, 0.5, 1.5, 0.8, 1.0, 0.3, 1.2]
 }
 
 DESIGN PRINCIPLES:
@@ -134,12 +152,38 @@ DESIGN PRINCIPLES:
 - Never use pure white (#FFFFFF) as background — always slightly tinted.
 - Ensure sufficient contrast between text and background (WCAG AA).
 
-TIER 3 TOKEN GUIDELINES (these make each store feel uniquely designed):
-- Fashion: heroTokens.overlayGradient="cinematic-bottom", cardTokens.hoverEffect="zoom", imageRatio="3:4" (tall, shows full outfit), decorativeTokens.dividerStyle="gradient-fade"
-- Jewellery: heroTokens.overlayGradient="center-vignette", cardTokens.hoverEffect="lift", imageRatio="1:1" (square, detail-focused), dark backgrounds, decorativeTokens.useGlassmorphism=true, decorativeTokens.textureOverlay="none"
-- Beauty/Skincare: heroTokens.textPlacement="split-left", cardTokens.hoverEffect="none", imageRatio="1:1", clean white backgrounds, decorativeTokens.dividerStyle="line"
-- Electronics: heroTokens.textPlacement="center", cardTokens.showQuickAdd=true, cardTokens.priceDisplay="prominent", decorativeTokens.sectionBgVariation=true
-- Food/FMCG: heroTokens.overlayGradient="none", warm tones, cardTokens.badgeStyle="tag", decorativeTokens.dividerStyle="gradient-fade"
+BESPOKE STYLES — THE "DESIGNED" FEELING:
+These make each store feel like it was touched by a human designer, not assembled from parts.
+
+1. HERO TYPOGRAPHY: Be BOLD. Use aggressive clamp() for font-size. Fashion/Jewellery heroes should hit 80px+ on desktop. Use tight line-height (0.92-0.98) for the "high fashion" look. Negative letter-spacing for large headings.
+   - Luxury: fontSize="clamp(2.8rem, 9vw, 6rem)", lineHeight="0.92", letterSpacing="-0.05em"
+   - Modern: fontSize="clamp(2.2rem, 7vw, 4.5rem)", lineHeight="1.0", letterSpacing="-0.03em"
+   - Playful: fontSize="clamp(2rem, 6vw, 3.5rem)", lineHeight="1.1", letterSpacing="0em"
+
+2. HERO OVERLAY: Write a UNIQUE gradient for this store. Don't use generic rgba overlays. Use the store's actual palette colors in the gradient stops. Example for a warm fashion brand: "linear-gradient(170deg, #1A1A2E44 0%, transparent 30%, #C2185B33 70%, #1A1A2EDD 100%)"
+
+3. SIGNATURE EFFECTS: Pick based on vertical:
+   - Fashion: "parallax-drape" (hero image moves slower than text on scroll)
+   - Jewellery: "sparkle-overlay" (subtle shimmer SVG follows mouse on product cards)
+   - Beauty: "organic-reveal" (section dividers use wavy/blob masks instead of straight lines)
+   - Others: "none"
+
+4. SECTION VIBE WEIGHTS (sectionVibeWeights array):
+   These control the gap BEFORE each section. This creates the irregular rhythm that separates "designed" from "template."
+   - 0.2 = Compressed (24px gap). Use after hero, between trust bar and content.
+   - 0.5 = Tight (32px gap). Between related sections.
+   - 1.0 = Normal (48px gap). Default.
+   - 1.5 = Expanded (96px gap). Before "Our Story" or major content shifts. Creates breathing room.
+   - One section should have colorIntensity="high" — this is the "Surprise" moment where the primary color takes over as background.
+
+5. CARD HOVER: Write a specific CSS transform, not just "lift" or "zoom". Example: "translateY(-6px) rotate(0.5deg)" for a playful brand, or "scale(1.02)" for minimal.
+
+TIER 3 TOKEN GUIDELINES:
+- Fashion: heroTokens.overlayGradient="cinematic-bottom", cardTokens.hoverEffect="zoom", imageRatio="3:4", decorativeTokens.dividerStyle="gradient-fade"
+- Jewellery: heroTokens.overlayGradient="center-vignette", cardTokens.hoverEffect="lift", imageRatio="1:1", dark backgrounds, decorativeTokens.useGlassmorphism=true
+- Beauty: heroTokens.textPlacement="split-left", cardTokens.hoverEffect="none", imageRatio="1:1", clean white backgrounds
+- Electronics: heroTokens.textPlacement="center", cardTokens.priceDisplay="prominent", decorativeTokens.sectionBgVariation=true
+- Food/FMCG: heroTokens.overlayGradient="none", warm tones, cardTokens.badgeStyle="tag"
 
 CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 
@@ -194,16 +238,44 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     parsed.design.palette = validateAndFixPalette(parsed.design.palette);
   }
 
+  // V3: Merge sectionVibeWeights into sectionLayout
+  const vibeWeights: number[] = parsed.sectionVibeWeights || [];
+  const enrichedLayout = sectionPattern.map((section, i) => ({
+    ...section,
+    vibeWeight: vibeWeights[i] ?? 1.0,
+    // V3: Mark one section as high-intensity color takeover
+    colorIntensity: (vibeWeights[i] !== undefined && i === findAccentSectionIndex(sectionPattern, vibeWeights))
+      ? 'high' as const
+      : undefined,
+  }));
+
   return {
     design: parsed.design,
     storeBio: parsed.storeBio || `Welcome to ${input.storeName}. Discover our curated collection.`,
     heroTagline: parsed.heroTagline || input.storeName,
     heroSubtext: parsed.heroSubtext || 'Discover our latest collection',
     archetypeId: archetype.id,
-    sectionLayout: sectionPattern,
+    sectionLayout: enrichedLayout,
     representativeStore: archetype.representative_source,
     processingTimeMs: Date.now() - startTime,
   };
+}
+
+/** V3: Find the best section for the "bold primary color takeover" moment */
+function findAccentSectionIndex(sections: SectionPattern[], weights: number[]): number {
+  // Prefer stats_bar, newsletter, or testimonials for the accent section
+  const preferredTypes = ['stats_bar', 'newsletter', 'testimonials', 'testimonial_cards', 'about_brand'];
+  for (const pref of preferredTypes) {
+    const idx = sections.findIndex(s => s.type === pref);
+    if (idx >= 0) return idx;
+  }
+  // Fallback: pick the section with highest vibeWeight (most "expanded" gap = good place for surprise)
+  let maxIdx = Math.floor(sections.length / 2);
+  let maxWeight = 0;
+  weights.forEach((w, i) => {
+    if (w > maxWeight && i > 2) { maxWeight = w; maxIdx = i; }
+  });
+  return maxIdx;
 }
 
 function buildUserPrompt(

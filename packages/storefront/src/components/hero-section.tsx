@@ -61,12 +61,21 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
   const { design } = useStore();
   const p = design.palette;
   const heroTokens = design.heroTokens;
+  const bespoke = design.bespokeStyles?.hero || {};
   const height = design.hero.height === 'full' ? 'min-h-[65vh] md:min-h-[85vh]' : design.hero.height === 'half' ? 'min-h-[45vh] md:min-h-[50vh]' : 'min-h-[35vh]';
 
-  // V2: Cinematic 4-stop gradient (not flat rgba overlay)
-  const overlayGradient = heroTokens?.overlayGradient === 'center-vignette'
-    ? `radial-gradient(ellipse at center, transparent 30%, ${p.text}CC 100%)`
-    : `linear-gradient(180deg, ${p.text}33 0%, ${p.text}11 25%, ${p.text}66 65%, ${p.text}DD 100%)`;
+  // V3: Use bespoke overlay gradient if AI generated one, else fall back to Tier 3 token
+  const overlayGradient = bespoke.overlayGradient
+    ? bespoke.overlayGradient
+    : heroTokens?.overlayGradient === 'center-vignette'
+      ? `radial-gradient(ellipse at center, transparent 30%, ${p.text}CC 100%)`
+      : `linear-gradient(180deg, ${p.text}33 0%, ${p.text}11 25%, ${p.text}66 65%, ${p.text}DD 100%)`;
+
+  // V3: Bespoke hero typography
+  const heroFontSize = bespoke.fontSize || 'clamp(2rem, 6vw, 3.5rem)';
+  const heroLineHeight = bespoke.lineHeight || '1.05';
+  const heroLetterSpacing = bespoke.letterSpacing || '-0.03em';
+  const heroTextShadow = bespoke.textShadow || (imageUrl ? '0 4px 32px rgba(0,0,0,0.3)' : 'none');
 
   return (
     <section
@@ -81,8 +90,14 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
       {imageUrl && <div className="absolute inset-0" style={{ background: overlayGradient }} />}
       <div className="relative z-10 px-6 pb-12 md:pb-16 max-w-xl" style={{ animation: 'slide-up 0.8s var(--ease-spring) 0.2s both' }}>
         <h1
-          className="font-display text-3xl md:text-5xl lg:text-6xl font-bold leading-[1.05] mb-4"
-          style={{ color: imageUrl ? '#fff' : p.text, letterSpacing: '-0.03em' }}
+          className="font-display font-bold mb-4"
+          style={{
+            color: imageUrl ? '#fff' : p.text,
+            fontSize: heroFontSize,
+            lineHeight: heroLineHeight,
+            letterSpacing: heroLetterSpacing,
+            textShadow: heroTextShadow,
+          }}
         >
           {heading}
         </h1>
@@ -114,6 +129,7 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
 function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: string; sub: string; link: string; imageUrl?: string; images?: string[] }) {
   const { design } = useStore();
   const p = design.palette;
+  const bespoke = design.bespokeStyles?.hero || {};
   const allImages = images?.length ? images : imageUrl ? [imageUrl] : [];
   const [current, setCurrent] = useState(0);
 
@@ -126,6 +142,13 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
   if (allImages.length === 0) {
     return <HeroMinimal heading={heading} sub={sub} link={link} />;
   }
+
+  // V3: Bespoke overlay and typography
+  const overlayGradient = bespoke.overlayGradient
+    || `linear-gradient(180deg, ${p.text}33 0%, ${p.text}11 25%, ${p.text}66 65%, ${p.text}DD 100%)`;
+  const heroFontSize = bespoke.fontSize || 'clamp(2rem, 6vw, 3.5rem)';
+  const heroLineHeight = bespoke.lineHeight || '1.05';
+  const heroLetterSpacing = bespoke.letterSpacing || '-0.03em';
 
   return (
     <section className="relative min-h-[65vh] md:min-h-[80vh] overflow-hidden">
@@ -140,12 +163,20 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
           />
         </div>
       ))}
-      {/* Cinematic overlay */}
-      <div className="absolute inset-0 z-[2]" style={{ background: `linear-gradient(180deg, ${p.text}33 0%, ${p.text}11 25%, ${p.text}66 65%, ${p.text}DD 100%)` }} />
+      {/* Bespoke overlay */}
+      <div className="absolute inset-0 z-[2]" style={{ background: overlayGradient }} />
 
       <div className="relative z-10 flex flex-col justify-end h-[65vh] md:h-[80vh] px-6 pb-12 md:pb-16">
         <div className="max-w-xl" style={{ animation: 'slide-up 0.8s var(--ease-spring) 0.2s both' }}>
-          <h1 className="font-display text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] mb-4" style={{ letterSpacing: '-0.03em', textShadow: '0 4px 32px rgba(0,0,0,0.3)' }}>
+          <h1
+            className="font-display font-bold text-white mb-4"
+            style={{
+              fontSize: heroFontSize,
+              lineHeight: heroLineHeight,
+              letterSpacing: heroLetterSpacing,
+              textShadow: bespoke.textShadow || '0 4px 32px rgba(0,0,0,0.3)',
+            }}
+          >
             {heading}
           </h1>
           <p className="text-sm md:text-base text-white/75 mb-8 max-w-md leading-relaxed">{sub}</p>
