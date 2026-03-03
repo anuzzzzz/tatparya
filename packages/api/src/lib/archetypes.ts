@@ -1,34 +1,58 @@
 // ============================================================
-// Store Design Archetypes
+// Store Design Archetypes v2 — Composition Library Powered
 //
-// Pre-defined design configurations for each vertical.
-// The AI uses these as a starting palette, then customizes
-// based on the specific product photos and seller context.
+// Replaces the 10 hardcoded archetypes with 75 data-driven
+// archetypes extracted from 106 real Shopify stores.
 //
-// Each vertical has 2-3 archetypes covering different
-// price tiers and brand personalities. The AI picks one
-// based on seller context (audience, price range, brand vibe)
-// then adjusts colors from the actual product photos.
+// The composition library provides:
+//   - Section patterns (type, position, variant, background)
+//   - Palette centroids (from real store color analysis)
+//   - Typography pairings (from real stores)
+//   - 42-dimensional design vectors for similarity matching
+//   - Tags (tall-hero, carousel, editorial, etc.)
 //
-// Archetype selection flow:
-// 1. Seller context → selectArchetype() picks best fit
-// 2. AI gets archetype as a "starting point" in its prompt
-// 3. AI overrides palette colors based on product photos
-// 4. WCAG validator fixes any contrast issues
+// Drop-in replacement for packages/api/src/lib/archetypes.ts
+// Also place composition-library.json in the repo root or data/
 // ============================================================
+
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+// ============================================================
+// Types
+// ============================================================
+
+export interface SectionPattern {
+  type: string;
+  position: number;
+  variant?: string;
+  required: boolean;
+  background_hint: string;
+}
 
 export interface Archetype {
   id: string;
   name: string;
   vertical: string;
-  /** What kind of seller this fits — used for matching */
-  fit: {
-    audiences: string[];       // "college girls", "professionals", etc.
-    priceFloor: number;        // Min price range this archetype suits
-    priceCeiling: number;      // Max price range
-    vibes: string[];           // "luxury", "minimal", "fun", "traditional"
+  cluster_size: number;
+  confidence: number;
+  representative_source: string;
+  section_pattern: SectionPattern[];
+  palette_centroid: {
+    avg_gold_proportion: number;
+    avg_maroon_proportion: number;
+    dark_theme_ratio: number;
   };
-  /** The design tokens this archetype provides */
+  tags: string[];
+  quality_score: number;
+  vector: number[];
+  member_ids: string[];
+  fit: {
+    audiences: string[];
+    priceFloor: number;
+    priceCeiling: number;
+    vibes: string[];
+  };
   design: {
     layout: string;
     palette: {
@@ -54,409 +78,268 @@ export interface Archetype {
   };
 }
 
+export interface Composition {
+  id: string;
+  name: string;
+  source_url: string;
+  source_type: string;
+  vertical: string;
+  tags: string[];
+  quality_score: number;
+  effective_score: number;
+  sections: SectionPattern[];
+  palette_hint: {
+    background: string;
+    surface: string;
+    accent: string;
+    proportions: Array<{ hex: string; proportion: number; role: string }>;
+    indian_signals: {
+      has_gold: boolean;
+      gold_proportion: number;
+      has_maroon: boolean;
+      maroon_proportion: number;
+      has_saffron: boolean;
+      has_deep_green: boolean;
+    };
+  };
+  typography_hint: {
+    heading_font: string;
+    body_font: string;
+  };
+}
+
+interface CompositionLibrary {
+  version: string;
+  stats: Record<string, any>;
+  archetypes: Record<string, any[]>;
+  compositions: Composition[];
+}
+
 // ============================================================
-// Fashion Archetypes
+// Library Loading
 // ============================================================
 
-const FASHION_LUXURY: Archetype = {
-  id: 'fashion-luxury',
-  name: 'Luxury Fashion',
-  vertical: 'fashion',
-  fit: {
-    audiences: ['professionals', 'women', 'luxury', 'wedding', 'premium'],
-    priceFloor: 2000,
-    priceCeiling: 50000,
-    vibes: ['luxury', 'premium', 'elegant', 'sophisticated'],
-  },
-  design: {
-    layout: 'editorial',
-    palette: {
-      mode: 'generated',
-      seed: '#8B6F47',
-      primary: '#8B6F47',
-      secondary: '#F5EDE3',
-      accent: '#C9956B',
-      background: '#FEFCF9',
-      surface: '#F8F4EF',
-      text: '#2C2420',
-      textMuted: '#7A706A',
+let _library: CompositionLibrary | null = null;
+let _archetypes: Archetype[] = [];
+let _compositions: Composition[] = [];
+
+function loadLibrary(): CompositionLibrary | null {
+  if (_library) return _library;
+
+  const searchPaths = [
+    join(process.cwd(), 'composition-library.json'),
+    join(process.cwd(), 'data', 'composition-library.json'),
+    join(process.cwd(), '..', '..', 'composition-library.json'),
+    '/tmp/tatparya-composition-engine/output/composition-library.json',
+  ];
+
+  for (const p of searchPaths) {
+    if (existsSync(p)) {
+      try {
+        const raw = readFileSync(p, 'utf-8');
+        _library = JSON.parse(raw);
+        console.log(`[archetypes] Loaded composition library from ${p}`);
+        console.log(`[archetypes] ${_library!.compositions.length} compositions, ${Object.values(_library!.archetypes).flat().length} archetypes`);
+        return _library;
+      } catch (err) {
+        console.error(`[archetypes] Failed to parse ${p}:`, err);
+      }
+    }
+  }
+
+  console.warn('[archetypes] Composition library not found, using hardcoded fallbacks');
+  return null;
+}
+
+// ============================================================
+// Inference helpers
+// ============================================================
+
+function inferLayout(tags: string[], sections: SectionPattern[]): string {
+  if (tags.includes('editorial')) return 'editorial';
+  if (tags.includes('content-rich')) return 'magazine';
+  if (tags.includes('minimal-hero')) return 'minimal';
+  if (tags.includes('full-bleed-hero')) return 'boutique';
+  if (sections.filter(s => s.type.includes('product')).length >= 3) return 'catalog_grid';
+  if (sections.length <= 6) return 'minimal';
+  return 'magazine';
+}
+
+function inferHeroStyle(tags: string[]): { style: string; height: string; overlayOpacity: number } {
+  if (tags.includes('full-bleed-hero')) return { style: 'full_bleed', height: 'full', overlayOpacity: 0.35 };
+  if (tags.includes('tall-hero')) return { style: 'full_bleed', height: 'full', overlayOpacity: 0.3 };
+  if (tags.includes('minimal-hero')) return { style: 'minimal_text', height: 'half', overlayOpacity: 0.1 };
+  if (tags.includes('video')) return { style: 'video', height: 'full', overlayOpacity: 0.3 };
+  if (tags.includes('slideshow')) return { style: 'carousel', height: 'full', overlayOpacity: 0.25 };
+  return { style: 'split_image', height: 'half', overlayOpacity: 0.2 };
+}
+
+function inferProductCard(vertical: string, tags: string[]) {
+  switch (vertical) {
+    case 'fashion': return { style: tags.includes('editorial') ? 'editorial' : 'hover_reveal', showPrice: true, showRating: false, imageRatio: '3:4' };
+    case 'jewellery': return { style: 'minimal', showPrice: true, showRating: false, imageRatio: '1:1' };
+    case 'beauty': return { style: 'minimal', showPrice: true, showRating: true, imageRatio: '1:1' };
+    case 'electronics': return { style: 'compact', showPrice: true, showRating: true, imageRatio: '1:1' };
+    case 'food': return { style: 'minimal', showPrice: true, showRating: false, imageRatio: '1:1' };
+    case 'home_decor': return { style: 'editorial', showPrice: true, showRating: false, imageRatio: '4:3' };
+    case 'pets': return { style: 'hover_reveal', showPrice: true, showRating: true, imageRatio: '1:1' };
+    default: return { style: 'minimal', showPrice: true, showRating: false, imageRatio: '3:4' };
+  }
+}
+
+function inferSpacing(sections: SectionPattern[]): string {
+  if (sections.length >= 15) return 'compact';
+  if (sections.length >= 10) return 'balanced';
+  return 'airy';
+}
+
+function inferRadius(vertical: string): string {
+  switch (vertical) {
+    case 'jewellery': case 'electronics': return 'sharp';
+    case 'beauty': return 'pill';
+    case 'food': case 'pets': return 'rounded';
+    default: return 'subtle';
+  }
+}
+
+function inferAudiences(vertical: string): string[] {
+  const base: Record<string, string[]> = {
+    fashion: ['women', 'men', 'youth', 'professionals'],
+    jewellery: ['women', 'brides', 'luxury', 'gift'],
+    beauty: ['women', 'girls', 'self-care', 'beauty'],
+    electronics: ['tech', 'gadget', 'men', 'professionals'],
+    food: ['families', 'foodies', 'health', 'home'],
+    home_decor: ['homeowners', 'couples', 'interior', 'professionals'],
+    pets: ['pet owners', 'dog', 'cat', 'families'],
+    general: [],
+  };
+  return base[vertical] || [];
+}
+
+function inferVibes(tags: string[]): string[] {
+  const vibes: string[] = [];
+  if (tags.includes('editorial')) vibes.push('editorial', 'premium');
+  if (tags.includes('minimal-hero')) vibes.push('minimal', 'clean');
+  if (tags.includes('tall-hero') || tags.includes('full-bleed-hero')) vibes.push('bold', 'dramatic');
+  if (tags.includes('carousel')) vibes.push('dynamic', 'engaging');
+  if (tags.includes('marquee')) vibes.push('energetic', 'modern');
+  if (tags.includes('ugc')) vibes.push('authentic', 'social');
+  if (tags.includes('video')) vibes.push('cinematic', 'immersive');
+  if (tags.includes('content-rich')) vibes.push('detailed', 'informative');
+  if (vibes.length === 0) vibes.push('modern', 'clean');
+  return vibes;
+}
+
+function hexLuminance(hex: string): number {
+  try {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const linear = [r, g, b].map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
+  } catch {
+    return 0.9; // assume light
+  }
+}
+
+function buildPalette(comp: Composition | null, vertical: string) {
+  if (comp?.palette_hint) {
+    const ph = comp.palette_hint;
+    const bg = ph.background || '#FAFAF5';
+    const surface = ph.surface || '#F5F2ED';
+    const accent = ph.accent || '#D4356A';
+    const bgLum = hexLuminance(bg);
+    return {
+      mode: 'generated' as const,
+      seed: accent,
+      primary: accent,
+      secondary: surface,
+      accent,
+      background: bg,
+      surface,
+      text: bgLum > 0.5 ? '#1A1A2E' : '#F5F5F5',
+      textMuted: bgLum > 0.5 ? '#6B6B80' : '#B0B0B0',
+    };
+  }
+
+  const fallbacks: Record<string, any> = {
+    fashion: { seed: '#8B6F47', primary: '#8B6F47', secondary: '#F5EDE3', accent: '#C9956B', background: '#FEFCF9', surface: '#F8F4EF', text: '#2C2420', textMuted: '#7A706A' },
+    jewellery: { seed: '#C9A84C', primary: '#C9A84C', secondary: '#1A1A2E', accent: '#E8D5A3', background: '#0F0F1A', surface: '#1A1A2E', text: '#F5F0E8', textMuted: '#B0A898' },
+    beauty: { seed: '#E8B4B8', primary: '#D4898F', secondary: '#FFF5F5', accent: '#E8B4B8', background: '#FFFBFB', surface: '#FFF5F5', text: '#3D2B2F', textMuted: '#8B7175' },
+    electronics: { seed: '#2563EB', primary: '#2563EB', secondary: '#EFF6FF', accent: '#3B82F6', background: '#FAFBFC', surface: '#F1F5F9', text: '#0F172A', textMuted: '#64748B' },
+    food: { seed: '#B8860B', primary: '#B8860B', secondary: '#FFF8E7', accent: '#D4A34A', background: '#FFFDF5', surface: '#FFF9ED', text: '#2C2410', textMuted: '#7A6F5A' },
+    home_decor: { seed: '#6B7B5E', primary: '#6B7B5E', secondary: '#F5F2ED', accent: '#A3956B', background: '#FAFAF5', surface: '#F5F2ED', text: '#2C2C25', textMuted: '#7A7A6D' },
+    pets: { seed: '#E86830', primary: '#E86830', secondary: '#FFF5ED', accent: '#F4A261', background: '#FFFAF5', surface: '#FFF5ED', text: '#2C2015', textMuted: '#7A6A5A' },
+  };
+  return { mode: 'generated' as const, ...(fallbacks[vertical] || fallbacks['fashion']) };
+}
+
+function mapArchetype(raw: any, compositions: Composition[]): Archetype {
+  const memberComps = compositions.filter(c => raw.member_ids?.includes(c.id));
+  const representative = memberComps.find(c => c.source_url === raw.representative_source) || memberComps[0] || null;
+  const vertical = raw.vertical === 'homedecor' ? 'home_decor' : raw.vertical;
+
+  return {
+    ...raw,
+    vertical,
+    fit: {
+      audiences: inferAudiences(vertical),
+      priceFloor: vertical === 'jewellery' ? 500 : vertical === 'electronics' ? 200 : 100,
+      priceCeiling: vertical === 'jewellery' ? 100000 : vertical === 'electronics' ? 100000 : 50000,
+      vibes: inferVibes(raw.tags || []),
     },
-    fonts: { display: 'Cormorant Garamond', body: 'DM Sans', scale: 1.05 },
-    hero: { style: 'full_bleed', height: 'full', overlayOpacity: 0.35 },
-    productCard: { style: 'editorial', showPrice: true, showRating: false, imageRatio: '3:4' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'lookbook', columns: { mobile: 2, desktop: 3 }, pagination: 'infinite_scroll' },
-    spacing: 'airy',
-    radius: 'subtle',
-    imageStyle: 'subtle_shadow',
-    animation: 'fade',
-  },
-};
-
-const FASHION_TRENDY: Archetype = {
-  id: 'fashion-trendy',
-  name: 'Trendy Youth Fashion',
-  vertical: 'fashion',
-  fit: {
-    audiences: ['college', 'youth', 'girls', 'teenagers', 'students', 'young'],
-    priceFloor: 300,
-    priceCeiling: 3000,
-    vibes: ['fun', 'trendy', 'colorful', 'bold', 'modern'],
-  },
-  design: {
-    layout: 'magazine',
-    palette: {
-      mode: 'generated',
-      seed: '#E94560',
-      primary: '#E94560',
-      secondary: '#FFF0F3',
-      accent: '#FF6B6B',
-      background: '#FFFAF5',
-      surface: '#FFF5F5',
-      text: '#1A1A2E',
-      textMuted: '#6B6B80',
+    design: {
+      layout: inferLayout(raw.tags || [], raw.section_pattern || []),
+      palette: buildPalette(representative, vertical),
+      fonts: {
+        display: representative?.typography_hint?.heading_font || 'DM Sans',
+        body: representative?.typography_hint?.body_font || 'Inter',
+        scale: 1.0,
+      },
+      hero: inferHeroStyle(raw.tags || []),
+      productCard: inferProductCard(vertical, raw.tags || []),
+      nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
+      collection: {
+        style: vertical === 'home_decor' ? 'masonry' : vertical === 'fashion' ? 'lookbook' : 'uniform_grid',
+        columns: { mobile: 2, desktop: vertical === 'electronics' ? 4 : 3 },
+        pagination: vertical === 'electronics' ? 'paginated' : 'infinite_scroll',
+      },
+      spacing: inferSpacing(raw.section_pattern || []),
+      radius: inferRadius(vertical),
+      imageStyle: vertical === 'fashion' ? 'hover_zoom' : vertical === 'jewellery' ? 'subtle_shadow' : 'rounded',
+      animation: vertical === 'electronics' ? 'none' : 'fade',
     },
-    fonts: { display: 'Plus Jakarta Sans', body: 'Inter', scale: 1.0 },
-    hero: { style: 'split_image', height: 'half', overlayOpacity: 0.2 },
-    productCard: { style: 'hover_reveal', showPrice: true, showRating: false, imageRatio: '3:4' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 4 }, pagination: 'infinite_scroll' },
-    spacing: 'balanced',
-    radius: 'rounded',
-    imageStyle: 'hover_zoom',
-    animation: 'staggered',
-  },
-};
-
-const FASHION_TRADITIONAL: Archetype = {
-  id: 'fashion-traditional',
-  name: 'Traditional / Ethnic Wear',
-  vertical: 'fashion',
-  fit: {
-    audiences: ['mothers', 'traditional', 'ethnic', 'saree', 'festival', 'wedding'],
-    priceFloor: 500,
-    priceCeiling: 15000,
-    vibes: ['traditional', 'ethnic', 'rich', 'festive', 'warm'],
-  },
-  design: {
-    layout: 'boutique',
-    palette: {
-      mode: 'generated',
-      seed: '#8B1A1A',
-      primary: '#8B1A1A',
-      secondary: '#FFF5E6',
-      accent: '#D4956A',
-      background: '#FFFDF5',
-      surface: '#FFF8ED',
-      text: '#2C1810',
-      textMuted: '#7A6860',
-    },
-    fonts: { display: 'Playfair Display', body: 'Lora', scale: 1.0 },
-    hero: { style: 'full_bleed', height: 'full', overlayOpacity: 0.4 },
-    productCard: { style: 'editorial', showPrice: true, showRating: false, imageRatio: '3:4' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'masonry', columns: { mobile: 2, desktop: 3 }, pagination: 'paginated' },
-    spacing: 'airy',
-    radius: 'subtle',
-    imageStyle: 'border_frame',
-    animation: 'fade',
-  },
-};
+  };
+}
 
 // ============================================================
-// Jewellery Archetypes
+// Init
 // ============================================================
 
-const JEWELLERY_PREMIUM: Archetype = {
-  id: 'jewellery-premium',
-  name: 'Premium Jewellery',
-  vertical: 'jewellery',
-  fit: {
-    audiences: ['women', 'brides', 'luxury', 'wedding', 'premium', 'professionals'],
-    priceFloor: 1000,
-    priceCeiling: 100000,
-    vibes: ['luxury', 'elegant', 'premium', 'rich'],
-  },
-  design: {
-    layout: 'boutique',
-    palette: {
-      mode: 'generated',
-      seed: '#C9A84C',
-      primary: '#C9A84C',
-      secondary: '#1A1A2E',
-      accent: '#E8D5A3',
-      background: '#0F0F1A',
-      surface: '#1A1A2E',
-      text: '#F5F0E8',
-      textMuted: '#B0A898',
-    },
-    fonts: { display: 'Cormorant Garamond', body: 'DM Sans', scale: 1.0 },
-    hero: { style: 'full_bleed', height: 'full', overlayOpacity: 0.5 },
-    productCard: { style: 'minimal', showPrice: true, showRating: false, imageRatio: '1:1' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 3 }, pagination: 'paginated' },
-    spacing: 'airy',
-    radius: 'sharp',
-    imageStyle: 'subtle_shadow',
-    animation: 'fade',
-  },
-};
+function ensureLoaded() {
+  if (_archetypes.length > 0) return;
 
-const JEWELLERY_AFFORDABLE: Archetype = {
-  id: 'jewellery-affordable',
-  name: 'Affordable / Oxidized Jewellery',
-  vertical: 'jewellery',
-  fit: {
-    audiences: ['college', 'girls', 'daily', 'casual', 'students', 'young'],
-    priceFloor: 100,
-    priceCeiling: 2000,
-    vibes: ['fun', 'bohemian', 'casual', 'trendy'],
-  },
-  design: {
-    layout: 'catalog_grid',
-    palette: {
-      mode: 'generated',
-      seed: '#8B6F47',
-      primary: '#8B6F47',
-      secondary: '#F5EDE3',
-      accent: '#C49B6C',
-      background: '#FEFCF8',
-      surface: '#F8F3EB',
-      text: '#2C2420',
-      textMuted: '#7A706A',
-    },
-    fonts: { display: 'Outfit', body: 'Inter', scale: 1.0 },
-    hero: { style: 'split_image', height: 'half', overlayOpacity: 0.2 },
-    productCard: { style: 'compact', showPrice: true, showRating: false, imageRatio: '1:1' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 4 }, pagination: 'infinite_scroll' },
-    spacing: 'balanced',
-    radius: 'rounded',
-    imageStyle: 'rounded',
-    animation: 'staggered',
-  },
-};
+  const lib = loadLibrary();
+  if (!lib) {
+    _archetypes = FALLBACK_ARCHETYPES;
+    return;
+  }
+
+  _compositions = lib.compositions;
+
+  for (const [, rawArchetypes] of Object.entries(lib.archetypes)) {
+    for (const raw of rawArchetypes) {
+      _archetypes.push(mapArchetype(raw, _compositions));
+    }
+  }
+
+  console.log(`[archetypes] Mapped ${_archetypes.length} archetypes across ${new Set(_archetypes.map(a => a.vertical)).size} verticals`);
+}
 
 // ============================================================
-// Electronics Archetype
+// Public API
 // ============================================================
 
-const ELECTRONICS_DEFAULT: Archetype = {
-  id: 'electronics-default',
-  name: 'Electronics / Gadgets',
-  vertical: 'electronics',
-  fit: {
-    audiences: ['tech', 'gadget', 'men', 'professionals', 'gamers'],
-    priceFloor: 200,
-    priceCeiling: 100000,
-    vibes: ['modern', 'clean', 'tech', 'minimal'],
-  },
-  design: {
-    layout: 'catalog_grid',
-    palette: {
-      mode: 'generated',
-      seed: '#2563EB',
-      primary: '#2563EB',
-      secondary: '#EFF6FF',
-      accent: '#3B82F6',
-      background: '#FAFBFC',
-      surface: '#F1F5F9',
-      text: '#0F172A',
-      textMuted: '#64748B',
-    },
-    fonts: { display: 'Space Grotesk', body: 'Inter', scale: 1.0 },
-    hero: { style: 'minimal_text', height: 'auto', overlayOpacity: 0.0 },
-    productCard: { style: 'compact', showPrice: true, showRating: true, imageRatio: '1:1' },
-    nav: { style: 'search_first', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'filterable_sidebar', columns: { mobile: 2, desktop: 4 }, pagination: 'paginated' },
-    spacing: 'compact',
-    radius: 'sharp',
-    imageStyle: 'raw',
-    animation: 'none',
-  },
-};
-
-// ============================================================
-// Beauty Archetype
-// ============================================================
-
-const BEAUTY_DEFAULT: Archetype = {
-  id: 'beauty-default',
-  name: 'Beauty / Skincare',
-  vertical: 'beauty',
-  fit: {
-    audiences: ['women', 'girls', 'beauty', 'skincare', 'self-care'],
-    priceFloor: 200,
-    priceCeiling: 10000,
-    vibes: ['soft', 'clean', 'pastel', 'natural', 'gentle'],
-  },
-  design: {
-    layout: 'minimal',
-    palette: {
-      mode: 'generated',
-      seed: '#E8B4B8',
-      primary: '#D4898F',
-      secondary: '#FFF5F5',
-      accent: '#E8B4B8',
-      background: '#FFFBFB',
-      surface: '#FFF5F5',
-      text: '#3D2B2F',
-      textMuted: '#8B7175',
-    },
-    fonts: { display: 'Outfit', body: 'DM Sans', scale: 1.0 },
-    hero: { style: 'gradient', height: 'half', overlayOpacity: 0.0 },
-    productCard: { style: 'minimal', showPrice: true, showRating: true, imageRatio: '1:1' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 3 }, pagination: 'infinite_scroll' },
-    spacing: 'airy',
-    radius: 'pill',
-    imageStyle: 'rounded',
-    animation: 'fade',
-  },
-};
-
-// ============================================================
-// Food Archetype
-// ============================================================
-
-const FOOD_DEFAULT: Archetype = {
-  id: 'food-default',
-  name: 'Food / Snacks / Grocery',
-  vertical: 'food',
-  fit: {
-    audiences: ['families', 'foodies', 'health', 'mothers', 'home'],
-    priceFloor: 50,
-    priceCeiling: 5000,
-    vibes: ['warm', 'earthy', 'natural', 'homemade', 'organic'],
-  },
-  design: {
-    layout: 'minimal',
-    palette: {
-      mode: 'generated',
-      seed: '#B8860B',
-      primary: '#B8860B',
-      secondary: '#FFF8E7',
-      accent: '#D4A34A',
-      background: '#FFFDF5',
-      surface: '#FFF9ED',
-      text: '#2C2410',
-      textMuted: '#7A6F5A',
-    },
-    fonts: { display: 'Outfit', body: 'DM Sans', scale: 1.0 },
-    hero: { style: 'split_image', height: 'half', overlayOpacity: 0.2 },
-    productCard: { style: 'minimal', showPrice: true, showRating: false, imageRatio: '1:1' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 3 }, pagination: 'infinite_scroll' },
-    spacing: 'balanced',
-    radius: 'rounded',
-    imageStyle: 'rounded',
-    animation: 'staggered',
-  },
-};
-
-// ============================================================
-// Home Decor Archetype
-// ============================================================
-
-const HOME_DECOR_DEFAULT: Archetype = {
-  id: 'home-decor-default',
-  name: 'Home Decor / Furniture',
-  vertical: 'home_decor',
-  fit: {
-    audiences: ['homeowners', 'couples', 'interior', 'families', 'professionals'],
-    priceFloor: 300,
-    priceCeiling: 50000,
-    vibes: ['natural', 'earthy', 'elegant', 'warm', 'minimalist'],
-  },
-  design: {
-    layout: 'magazine',
-    palette: {
-      mode: 'generated',
-      seed: '#6B7B5E',
-      primary: '#6B7B5E',
-      secondary: '#F5F2ED',
-      accent: '#A3956B',
-      background: '#FAFAF5',
-      surface: '#F5F2ED',
-      text: '#2C2C25',
-      textMuted: '#7A7A6D',
-    },
-    fonts: { display: 'Cormorant Garamond', body: 'Inter', scale: 1.0 },
-    hero: { style: 'full_bleed', height: 'full', overlayOpacity: 0.3 },
-    productCard: { style: 'editorial', showPrice: true, showRating: false, imageRatio: '4:3' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'masonry', columns: { mobile: 2, desktop: 3 }, pagination: 'infinite_scroll' },
-    spacing: 'airy',
-    radius: 'subtle',
-    imageStyle: 'subtle_shadow',
-    animation: 'fade',
-  },
-};
-
-// ============================================================
-// General / Fallback Archetype
-// ============================================================
-
-const GENERAL_DEFAULT: Archetype = {
-  id: 'general-default',
-  name: 'General Store',
-  vertical: 'general',
-  fit: {
-    audiences: [],
-    priceFloor: 0,
-    priceCeiling: 100000,
-    vibes: [],
-  },
-  design: {
-    layout: 'minimal',
-    palette: {
-      mode: 'generated',
-      seed: '#D4356A',
-      primary: '#D4356A',
-      secondary: '#F8E8EE',
-      accent: '#8B1A3A',
-      background: '#FFFAF5',
-      surface: '#FFF5EE',
-      text: '#1A1A2E',
-      textMuted: '#6B6B80',
-    },
-    fonts: { display: 'Playfair Display', body: 'DM Sans', scale: 1.0 },
-    hero: { style: 'full_bleed', height: 'half', overlayOpacity: 0.3 },
-    productCard: { style: 'minimal', showPrice: true, showRating: false, imageRatio: '3:4' },
-    nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
-    collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 4 }, pagination: 'infinite_scroll' },
-    spacing: 'balanced',
-    radius: 'subtle',
-    imageStyle: 'subtle_shadow',
-    animation: 'fade',
-  },
-};
-
-// ============================================================
-// Registry
-// ============================================================
-
-const ALL_ARCHETYPES: Archetype[] = [
-  FASHION_LUXURY,
-  FASHION_TRENDY,
-  FASHION_TRADITIONAL,
-  JEWELLERY_PREMIUM,
-  JEWELLERY_AFFORDABLE,
-  ELECTRONICS_DEFAULT,
-  BEAUTY_DEFAULT,
-  FOOD_DEFAULT,
-  HOME_DECOR_DEFAULT,
-  GENERAL_DEFAULT,
-];
-
-// ============================================================
-// Selection Logic
-// ============================================================
-
-/**
- * Select the best archetype for a given vertical + seller context.
- * Scoring: audience keyword match + price range overlap + vibe match.
- */
 export function selectArchetype(
   vertical: string,
   sellerContext?: {
@@ -465,70 +348,127 @@ export function selectArchetype(
     brandVibe?: string;
   },
 ): Archetype {
-  // Filter to matching vertical
-  const candidates = ALL_ARCHETYPES.filter((a) => a.vertical === vertical);
-  if (candidates.length === 0) return GENERAL_DEFAULT;
-  if (candidates.length === 1) return candidates[0]!;
-  if (!sellerContext) return candidates[0]!;
-
-  let bestScore = -1;
-  let bestArchetype = candidates[0]!;
-
-  for (const archetype of candidates) {
-    let score = 0;
-
-    // Audience keyword matching
-    if (sellerContext.audience) {
-      const audienceWords = sellerContext.audience.toLowerCase().split(/\s+/);
-      for (const word of audienceWords) {
-        if (archetype.fit.audiences.some((a) => a.includes(word) || word.includes(a))) {
-          score += 3;
-        }
-      }
-    }
-
-    // Price range overlap
-    if (sellerContext.priceRange) {
-      const { min, max } = sellerContext.priceRange;
-      const overlapMin = Math.max(min, archetype.fit.priceFloor);
-      const overlapMax = Math.min(max, archetype.fit.priceCeiling);
-      if (overlapMin <= overlapMax) {
-        // Normalize overlap to 0-5 score
-        const overlapRange = overlapMax - overlapMin;
-        const totalRange = max - min || 1;
-        score += Math.min(5, (overlapRange / totalRange) * 5);
-      }
-    }
-
-    // Brand vibe matching
-    if (sellerContext.brandVibe) {
-      const vibeWords = sellerContext.brandVibe.toLowerCase().split(/\s+/);
-      for (const word of vibeWords) {
-        if (archetype.fit.vibes.some((v) => v.includes(word) || word.includes(v))) {
-          score += 2;
-        }
-      }
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestArchetype = archetype;
-    }
+  ensureLoaded();
+  const norm = vertical === 'homedecor' ? 'home_decor' : vertical;
+  const candidates = _archetypes.filter(a => a.vertical === norm);
+  if (candidates.length === 0) {
+    return _archetypes.find(a => a.vertical === 'general') || FALLBACK_ARCHETYPES[0]!;
+  }
+  if (candidates.length === 1 || !sellerContext) {
+    return candidates.sort((a, b) => (b.cluster_size * b.quality_score) - (a.cluster_size * a.quality_score))[0]!;
   }
 
-  return bestArchetype;
+  let bestScore = -1;
+  let best = candidates[0]!;
+
+  for (const arch of candidates) {
+    let score = Math.min(5, arch.cluster_size * 1.5) + (arch.quality_score / 100) * 3;
+
+    if (sellerContext.audience) {
+      for (const word of sellerContext.audience.toLowerCase().split(/\s+/)) {
+        if (arch.fit.audiences.some(a => a.includes(word) || word.includes(a))) score += 3;
+      }
+    }
+    if (sellerContext.priceRange) {
+      const { min, max } = sellerContext.priceRange;
+      const oMin = Math.max(min, arch.fit.priceFloor);
+      const oMax = Math.min(max, arch.fit.priceCeiling);
+      if (oMin <= oMax) score += Math.min(5, ((oMax - oMin) / (max - min || 1)) * 5);
+    }
+    if (sellerContext.brandVibe) {
+      for (const word of sellerContext.brandVibe.toLowerCase().split(/\s+/)) {
+        if (arch.fit.vibes.some(v => v.includes(word) || word.includes(v))) score += 2;
+        if (arch.tags.some(t => t.includes(word) || word.includes(t))) score += 1;
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = arch; }
+  }
+  return best;
 }
 
-/**
- * Get all archetypes for a vertical (for UI display or testing).
- */
 export function getArchetypesForVertical(vertical: string): Archetype[] {
-  return ALL_ARCHETYPES.filter((a) => a.vertical === vertical);
+  ensureLoaded();
+  return _archetypes.filter(a => a.vertical === (vertical === 'homedecor' ? 'home_decor' : vertical));
 }
 
-/**
- * Get an archetype by ID.
- */
 export function getArchetypeById(id: string): Archetype | undefined {
-  return ALL_ARCHETYPES.find((a) => a.id === id);
+  ensureLoaded();
+  return _archetypes.find(a => a.id === id);
 }
+
+export function getSectionPattern(archetypeId: string): SectionPattern[] {
+  ensureLoaded();
+  return _archetypes.find(a => a.id === archetypeId)?.section_pattern || [];
+}
+
+export function getRepresentativeComposition(archetypeId: string): Composition | undefined {
+  ensureLoaded();
+  const arch = _archetypes.find(a => a.id === archetypeId);
+  if (!arch) return undefined;
+  return _compositions.find(c => c.source_url === arch.representative_source);
+}
+
+export function getAllCompositions(): Composition[] {
+  ensureLoaded();
+  return _compositions;
+}
+
+// ============================================================
+// Fallback (if composition-library.json is missing)
+// ============================================================
+
+const FALLBACK_ARCHETYPES: Archetype[] = [
+  {
+    id: 'fallback-fashion', name: 'Fashion Default', vertical: 'fashion',
+    cluster_size: 1, confidence: 0.5, representative_source: '', quality_score: 80,
+    vector: [], member_ids: [],
+    tags: ['slideshow', 'tall-hero', 'carousel'],
+    palette_centroid: { avg_gold_proportion: 0, avg_maroon_proportion: 0, dark_theme_ratio: 0 },
+    section_pattern: [
+      { type: 'announcement_bar', position: 0, required: false, background_hint: 'light' },
+      { type: 'hero_slideshow', position: 1, variant: 'slide', required: true, background_hint: 'dark' },
+      { type: 'trust_bar', position: 2, required: true, background_hint: 'light' },
+      { type: 'product_carousel', position: 3, variant: 'full_width', required: true, background_hint: 'light' },
+      { type: 'category_grid', position: 4, variant: '3col', required: false, background_hint: 'light' },
+      { type: 'featured_products', position: 5, variant: 'grid_minimal', required: true, background_hint: 'light' },
+      { type: 'about_brand', position: 6, required: false, background_hint: 'light' },
+      { type: 'newsletter', position: 7, required: true, background_hint: 'light' },
+    ],
+    fit: { audiences: ['women', 'men', 'youth'], priceFloor: 300, priceCeiling: 10000, vibes: ['modern', 'clean'] },
+    design: {
+      layout: 'magazine',
+      palette: { mode: 'generated', seed: '#8B6F47', primary: '#8B6F47', secondary: '#F5EDE3', accent: '#C9956B', background: '#FEFCF9', surface: '#F8F4EF', text: '#2C2420', textMuted: '#7A706A' },
+      fonts: { display: 'DM Sans', body: 'Inter', scale: 1.0 },
+      hero: { style: 'full_bleed', height: 'full', overlayOpacity: 0.3 },
+      productCard: { style: 'hover_reveal', showPrice: true, showRating: false, imageRatio: '3:4' },
+      nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
+      collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 3 }, pagination: 'infinite_scroll' },
+      spacing: 'balanced', radius: 'subtle', imageStyle: 'hover_zoom', animation: 'fade',
+    },
+  },
+  {
+    id: 'fallback-general', name: 'General Default', vertical: 'general',
+    cluster_size: 1, confidence: 0.5, representative_source: '', quality_score: 70,
+    vector: [], member_ids: [],
+    tags: ['slideshow', 'carousel'],
+    palette_centroid: { avg_gold_proportion: 0, avg_maroon_proportion: 0, dark_theme_ratio: 0 },
+    section_pattern: [
+      { type: 'hero_slideshow', position: 0, variant: 'slide', required: true, background_hint: 'light' },
+      { type: 'trust_bar', position: 1, required: true, background_hint: 'light' },
+      { type: 'featured_products', position: 2, variant: 'grid_minimal', required: true, background_hint: 'light' },
+      { type: 'about_brand', position: 3, required: false, background_hint: 'light' },
+      { type: 'newsletter', position: 4, required: true, background_hint: 'light' },
+    ],
+    fit: { audiences: [], priceFloor: 0, priceCeiling: 100000, vibes: ['modern', 'clean'] },
+    design: {
+      layout: 'minimal',
+      palette: { mode: 'generated', seed: '#D4356A', primary: '#D4356A', secondary: '#F8E8EE', accent: '#8B1A3A', background: '#FFFAF5', surface: '#FFF5EE', text: '#1A1A2E', textMuted: '#6B6B80' },
+      fonts: { display: 'DM Sans', body: 'Inter', scale: 1.0 },
+      hero: { style: 'full_bleed', height: 'half', overlayOpacity: 0.3 },
+      productCard: { style: 'minimal', showPrice: true, showRating: false, imageRatio: '3:4' },
+      nav: { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: true },
+      collection: { style: 'uniform_grid', columns: { mobile: 2, desktop: 4 }, pagination: 'infinite_scroll' },
+      spacing: 'balanced', radius: 'subtle', imageStyle: 'subtle_shadow', animation: 'fade',
+    },
+  },
+];

@@ -1,24 +1,24 @@
 import { env } from '../env.js';
-import { selectArchetype } from '../lib/archetypes.js';
+import { selectArchetype, getRepresentativeComposition } from '../lib/archetypes.js';
+import type { SectionPattern, Composition } from '../lib/archetypes.js';
 
 // ============================================================
-// Store Design AI Service
+// Store Design AI Service v2 — Composition Library Powered
 //
-// Takes product photos + store name + vertical and generates
-// a complete DesignTokens config that makes the store look
-// like it was custom designed for this specific brand.
+// Now includes real section patterns from 106 analyzed stores.
+// The AI gets both design tokens AND section ordering.
 //
-// This is Call 2 of the two-call pipeline:
-//   Call 1: Photos → product listings (catalog-ai.service.ts)
-//   Call 2: Photos → store design config (this file)
-//
-// Both calls run in parallel during store creation.
+// Pipeline:
+//   1. selectArchetype() picks best match (75 data-driven archetypes)
+//   2. Section pattern from real stores feeds into the prompt
+//   3. AI customizes palette from product photos
+//   4. Returns DesignTokens + section config for dynamic rendering
 // ============================================================
 
 export interface StoreDesignInput {
   storeName: string;
   vertical: string;
-  productImages: string[];  // base64 data URLs or http URLs
+  productImages: string[];
   productInfo?: {
     names?: string[];
     priceRange?: { min: number; max: number };
@@ -29,7 +29,7 @@ export interface StoreDesignInput {
     priceRange?: { min: number; max: number };
     brandVibe?: string;
   };
-  sellerHints?: string;  // "I want a luxury feel" or "keep it minimal"
+  sellerHints?: string;
 }
 
 export interface StoreDesignOutput {
@@ -38,6 +38,10 @@ export interface StoreDesignOutput {
   heroTagline: string;
   heroSubtext: string;
   archetypeId?: string;
+  /** Section layout from composition library — drives dynamic homepage */
+  sectionLayout: SectionPattern[];
+  /** Representative store URL for reference */
+  representativeStore?: string;
   processingTimeMs: number;
 }
 
@@ -68,7 +72,7 @@ You must return ONLY valid JSON matching this exact structure:
       "scale": 1.0
     },
     "hero": {
-      "style": "full_bleed|split_image|gradient|minimal_text|parallax",
+      "style": "full_bleed|split_image|gradient|carousel|video|minimal_text|parallax",
       "height": "full|half|auto",
       "overlayOpacity": 0.3
     },
@@ -99,26 +103,17 @@ You must return ONLY valid JSON matching this exact structure:
     "imageStyle": "raw|subtle_shadow|border_frame|hover_zoom|rounded",
     "animation": "none|fade|slide_up|staggered"
   },
-  "storeBio": "2-3 sentence store description for the about section. Write for Indian buyers. Mention the brand's unique value. Be specific, not generic.",
-  "heroTagline": "Short, punchy hero headline (4-8 words). MUST be specific to this brand — not generic. Examples of GOOD taglines: 'Handwoven Silk, Timeless Grace', 'Bold Accessories for Bold Women', 'Farm to Kitchen, Pure & Fresh'. Examples of BAD taglines: 'Discover Our Collection', 'Welcome to Our Store', 'Shop the Latest'.",
-  "heroSubtext": "One line (max 15 words) supporting text under the hero. Should complement the tagline, not repeat it."
+  "storeBio": "2-3 sentence store description for the about section. Write for Indian buyers.",
+  "heroTagline": "Short, punchy hero headline (4-8 words). MUST be specific to this brand.",
+  "heroSubtext": "One line (max 15 words) supporting text under the hero."
 }
 
 DESIGN PRINCIPLES:
-- EXTRACT colors from the actual product photos. If the products are cream leather with gold hardware, use cream/gold/warm tones. If they're colorful textiles, use vibrant jewel tones.
-- Match the font personality to the brand: serif fonts (Playfair Display, Lora, Cormorant) for luxury/traditional. Sans-serif (Inter, DM Sans, Plus Jakarta Sans) for modern/minimal. Display fonts (Outfit, Space Grotesk) for trendy/youth.
-- Layout should match product count expectations: boutique for <20 products, catalog_grid for >50, single_product_hero for premium/limited.
+- EXTRACT colors from the actual product photos. If the products are cream leather with gold hardware, use cream/gold/warm tones.
+- Match font personality to brand: serif fonts for luxury/traditional, sans-serif for modern/minimal.
 - Indian market context: include WhatsApp, COD trust badges, festival-ready designs.
-- Never use pure white (#FFFFFF) as background — always slightly tinted to match the palette.
+- Never use pure white (#FFFFFF) as background — always slightly tinted.
 - Ensure sufficient contrast between text and background (WCAG AA).
-
-VERTICAL-SPECIFIC GUIDANCE:
-- Fashion: editorial layouts, 3:4 image ratios, serif display fonts, hover_reveal cards
-- Jewellery: boutique layout, dark/rich backgrounds, gold accents, sharp radius, 1:1 images
-- Beauty: soft gradients, pill radius, pastel palettes, minimal_text hero
-- Electronics: catalog_grid, compact spacing, sharp radius, sans-serif everything
-- Food: warm earthy palettes, rounded radius, split_image hero, fun body fonts
-- Home decor: airy spacing, magazine layout, muted earth tones, masonry collection
 
 CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 
@@ -126,12 +121,18 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
   const startTime = Date.now();
   const provider = env.AI_PROVIDER || 'openai';
 
-  // Select archetype based on vertical + seller context
+  // Select archetype from composition library (75 data-driven archetypes)
   const archetype = selectArchetype(input.vertical, input.sellerContext);
-  console.log(`[store-design-ai] Selected archetype: ${archetype.id} for ${input.vertical}`);
-  console.log(`[store-design-ai] Using ${provider} for store design generation`);
+  console.log(`[store-design-ai] Selected archetype: ${archetype.id} (${archetype.name}) for ${input.vertical}`);
+  console.log(`[store-design-ai] Cluster size: ${archetype.cluster_size}, Quality: ${archetype.quality_score}`);
+  console.log(`[store-design-ai] Representative: ${archetype.representative_source}`);
+  console.log(`[store-design-ai] Using ${provider} for generation`);
 
-  const userPrompt = buildUserPrompt(input, archetype);
+  // Get section pattern and representative composition
+  const sectionPattern = archetype.section_pattern || [];
+  const representative = getRepresentativeComposition(archetype.id);
+
+  const userPrompt = buildUserPrompt(input, archetype, sectionPattern, representative);
   let rawText: string;
 
   if (provider === 'anthropic') {
@@ -150,7 +151,6 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     parsed = JSON.parse(cleanJson);
   } catch (e) {
     console.error('[store-design-ai] Failed to parse:', cleanJson.substring(0, 500));
-    // Fallback: use archetype design directly
     console.log('[store-design-ai] Falling back to archetype design');
     return {
       design: archetype.design as any,
@@ -158,11 +158,12 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
       heroTagline: input.storeName,
       heroSubtext: 'Discover our latest collection',
       archetypeId: archetype.id,
+      sectionLayout: sectionPattern,
+      representativeStore: archetype.representative_source,
       processingTimeMs: Date.now() - startTime,
     };
   }
 
-  // Validate and fix palette contrast (WCAG AA)
   if (parsed.design?.palette) {
     parsed.design.palette = validateAndFixPalette(parsed.design.palette);
   }
@@ -173,41 +174,46 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     heroTagline: parsed.heroTagline || input.storeName,
     heroSubtext: parsed.heroSubtext || 'Discover our latest collection',
     archetypeId: archetype.id,
+    sectionLayout: sectionPattern,
+    representativeStore: archetype.representative_source,
     processingTimeMs: Date.now() - startTime,
   };
 }
 
-function buildUserPrompt(input: StoreDesignInput, archetype: { id: string; name: string; design: any }): string {
+function buildUserPrompt(
+  input: StoreDesignInput,
+  archetype: { id: string; name: string; design: any; tags: string[] },
+  sectionPattern: SectionPattern[],
+  representative: Composition | null | undefined,
+): string {
   let prompt = `Design a store for "${input.storeName}" in the "${input.vertical}" vertical.`;
 
-  // Include seller context
-  if (input.sellerContext?.audience) {
-    prompt += `\nTarget audience: ${input.sellerContext.audience}`;
-  }
-  if (input.sellerContext?.priceRange) {
-    prompt += `\nPrice range: ₹${input.sellerContext.priceRange.min} - ₹${input.sellerContext.priceRange.max}`;
-  }
-  if (input.sellerContext?.brandVibe) {
-    prompt += `\nBrand vibe: ${input.sellerContext.brandVibe}`;
-  }
+  if (input.sellerContext?.audience) prompt += `\nTarget audience: ${input.sellerContext.audience}`;
+  if (input.sellerContext?.priceRange) prompt += `\nPrice range: ₹${input.sellerContext.priceRange.min} - ₹${input.sellerContext.priceRange.max}`;
+  if (input.sellerContext?.brandVibe) prompt += `\nBrand vibe: ${input.sellerContext.brandVibe}`;
+  if (input.productInfo?.names?.length) prompt += `\n\nProducts include: ${input.productInfo.names.slice(0, 5).join(', ')}`;
+  if (input.productInfo?.priceRange) prompt += `\nProduct price range: ₹${input.productInfo.priceRange.min} - ₹${input.productInfo.priceRange.max}`;
+  if (input.productInfo?.tags?.length) prompt += `\nProduct tags: ${input.productInfo.tags.slice(0, 15).join(', ')}`;
+  if (input.sellerHints) prompt += `\n\nSeller's preferences: "${input.sellerHints}"`;
 
-  if (input.productInfo?.names?.length) {
-    prompt += `\n\nProducts include: ${input.productInfo.names.slice(0, 5).join(', ')}`;
-  }
-  if (input.productInfo?.priceRange) {
-    prompt += `\nProduct price range: ₹${input.productInfo.priceRange.min} - ₹${input.productInfo.priceRange.max}`;
-  }
-  if (input.productInfo?.tags?.length) {
-    prompt += `\nProduct tags: ${input.productInfo.tags.slice(0, 15).join(', ')}`;
-  }
-  if (input.sellerHints) {
-    prompt += `\n\nSeller's preferences: "${input.sellerHints}"`;
-  }
-
-  // Provide archetype as starting point for the AI
+  // Provide archetype as starting point
   prompt += `\n\nUse this as a STARTING POINT (archetype: "${archetype.name}"), then customize the palette based on the actual product photos:\n${JSON.stringify(archetype.design, null, 2)}`;
 
-  prompt += `\n\nIMPORTANT: Override the palette colors above with colors extracted from the product photos. Keep the layout, fonts, and spacing from the archetype unless the photos suggest a different aesthetic.`;
+  // Add section pattern context from real stores
+  if (sectionPattern.length > 0) {
+    const sectionSummary = sectionPattern
+      .map(s => `${s.type}${s.variant ? ` (${s.variant})` : ''}`)
+      .join(' → ');
+    prompt += `\n\nThis archetype's homepage section layout (from ${archetype.tags.join(', ')} pattern):\n${sectionSummary}`;
+    prompt += `\nThis pattern was derived from analyzing ${representative?.source_url || 'real stores'} and similar high-performing stores.`;
+  }
+
+  // Add real font pairing from composition data
+  if (representative?.typography_hint) {
+    prompt += `\n\nReal-world font pairing from this archetype: ${representative.typography_hint.heading_font} (headings) + ${representative.typography_hint.body_font} (body). Use these as the default unless the brand vibe suggests otherwise.`;
+  }
+
+  prompt += `\n\nIMPORTANT: Override the palette colors above with colors extracted from the product photos. Keep the layout structure and fonts from the archetype unless the photos suggest a different aesthetic.`;
 
   return prompt;
 }
@@ -220,26 +226,15 @@ async function callOpenAI(input: StoreDesignInput, userPrompt: string): Promise<
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
 
-  // Build content: images first, then text
   const content: any[] = [];
-
-  // Send up to 3 product images for design analysis
-  const imagesToSend = input.productImages.slice(0, 3);
-  for (const img of imagesToSend) {
-    content.push({
-      type: 'image_url',
-      image_url: { url: img, detail: 'low' },  // low detail is enough for color/style extraction
-    });
+  for (const img of input.productImages.slice(0, 3)) {
+    content.push({ type: 'image_url', image_url: { url: img, detail: 'low' } });
   }
-
   content.push({ type: 'text', text: userPrompt });
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
       model: 'gpt-4o',
       max_tokens: 1500,
@@ -270,34 +265,20 @@ async function callAnthropic(input: StoreDesignInput, userPrompt: string): Promi
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured');
 
   const client = new Anthropic({ apiKey });
-
-  const imagesToSend = input.productImages.slice(0, 3);
-  const imageContent = imagesToSend.map((img) => {
+  const imageContent = input.productImages.slice(0, 3).map((img) => {
     if (img.startsWith('data:')) {
       const [header, data] = img.split(',');
       const mediaType = header?.match(/data:(.*?);/)?.[1] || 'image/jpeg';
-      return {
-        type: 'image' as const,
-        source: { type: 'base64' as const, media_type: mediaType as any, data: data! },
-      };
+      return { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType as any, data: data! } };
     }
-    return {
-      type: 'image' as const,
-      source: { type: 'url' as const, url: img },
-    };
+    return { type: 'image' as const, source: { type: 'url' as const, url: img } };
   });
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1500,
     system: SYSTEM_PROMPT,
-    messages: [{
-      role: 'user',
-      content: [
-        ...imageContent,
-        { type: 'text' as const, text: userPrompt },
-      ],
-    }],
+    messages: [{ role: 'user', content: [...imageContent, { type: 'text' as const, text: userPrompt }] }],
   });
 
   const textBlock = response.content.find((b) => b.type === 'text');
@@ -307,90 +288,50 @@ async function callAnthropic(input: StoreDesignInput, userPrompt: string): Promi
 
 // ============================================================
 // WCAG Contrast Validator
-//
-// AI-generated palettes occasionally produce low-contrast
-// combinations (yellow-on-white, light-gray-on-cream).
-// This catches them before the store goes live.
-//
-// WCAG AA requirements:
-// - Normal text on background: 4.5:1 minimum
-// - Large text / UI components on background: 3:1 minimum
 // ============================================================
 
 function relativeLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const linear = [r, g, b].map((c) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
-  );
+  const linear = [r, g, b].map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
   return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
 }
 
 export function contrastRatio(hex1: string, hex2: string): number {
   const l1 = relativeLuminance(hex1);
   const l2 = relativeLuminance(hex2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
-/**
- * Darken or lighten a hex color to reach a target contrast ratio
- * against the given background color.
- */
 function adjustForContrast(color: string, background: string, targetRatio: number): string {
   const bgLum = relativeLuminance(background);
   const isLightBg = bgLum > 0.5;
-
   let r = parseInt(color.slice(1, 3), 16);
   let g = parseInt(color.slice(3, 5), 16);
   let b = parseInt(color.slice(5, 7), 16);
 
-  // Adjust in steps toward black (light bg) or white (dark bg)
   for (let i = 0; i < 50; i++) {
     const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     if (contrastRatio(hex, background) >= targetRatio) return hex;
-
-    if (isLightBg) {
-      // Darken
-      r = Math.max(0, r - 5);
-      g = Math.max(0, g - 5);
-      b = Math.max(0, b - 5);
-    } else {
-      // Lighten
-      r = Math.min(255, r + 5);
-      g = Math.min(255, g + 5);
-      b = Math.min(255, b + 5);
-    }
+    if (isLightBg) { r = Math.max(0, r - 5); g = Math.max(0, g - 5); b = Math.max(0, b - 5); }
+    else { r = Math.min(255, r + 5); g = Math.min(255, g + 5); b = Math.min(255, b + 5); }
   }
-
-  // Fallback if we couldn't reach the target
   return isLightBg ? '#1A1A2E' : '#F5F5F5';
 }
 
 export function validateAndFixPalette(palette: any): any {
   const fixed = { ...palette };
-
-  // Ensure we have valid hex colors to work with
   if (!fixed.text || !fixed.background) return fixed;
 
-  // Text on background: WCAG AA (4.5:1)
   if (contrastRatio(fixed.text, fixed.background) < 4.5) {
-    const bgLum = relativeLuminance(fixed.background);
-    fixed.text = bgLum > 0.5 ? '#1A1A2E' : '#F5F5F5';
+    fixed.text = relativeLuminance(fixed.background) > 0.5 ? '#1A1A2E' : '#F5F5F5';
   }
-
-  // Muted text on background: 3:1 minimum (large text standard)
   if (fixed.textMuted && contrastRatio(fixed.textMuted, fixed.background) < 3.0) {
-    const bgLum = relativeLuminance(fixed.background);
-    fixed.textMuted = bgLum > 0.5 ? '#6B6B80' : '#B0B0B0';
+    fixed.textMuted = relativeLuminance(fixed.background) > 0.5 ? '#6B6B80' : '#B0B0B0';
   }
-
-  // Primary on background: 3:1 minimum (for buttons, links)
   if (fixed.primary && contrastRatio(fixed.primary, fixed.background) < 3.0) {
     fixed.primary = adjustForContrast(fixed.primary, fixed.background, 3.0);
   }
-
   return fixed;
 }
