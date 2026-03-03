@@ -1881,7 +1881,7 @@
         ],
         "palette_centroid": {
           "avg_gold_proportion": 0.022486476938453896,
-          "avg_maroon_proportion": 0.000015500155195725988,
+          "avg_maroon_proportion": 1.5500155195725988e-05,
           "dark_theme_ratio": 0
         },
         "tags": [
@@ -2026,7 +2026,7 @@
           }
         ],
         "palette_centroid": {
-          "avg_gold_proportion": 0.000008639448887070301,
+          "avg_gold_proportion": 8.639448887070301e-06,
           "avg_maroon_proportion": 0,
           "dark_theme_ratio": 0.2
         },
@@ -4842,7 +4842,7 @@
           }
         ],
         "palette_centroid": {
-          "avg_gold_proportion": 0.000057271008642875126,
+          "avg_gold_proportion": 5.7271008642875126e-05,
           "avg_maroon_proportion": 0,
           "dark_theme_ratio": 0
         },
@@ -4896,7 +4896,7 @@
           1,
           0.25,
           0,
-          0.000057271008642875126,
+          5.7271008642875126e-05,
           0,
           0.8418972332015809
         ],
@@ -4981,7 +4981,7 @@
           }
         ],
         "palette_centroid": {
-          "avg_gold_proportion": 0.000028387164656964286,
+          "avg_gold_proportion": 2.8387164656964286e-05,
           "avg_maroon_proportion": 0.0027103374216797113,
           "dark_theme_ratio": 0.25
         },
@@ -12198,7 +12198,7 @@
           },
           {
             "hex": "#339933",
-            "proportion": 0.00008242258942246371,
+            "proportion": 8.242258942246371e-05,
             "role": "dark_element"
           }
         ],
@@ -13991,7 +13991,7 @@
           },
           {
             "hex": "#111111",
-            "proportion": 0.00006439097678479484,
+            "proportion": 6.439097678479484e-05,
             "role": "accent"
           }
         ],
@@ -14146,12 +14146,12 @@
           },
           {
             "hex": "#f2f2f2",
-            "proportion": 0.00006957066322344829,
+            "proportion": 6.957066322344829e-05,
             "role": "surface"
           },
           {
             "hex": "#222222",
-            "proportion": 0.000012795060054760881,
+            "proportion": 1.2795060054760881e-05,
             "role": "dark_element"
           }
         ],
@@ -14322,7 +14322,7 @@
           },
           {
             "hex": "#ffe5e8",
-            "proportion": 0.000025819670665804337,
+            "proportion": 2.5819670665804337e-05,
             "role": "decorative"
           }
         ],
@@ -15712,12 +15712,12 @@
           },
           {
             "hex": "#e9d590",
-            "proportion": 0.00002750600259895068,
+            "proportion": 2.750600259895068e-05,
             "role": "decorative"
           },
           {
             "hex": "#f1dfa2",
-            "proportion": 0.00002089155397709378,
+            "proportion": 2.089155397709378e-05,
             "role": "decorative"
           }
         ],
@@ -16368,13 +16368,13 @@
           },
           {
             "hex": "#484843",
-            "proportion": 0.00007116064887949747,
+            "proportion": 7.116064887949747e-05,
             "role": "dark_element"
           }
         ],
         "indian_signals": {
           "has_gold": false,
-          "gold_proportion": 0.0000431972444353515,
+          "gold_proportion": 4.31972444353515e-05,
           "has_maroon": false,
           "maroon_proportion": 0,
           "has_saffron": false,
@@ -17032,7 +17032,7 @@
           },
           {
             "hex": "#585857",
-            "proportion": 0.000027539244328902683,
+            "proportion": 2.7539244328902683e-05,
             "role": "dark_element"
           }
         ],
@@ -17490,12 +17490,12 @@
           },
           {
             "hex": "#4f6a46",
-            "proportion": 0.00006603437516556822,
+            "proportion": 6.603437516556822e-05,
             "role": "dark_sections"
           },
           {
             "hex": "#e5f18b",
-            "proportion": 0.000024735599010395633,
+            "proportion": 2.4735599010395633e-05,
             "role": "accent"
           }
         ],
@@ -17885,7 +17885,7 @@
           },
           {
             "hex": "#9f813a",
-            "proportion": 0.00007870329770682405,
+            "proportion": 7.870329770682405e-05,
             "role": "decorative"
           }
         ],
@@ -18491,7 +18491,7 @@
         ],
         "indian_signals": {
           "has_gold": false,
-          "gold_proportion": 0.000057271008642875126,
+          "gold_proportion": 5.7271008642875126e-05,
           "has_maroon": false,
           "maroon_proportion": 0,
           "has_saffron": false,
@@ -19789,7 +19789,7 @@
             "role": "text"
           },
           {
-            "hex": "#003c7cc00",
+            "hex": "#003c7c",
             "proportion": 0.03754855082666938,
             "role": "dark_element"
           },
@@ -20267,12 +20267,12 @@
           },
           {
             "hex": "#fedee0",
-            "proportion": 0.00007975890830910937,
+            "proportion": 7.975890830910937e-05,
             "role": "decorative"
           },
           {
             "hex": "#231f20",
-            "proportion": 0.000059800289524929534,
+            "proportion": 5.9800289524929534e-05,
             "role": "dark_element"
           }
         ],
@@ -23011,7 +23011,7 @@
       "palette_hint": {
         "background": "#000000",
         "surface": "#0d0d0d",
-        "accent": "#003a000",
+        "accent": "#003a00",
         "proportions": [
           {
             "hex": "#000000",

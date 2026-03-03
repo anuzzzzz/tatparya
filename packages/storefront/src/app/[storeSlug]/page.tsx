@@ -131,6 +131,9 @@ function SectionRenderer({
     case 'hero_slideshow':
     case 'hero_minimal':
     case 'hero_banner':
+    case 'hero_bento':
+    case 'hero_full_bleed':
+    case 'hero_split':
       return <HeroSection imageUrl={heroImage} />;
 
     // ── Trust / USP bar ──
@@ -161,7 +164,8 @@ function SectionRenderer({
     // ── Category sections ──
     case 'category_grid':
     case 'collection_banner':
-    case 'collection_list': {
+    case 'collection_list':
+    case 'category_pills': {
       if (categories.length === 0) return null;
       return (
         <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
@@ -238,7 +242,8 @@ function SectionRenderer({
     }
 
     // ── Testimonials ──
-    case 'testimonials': {
+    case 'testimonials':
+    case 'testimonial_cards': {
       return (
         <section
           className="py-12 md:py-16"
@@ -321,6 +326,68 @@ function SectionRenderer({
     // ── Announcement bar (usually handled by layout, skip) ──
     case 'announcement_bar':
       return null;
+
+    // ── Stats bar (metrics / numbers) ──
+    case 'stats_bar': {
+      return (
+        <section
+          className="py-8 md:py-10"
+          style={{ backgroundColor: 'var(--color-surface)' }}
+        >
+          <div className="container-store">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              {[
+                { label: 'Happy Customers', value: '10,000+' },
+                { label: 'Products', value: '500+' },
+                { label: 'Cities Delivered', value: '100+' },
+                { label: 'Years in Business', value: '5+' },
+              ].map((stat, i) => (
+                <div key={i}>
+                  <div className="text-2xl md:text-3xl font-bold font-display" style={{ color: 'var(--color-primary)' }}>
+                    {stat.value}
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ── Countdown timer (sale / launch) ──
+    case 'countdown_timer': {
+      return (
+        <section
+          className="py-6 md:py-8 text-center"
+          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)' }}
+        >
+          <div className="container-store">
+            <p className="text-sm font-medium uppercase tracking-wider mb-1">Limited Time Offer</p>
+            <p className="text-lg font-display font-bold">Sale ends soon — Shop now!</p>
+          </div>
+        </section>
+      );
+    }
+
+    // ── Quote block ──
+    case 'quote_block': {
+      return (
+        <section
+          className="py-12 md:py-16"
+          style={{ backgroundColor: 'var(--color-background)' }}
+        >
+          <div className="container-store text-center max-w-2xl mx-auto">
+            <blockquote className="text-lg md:text-xl font-display italic" style={{ color: 'var(--color-text)' }}>
+              &ldquo;Quality is remembered long after the price is forgotten.&rdquo;
+            </blockquote>
+            <p className="text-sm mt-4" style={{ color: 'var(--color-text-muted)' }}>— Our Promise</p>
+          </div>
+        </section>
+      );
+    }
 
     // ── Unknown section types — silently skip ──
     default:

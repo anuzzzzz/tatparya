@@ -242,12 +242,23 @@ function hexLuminance(hex: string): number {
   }
 }
 
+function sanitizeHex(hex: string, fallback: string): string {
+  if (/^#[0-9A-Fa-f]{6}$/.test(hex)) return hex;
+  // Try to fix common issues (e.g. #003a000 → #003a00)
+  if (hex.startsWith('#') && hex.length === 8) return hex.slice(0, 7);
+  if (hex.startsWith('#') && hex.length === 4) {
+    // Expand shorthand #RGB → #RRGGBB
+    return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+  return fallback;
+}
+
 function buildPalette(comp: Composition | null, vertical: string) {
   if (comp?.palette_hint) {
     const ph = comp.palette_hint;
-    const bg = ph.background || '#FAFAF5';
-    const surface = ph.surface || '#F5F2ED';
-    const accent = ph.accent || '#D4356A';
+    const bg = sanitizeHex(ph.background || '#FAFAF5', '#FAFAF5');
+    const surface = sanitizeHex(ph.surface || '#F5F2ED', '#F5F2ED');
+    const accent = sanitizeHex(ph.accent || '#D4356A', '#D4356A');
     const bgLum = hexLuminance(bg);
     return {
       mode: 'generated' as const,

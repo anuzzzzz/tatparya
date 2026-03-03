@@ -275,7 +275,7 @@ const RULES: PatternRule[] = [
   {
     patterns: [
       /\b(my\s+)?(store|shop|website)\s*(link|url|address)\b/i,
-      /\bwhere\s*(is|can)\s*(i find\s+)?(my\s+)?(store|shop|site)\b/i,
+      /\bwhere\s*(is|can)\s*(i find\s+)?(my\s+)?(store|shop|site|website)\b/i,
       /\bshare\s*(my\s+)?(store|link)\b/i,
     ],
     intent: 'store.link',

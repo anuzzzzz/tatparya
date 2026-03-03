@@ -354,7 +354,20 @@ export const storeRouter = router({
         heroTagline: result.heroTagline,
         heroSubtext: result.heroSubtext,
         storeBio: result.storeBio,
-        sections: existingConfig.sections || { homepage: [], productPage: [] },
+        sections: {
+          ...(existingConfig.sections || {}),
+          // Wire sectionLayout from composition engine into config.sections.homepage
+          homepage: result.sectionLayout.map((s: any) => ({
+            type: s.type,
+            config: {
+              variant: s.variant,
+              background_hint: s.background_hint,
+              position: s.position,
+              required: s.required,
+            },
+          })),
+          productPage: existingConfig.sections?.productPage || [],
+        },
         language: existingConfig.language || 'en',
         currency: existingConfig.currency || 'INR',
         integrations: existingConfig.integrations || {},
