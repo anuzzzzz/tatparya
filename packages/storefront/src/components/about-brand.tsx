@@ -2,16 +2,20 @@
 
 import React from 'react';
 import { useStore } from './store-provider';
+import { useReveal } from '@/hooks/use-reveal';
+import { cn } from '@/lib/utils';
 
 export function AboutBrand() {
   const { store, design, config } = useStore();
+  const [revRef, visible] = useReveal();
 
-  // Use AI-generated bio, falling back to store description
   const bio = (config as any).storeBio || store.description;
   if (!bio) return null;
 
   return (
     <section
+      ref={revRef as React.RefObject<HTMLElement>}
+      className={cn('transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden')}
       style={{
         backgroundColor: design.palette.background,
         paddingTop: 'var(--spacing-section)',

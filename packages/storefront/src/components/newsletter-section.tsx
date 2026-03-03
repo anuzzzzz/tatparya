@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import { useStore } from './store-provider';
+import { useReveal } from '@/hooks/use-reveal';
 import { cn } from '@/lib/utils';
 
 export function NewsletterSection() {
   const { store, design } = useStore();
   const [phone, setPhone] = useState('');
+  const [revRef, visible] = useReveal();
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -19,6 +21,8 @@ export function NewsletterSection() {
 
   return (
     <section
+      ref={revRef as React.RefObject<HTMLElement>}
+      className={cn('transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden')}
       style={{
         backgroundColor: design.palette.surface,
         paddingTop: 'var(--spacing-section)',

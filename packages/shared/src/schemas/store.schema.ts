@@ -86,6 +86,33 @@ export const CheckoutConfig = z.object({
   whatsappCheckout: z.boolean().default(false),
 });
 
+// ============================================================
+// Tier 3 — Component-Level Design Tokens (V2)
+// Controls HOW sections behave, not just appearance
+// ============================================================
+
+export const HeroTokens = z.object({
+  overlayGradient: z.enum(['cinematic-bottom', 'center-vignette', 'none']).default('cinematic-bottom'),
+  textPlacement: z.enum(['bottom-left', 'center', 'split-left']).default('bottom-left'),
+  showScrollHint: z.boolean().default(true),
+  slideTransition: z.enum(['crossfade', 'slide', 'zoom']).default('crossfade'),
+}).default({});
+
+export const CardTokens = z.object({
+  hoverEffect: z.enum(['lift', 'zoom', 'overlay', 'none']).default('zoom'),
+  showSecondImage: z.boolean().default(true),
+  showQuickAdd: z.boolean().default(true),
+  badgeStyle: z.enum(['pill', 'tag', 'corner-ribbon']).default('pill'),
+  priceDisplay: z.enum(['stacked', 'inline', 'prominent']).default('stacked'),
+}).default({});
+
+export const DecorativeTokens = z.object({
+  dividerStyle: z.enum(['line', 'gradient-fade', 'pattern-ethnic', 'none']).default('gradient-fade'),
+  sectionBgVariation: z.boolean().default(true),
+  useGlassmorphism: z.boolean().default(true),
+  textureOverlay: z.enum(['none', 'noise-subtle', 'linen', 'ethnic-pattern']).default('none'),
+}).default({});
+
 export const DesignTokens = z.object({
   layout: z.enum(['minimal', 'magazine', 'catalog_grid', 'single_product_hero', 'boutique', 'editorial', 'marketplace']).default('minimal'),
   palette: PaletteConfig,
@@ -99,6 +126,10 @@ export const DesignTokens = z.object({
   radius: z.enum(['sharp', 'subtle', 'rounded', 'pill']).default('rounded'),
   imageStyle: z.enum(['raw', 'subtle_shadow', 'border_frame', 'hover_zoom', 'rounded']).default('subtle_shadow'),
   animation: z.enum(['none', 'fade', 'slide_up', 'bounce', 'staggered']).default('fade'),
+  // V2: Tier 3 component tokens
+  heroTokens: HeroTokens.default({}),
+  cardTokens: CardTokens.default({}),
+  decorativeTokens: DecorativeTokens.default({}),
 });
 
 export type DesignTokens = z.infer<typeof DesignTokens>;
@@ -109,7 +140,9 @@ export type DesignTokens = z.infer<typeof DesignTokens>;
 
 export const SectionConfig = z.object({
   type: z.string().min(1),
+  variant: z.string().optional(),
   config: z.record(z.unknown()).default({}),
+  background_hint: z.enum(['light', 'dark', 'surface', 'primary']).optional(),
 });
 
 export const SectionsConfig = z.object({

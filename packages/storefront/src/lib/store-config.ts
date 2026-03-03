@@ -48,6 +48,23 @@ export function designTokensToCssVars(tokens: DesignTokens): Record<string, stri
   // Hero
   vars['--hero-overlay-opacity'] = String(tokens.hero?.overlayOpacity ?? 0.3);
 
+  // V2: Tier 3 — Component tokens
+  if (tokens.heroTokens) {
+    vars['--hero-overlay-gradient'] = tokens.heroTokens.overlayGradient || 'cinematic-bottom';
+    vars['--hero-text-placement'] = tokens.heroTokens.textPlacement || 'bottom-left';
+    vars['--hero-slide-transition'] = tokens.heroTokens.slideTransition || 'crossfade';
+  }
+  if (tokens.cardTokens) {
+    vars['--card-hover-effect'] = tokens.cardTokens.hoverEffect || 'zoom';
+    vars['--card-badge-style'] = tokens.cardTokens.badgeStyle || 'pill';
+    vars['--card-price-display'] = tokens.cardTokens.priceDisplay || 'stacked';
+  }
+  if (tokens.decorativeTokens) {
+    vars['--divider-style'] = tokens.decorativeTokens.dividerStyle || 'gradient-fade';
+    vars['--section-bg-variation'] = tokens.decorativeTokens.sectionBgVariation ? '1' : '0';
+    vars['--use-glassmorphism'] = tokens.decorativeTokens.useGlassmorphism ? '1' : '0';
+  }
+
   return vars;
 }
 

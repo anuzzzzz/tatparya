@@ -4,36 +4,24 @@ import { ProductGrid } from '@/components/product-grid';
 import { TrustBar } from '@/components/trust-bar';
 import { AboutBrand } from '@/components/about-brand';
 import { NewsletterSection } from '@/components/newsletter-section';
+import { MarqueeBanner } from '@/components/marquee-banner';
+import { Testimonials } from '@/components/testimonials';
+import { SectionDivider } from '@/components/section-divider';
+import { StatsBar } from '@/components/stats-bar';
+import { CategoryTiles } from '@/components/category-tiles';
 import Link from 'next/link';
 
 // ============================================================
-// Store Homepage v2 — Dynamic Section Renderer
+// Store Homepage v2 — Polymorphic Section Registry
 //
-// Instead of a hardcoded layout (Hero → Trust → Products → About → Newsletter),
-// this reads the section_pattern from the store's config and renders
-// sections in the order defined by the composition engine archetype.
-//
-// Section mapping:
-//   Composition Engine Type   →   React Component
-//   ─────────────────────────────────────────────
-//   announcement_bar          →   (rendered by layout/navbar)
-//   hero_slideshow             →   HeroSection
-//   hero_minimal               →   HeroSection (minimal variant)
-//   trust_bar                  →   TrustBar
-//   product_carousel           →   ProductGrid (carousel mode)
-//   featured_products          →   ProductGrid
-//   category_grid              →   CategorySection
-//   collection_banner          →   CategorySection (banner variant)
-//   about_brand                →   AboutBrand
-//   newsletter                 →   NewsletterSection
-//   marquee                    →   MarqueeBanner
-//   ugc_gallery                →   UGCGallery
-//   video_section              →   VideoSection
-//   logo_bar                   →   LogoBar
-//   testimonials               →   Testimonials
-//
-// Unmapped types are silently skipped (no crashes).
-// If no section config exists, falls back to the classic layout.
+// Renders homepage sections from the composition engine config.
+// V2 improvements over v1:
+//   - Background alternation (surface/background rhythm)
+//   - Gradient-fade dividers between sections
+//   - New section types: marquee, stats_bar, testimonials, category_tiles
+//   - Product display variants (carousel, editorial, grid)
+//   - Hero variants (slideshow, bento, full_bleed, minimal, split)
+//   - Staggered reveal animations on every section
 // ============================================================
 
 interface HomePageProps {
@@ -44,7 +32,6 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   const store = await api.store.get.query({ slug: params.storeSlug });
   const storeUrl = `/${params.storeSlug}`;
 
-  // Fetch products
   const products = await api.product.list.query({
     storeId: store.id,
     status: 'active',
@@ -52,268 +39,228 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   });
   const productItems = (products as any).items || [];
 
-  // Fetch categories
   let categories: any[] = [];
   try {
     categories = await api.category.getTree.query({ storeId: store.id });
   } catch { /* categories might not exist */ }
 
-  const heroImage = pickHeroImage(productItems);
-
-  // Get section layout from store config
+  const heroImages = pickHeroImages(productItems);
   const config = store.config as any;
   const sectionLayout = config?.sections?.homepage || [];
 
-  // If no section config, use classic hardcoded layout
+  // V2: Get decorative settings
+  const decorativeTokens = config?.design?.decorativeTokens || {};
+  const useBgVariation = decorativeTokens.sectionBgVariation !== false;
+  const dividerStyle = decorativeTokens.dividerStyle || 'gradient-fade';
+
+  // If no section config, use classic layout
   if (!sectionLayout || sectionLayout.length === 0) {
-    return <ClassicLayout
-      storeUrl={storeUrl}
-      heroImage={heroImage}
-      categories={categories}
-      productItems={productItems}
-    />;
+    return (
+      <ClassicLayout
+        storeUrl={storeUrl}
+        heroImages={heroImages}
+        categories={categories}
+        productItems={productItems}
+        useBgVariation={useBgVariation}
+        dividerStyle={dividerStyle}
+      />
+    );
   }
 
-  // Dynamic section renderer
+  // V2: Track product section count for different slices
+  let productSectionCount = 0;
+
   return (
     <div>
-      {sectionLayout.map((section: any, index: number) => (
-        <SectionRenderer
-          key={`${section.type}-${index}`}
-          section={section}
-          storeUrl={storeUrl}
-          storeSlug={params.storeSlug}
-          heroImage={heroImage}
-          categories={categories}
-          productItems={productItems}
-          sectionIndex={index}
-        />
-      ))}
+      {sectionLayout.map((section: any, index: number) => {
+        const isProductSection = ['product_carousel', 'featured_products', 'product_grid'].includes(section.type);
+        if (isProductSection) productSectionCount++;
+        const currentProductSlice = productSectionCount;
+
+        return (
+          <div key={`${section.type}-${index}`}>
+            {/* V2: Divider between sections (skip before first, after hero) */}
+            {index > 0 && !isHeroType(sectionLayout[index - 1]?.type) && (
+              <SectionDivider style={dividerStyle} />
+            )}
+            <SectionRenderer
+              section={section}
+              storeUrl={storeUrl}
+              storeSlug={params.storeSlug}
+              heroImages={heroImages}
+              categories={categories}
+              productItems={productItems}
+              sectionIndex={index}
+              useBgVariation={useBgVariation}
+              productSlice={currentProductSlice}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+function isHeroType(type?: string): boolean {
+  return !!type && type.startsWith('hero_');
+}
+
 // ============================================================
-// Section Renderer — maps section types to components
+// V2 Section Renderer — Polymorphic with variants
 // ============================================================
 
 interface SectionRendererProps {
-  section: {
-    type: string;
-    config?: Record<string, unknown>;
-    variant?: string;
-    background_hint?: string;
-  };
+  section: { type: string; variant?: string; config?: Record<string, unknown>; background_hint?: string };
   storeUrl: string;
   storeSlug: string;
-  heroImage?: string;
+  heroImages: string[];
   categories: any[];
   productItems: any[];
   sectionIndex: number;
+  useBgVariation: boolean;
+  productSlice: number;
 }
 
 function SectionRenderer({
-  section,
-  storeUrl,
-  storeSlug,
-  heroImage,
-  categories,
-  productItems,
-  sectionIndex,
+  section, storeUrl, storeSlug, heroImages, categories, productItems, sectionIndex, useBgVariation, productSlice,
 }: SectionRendererProps) {
   const type = section.type;
 
-  // Track which product slice to use (for multiple product sections)
-  // First product section gets items 0-3, second gets 4-7, etc.
+  // V2: Background alternation for visual rhythm
+  const bgStyle = useBgVariation && sectionIndex % 2 === 1
+    ? { backgroundColor: 'var(--color-surface)' }
+    : { backgroundColor: 'var(--color-background)' };
 
   switch (type) {
-    // ── Hero sections ──
+    // ── Hero variants ──
     case 'hero_slideshow':
-    case 'hero_minimal':
-    case 'hero_banner':
+      return <HeroSection imageUrl={heroImages[0]} images={heroImages} variant="slideshow" />;
     case 'hero_bento':
+      return <HeroSection imageUrl={heroImages[0]} images={heroImages} variant="bento" />;
     case 'hero_full_bleed':
+      return <HeroSection imageUrl={heroImages[0]} variant="full_bleed" />;
+    case 'hero_minimal':
+      return <HeroSection variant="minimal" />;
     case 'hero_split':
-      return <HeroSection imageUrl={heroImage} />;
+      return <HeroSection imageUrl={heroImages[0]} variant="split" />;
+    case 'hero_banner':
+      return <HeroSection imageUrl={heroImages[0]} variant="full_bleed" />;
 
-    // ── Trust / USP bar ──
+    // ── Trust bar ──
     case 'trust_bar':
       return <TrustBar />;
 
-    // ── Product sections ──
-    case 'product_carousel':
-    case 'featured_products':
-    case 'product_grid': {
-      const title = type === 'product_carousel' ? 'Trending Now' :
-                    type === 'featured_products' ? 'Featured Products' :
-                    'Our Collection';
-      // Show different product slices for different sections
-      const sliceStart = sectionIndex <= 5 ? 0 : 4;
-      const sliceEnd = sliceStart + 8;
-      const items = productItems.slice(sliceStart, sliceEnd);
+    // ── Product sections with V2 variants ──
+    case 'product_carousel': {
+      const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
       return (
-        <section style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
+        <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title={title} />
+            <ProductGrid products={items} title="Trending Now" variant="carousel" />
+          </div>
+        </section>
+      );
+    }
+    case 'featured_products': {
+      const items = getProductSlice(productItems, productSlice);
+      if (items.length === 0) return null;
+      return (
+        <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
+          <div className="container-store">
+            <ProductGrid products={items} title="Featured Products" variant={items.length >= 5 ? 'editorial' : 'grid'} />
+          </div>
+        </section>
+      );
+    }
+    case 'product_grid': {
+      const items = getProductSlice(productItems, productSlice);
+      if (items.length === 0) return null;
+      return (
+        <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
+          <div className="container-store">
+            <ProductGrid products={items} title="Our Collection" variant="grid" />
           </div>
         </section>
       );
     }
 
-    // ── Category sections ──
+    // ── V2: Category tiles (visual, not text-only pills) ──
     case 'category_grid':
     case 'collection_banner':
-    case 'collection_list':
+    case 'collection_list': {
+      if (categories.length === 0) return null;
+      return <CategoryTiles categories={categories} variant="tiles" />;
+    }
     case 'category_pills': {
       if (categories.length === 0) return null;
-      return (
-        <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
-          <h2 className="font-display text-xl md:text-2xl font-bold mb-6">
-            Shop by Category
-          </h2>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            {categories.map((cat: any) => (
-              <Link
-                key={cat.id}
-                href={`${storeUrl}/collections/${cat.slug}`}
-                className="flex-shrink-0 px-5 py-2.5 text-sm font-medium border transition-colors hover:opacity-70"
-                style={{
-                  borderRadius: 'var(--radius-lg)',
-                  borderColor: 'color-mix(in srgb, var(--color-text) 12%, transparent)',
-                }}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      );
+      return <CategoryTiles categories={categories} variant="pills" />;
     }
 
-    // ── About brand ──
+    // ── About ──
     case 'about_brand':
       return <AboutBrand />;
 
-    // ── Newsletter / WhatsApp CTA ──
+    // ── Newsletter ──
     case 'newsletter':
       return <NewsletterSection />;
 
-    // ── Marquee banner (scrolling text) ──
-    case 'marquee': {
-      return (
-        <section
-          className="overflow-hidden py-3 md:py-4"
-          style={{ backgroundColor: 'var(--color-surface)' }}
-        >
-          <div className="animate-marquee whitespace-nowrap flex gap-8">
-            {['Free Shipping on ₹499+', 'COD Available', 'Easy Returns', '100% Authentic', 'Free Shipping on ₹499+', 'COD Available', 'Easy Returns', '100% Authentic'].map((text, i) => (
-              <span key={i} className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                {text} <span className="mx-4">•</span>
-              </span>
-            ))}
-          </div>
-        </section>
-      );
-    }
+    // ── V2: Marquee ──
+    case 'marquee':
+      return <MarqueeBanner />;
 
-    // ── Logo bar (brand partners / as seen in) ──
-    case 'logo_bar': {
-      return (
-        <section
-          className="py-8 md:py-10"
-          style={{ backgroundColor: 'var(--color-surface)' }}
-        >
-          <div className="container-store text-center">
-            <p className="text-xs uppercase tracking-[0.2em] mb-6" style={{ color: 'var(--color-text-muted)' }}>
-              Trusted By
-            </p>
-            <div className="flex items-center justify-center gap-8 md:gap-12 opacity-40">
-              {/* Placeholder — seller can add their logos later */}
-              {['Brand 1', 'Brand 2', 'Brand 3', 'Brand 4'].map((name, i) => (
-                <div key={i} className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                  {name}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    // ── Testimonials ──
+    // ── V2: Testimonials with variants ──
     case 'testimonials':
-    case 'testimonial_cards': {
+    case 'testimonial_cards':
+      return <Testimonials variant={section.variant === 'grid' ? 'grid' : 'carousel'} />;
+
+    // ── V2: Stats bar with animated counters ──
+    case 'stats_bar':
+      return <StatsBar />;
+
+    // ── Logo bar ──
+    case 'logo_bar':
       return (
-        <section
-          className="py-12 md:py-16"
-          style={{ backgroundColor: 'var(--color-background)' }}
-        >
+        <section className="py-8 md:py-10" style={bgStyle}>
           <div className="container-store text-center">
-            <p className="text-xs uppercase tracking-[0.2em] mb-2" style={{ color: 'var(--color-primary)' }}>
-              What Customers Say
-            </p>
-            <h2 className="font-display text-xl md:text-2xl font-bold mb-8" style={{ color: 'var(--color-text)' }}>
-              Real Reviews
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {[
-                { text: 'Amazing quality! Will order again.', name: 'Priya S.' },
-                { text: 'Fast delivery and beautiful packaging.', name: 'Rahul M.' },
-                { text: 'Exactly as shown. Love it!', name: 'Anita K.' },
-              ].map((review, i) => (
-                <div key={i} className="p-6 rounded-lg" style={{ backgroundColor: 'var(--color-surface)' }}>
-                  <p className="text-sm mb-3" style={{ color: 'var(--color-text)' }}>"{review.text}"</p>
-                  <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>— {review.name}</p>
-                </div>
+            <p className="eyebrow mb-6">Trusted By</p>
+            <div className="flex items-center justify-center gap-8 md:gap-12 opacity-40">
+              {['Brand 1', 'Brand 2', 'Brand 3', 'Brand 4'].map((name, i) => (
+                <div key={i} className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{name}</div>
               ))}
             </div>
           </div>
         </section>
       );
-    }
 
     // ── Video section ──
-    case 'video_section': {
+    case 'video_section':
       return (
-        <section
-          className="py-12 md:py-16"
-          style={{ backgroundColor: 'var(--color-surface)' }}
-        >
+        <section className="py-12 md:py-16" style={bgStyle}>
           <div className="container-store text-center">
-            <div className="aspect-video max-w-3xl mx-auto rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--color-background)' }}>
+            <div className="aspect-video max-w-3xl mx-auto rounded-[var(--radius-lg)] overflow-hidden" style={{ backgroundColor: 'var(--color-surface)' }}>
               <div className="w-full h-full flex items-center justify-center">
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                  Video placeholder — add your brand story video
-                </p>
+                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Video placeholder — add your brand story video</p>
               </div>
             </div>
           </div>
         </section>
       );
-    }
 
-    // ── UGC gallery (user generated content / Instagram) ──
-    case 'ugc_gallery': {
+    // ── UGC gallery ──
+    case 'ugc_gallery':
       return (
-        <section
-          className="py-12 md:py-16"
-          style={{ backgroundColor: 'var(--color-background)' }}
-        >
+        <section className="py-12 md:py-16" style={bgStyle}>
           <div className="container-store text-center">
-            <p className="text-xs uppercase tracking-[0.2em] mb-2" style={{ color: 'var(--color-primary)' }}>
-              #ShopWith{storeSlug.replace(/-/g, '')}
-            </p>
-            <h2 className="font-display text-lg md:text-xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>
-              As Seen On Instagram
-            </h2>
+            <p className="eyebrow mb-2">#ShopWith{storeSlug.replace(/-/g, '')}</p>
+            <h2 className="section-title mb-6">As Seen On Instagram</h2>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-1">
               {productItems.slice(0, 6).map((product: any, i: number) => {
                 const img = product.images?.[0];
                 const url = typeof img === 'object' ? (img.thumbnailUrl || img.originalUrl) : img;
                 return url ? (
-                  <div key={i} className="aspect-square overflow-hidden">
-                    <img src={url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                  <div key={i} className="aspect-square overflow-hidden rounded-[var(--radius-sm)]">
+                    <img src={url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" style={{ transitionTimingFunction: 'var(--ease-spring)' }} />
                   </div>
                 ) : null;
               })}
@@ -321,64 +268,22 @@ function SectionRenderer({
           </div>
         </section>
       );
-    }
 
-    // ── Announcement bar (usually handled by layout, skip) ──
-    case 'announcement_bar':
-      return null;
-
-    // ── Stats bar (metrics / numbers) ──
-    case 'stats_bar': {
+    // ── Countdown ──
+    case 'countdown_timer':
       return (
-        <section
-          className="py-8 md:py-10"
-          style={{ backgroundColor: 'var(--color-surface)' }}
-        >
-          <div className="container-store">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              {[
-                { label: 'Happy Customers', value: '10,000+' },
-                { label: 'Products', value: '500+' },
-                { label: 'Cities Delivered', value: '100+' },
-                { label: 'Years in Business', value: '5+' },
-              ].map((stat, i) => (
-                <div key={i}>
-                  <div className="text-2xl md:text-3xl font-bold font-display" style={{ color: 'var(--color-primary)' }}>
-                    {stat.value}
-                  </div>
-                  <div className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    // ── Countdown timer (sale / launch) ──
-    case 'countdown_timer': {
-      return (
-        <section
-          className="py-6 md:py-8 text-center"
-          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)' }}
-        >
+        <section className="py-6 md:py-8 text-center" style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)' }}>
           <div className="container-store">
             <p className="text-sm font-medium uppercase tracking-wider mb-1">Limited Time Offer</p>
             <p className="text-lg font-display font-bold">Sale ends soon — Shop now!</p>
           </div>
         </section>
       );
-    }
 
-    // ── Quote block ──
-    case 'quote_block': {
+    // ── Quote ──
+    case 'quote_block':
       return (
-        <section
-          className="py-12 md:py-16"
-          style={{ backgroundColor: 'var(--color-background)' }}
-        >
+        <section className="py-12 md:py-16" style={bgStyle}>
           <div className="container-store text-center max-w-2xl mx-auto">
             <blockquote className="text-lg md:text-xl font-display italic" style={{ color: 'var(--color-text)' }}>
               &ldquo;Quality is remembered long after the price is forgotten.&rdquo;
@@ -387,62 +292,57 @@ function SectionRenderer({
           </div>
         </section>
       );
-    }
 
-    // ── Unknown section types — silently skip ──
+    case 'announcement_bar':
+      return null;
+
     default:
       return null;
   }
 }
 
 // ============================================================
-// Classic Layout (fallback when no section config exists)
+// Classic Layout (fallback)
 // ============================================================
 
 function ClassicLayout({
-  storeUrl,
-  heroImage,
-  categories,
-  productItems,
+  storeUrl, heroImages, categories, productItems, useBgVariation, dividerStyle,
 }: {
-  storeUrl: string;
-  heroImage?: string;
-  categories: any[];
-  productItems: any[];
+  storeUrl: string; heroImages: string[]; categories: any[]; productItems: any[];
+  useBgVariation: boolean; dividerStyle: string;
 }) {
   return (
     <div>
-      <HeroSection imageUrl={heroImage} />
+      <HeroSection imageUrl={heroImages[0]} images={heroImages} variant="full_bleed" />
       <TrustBar />
+      <SectionDivider style={dividerStyle as any} />
 
       {categories.length > 0 && (
-        <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
-          <h2 className="font-display text-xl md:text-2xl font-bold mb-6">Shop by Category</h2>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            {categories.map((cat: any) => (
-              <Link
-                key={cat.id}
-                href={`${storeUrl}/collections/${cat.slug}`}
-                className="flex-shrink-0 px-5 py-2.5 text-sm font-medium border transition-colors hover:opacity-70"
-                style={{ borderRadius: 'var(--radius-lg)', borderColor: 'color-mix(in srgb, var(--color-text) 12%, transparent)' }}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </section>
+        <>
+          <CategoryTiles categories={categories} variant="tiles" />
+          <SectionDivider style={dividerStyle as any} />
+        </>
       )}
 
-      <section className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
-        <ProductGrid products={productItems} title="Featured Products" />
-        {productItems.length >= 8 && (
-          <div className="text-center mt-8">
-            <Link href={`${storeUrl}/collections/all`} className="btn-secondary text-sm">View All Products</Link>
-          </div>
-        )}
+      <section
+        style={{
+          paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)',
+          backgroundColor: useBgVariation ? 'var(--color-surface)' : 'var(--color-background)',
+        }}
+      >
+        <div className="container-store">
+          <ProductGrid products={productItems.slice(0, 8)} title="Featured Products" variant="grid" />
+          {productItems.length >= 8 && (
+            <div className="text-center mt-8">
+              <Link href={`${storeUrl}/collections/all`} className="btn-secondary text-sm">View All Products</Link>
+            </div>
+          )}
+        </div>
       </section>
 
+      <SectionDivider style={dividerStyle as any} />
       <AboutBrand />
+      <SectionDivider style={dividerStyle as any} />
       <NewsletterSection />
     </div>
   );
@@ -452,16 +352,28 @@ function ClassicLayout({
 // Helpers
 // ============================================================
 
-function pickHeroImage(products: any[]): string | undefined {
+function pickHeroImages(products: any[]): string[] {
+  const images: string[] = [];
   for (const product of products) {
-    const images = product.images;
-    if (!images || !Array.isArray(images) || images.length === 0) continue;
-    const first = images[0];
-    if (typeof first === 'object' && first !== null) {
-      if (first.heroUrl) return first.heroUrl;
-      if (first.originalUrl) return first.originalUrl;
+    if (!product.images || !Array.isArray(product.images)) continue;
+    for (const img of product.images) {
+      const url = typeof img === 'object'
+        ? (img.heroUrl || img.originalUrl)
+        : typeof img === 'string' && img.startsWith('http') ? img : null;
+      if (url && !images.includes(url)) {
+        images.push(url);
+        if (images.length >= 5) return images;
+      }
     }
-    if (typeof first === 'string' && first.startsWith('http')) return first;
   }
-  return undefined;
+  return images;
+}
+
+function getProductSlice(items: any[], sliceNum: number): any[] {
+  const pageSize = 8;
+  const start = Math.min((sliceNum - 1) * pageSize, items.length);
+  const end = Math.min(start + pageSize, items.length);
+  // If we've exhausted products, wrap around
+  if (start >= items.length) return items.slice(0, pageSize);
+  return items.slice(start, end);
 }

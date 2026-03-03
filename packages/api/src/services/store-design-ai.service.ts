@@ -101,7 +101,26 @@ You must return ONLY valid JSON matching this exact structure:
     "spacing": "airy|balanced|compact|ultra_minimal",
     "radius": "sharp|subtle|rounded|pill",
     "imageStyle": "raw|subtle_shadow|border_frame|hover_zoom|rounded",
-    "animation": "none|fade|slide_up|staggered"
+    "animation": "none|fade|slide_up|staggered",
+    "heroTokens": {
+      "overlayGradient": "cinematic-bottom|center-vignette|none",
+      "textPlacement": "bottom-left|center|split-left",
+      "showScrollHint": true,
+      "slideTransition": "crossfade|slide|zoom"
+    },
+    "cardTokens": {
+      "hoverEffect": "lift|zoom|overlay|none",
+      "showSecondImage": true,
+      "showQuickAdd": true,
+      "badgeStyle": "pill|tag|corner-ribbon",
+      "priceDisplay": "stacked|inline|prominent"
+    },
+    "decorativeTokens": {
+      "dividerStyle": "line|gradient-fade|pattern-ethnic|none",
+      "sectionBgVariation": true,
+      "useGlassmorphism": true,
+      "textureOverlay": "none|noise-subtle|linen|ethnic-pattern"
+    }
   },
   "storeBio": "2-3 sentence store description for the about section. Write for Indian buyers.",
   "heroTagline": "Short, punchy hero headline (4-8 words). MUST be specific to this brand.",
@@ -114,6 +133,13 @@ DESIGN PRINCIPLES:
 - Indian market context: include WhatsApp, COD trust badges, festival-ready designs.
 - Never use pure white (#FFFFFF) as background — always slightly tinted.
 - Ensure sufficient contrast between text and background (WCAG AA).
+
+TIER 3 TOKEN GUIDELINES (these make each store feel uniquely designed):
+- Fashion: heroTokens.overlayGradient="cinematic-bottom", cardTokens.hoverEffect="zoom", imageRatio="3:4" (tall, shows full outfit), decorativeTokens.dividerStyle="gradient-fade"
+- Jewellery: heroTokens.overlayGradient="center-vignette", cardTokens.hoverEffect="lift", imageRatio="1:1" (square, detail-focused), dark backgrounds, decorativeTokens.useGlassmorphism=true, decorativeTokens.textureOverlay="none"
+- Beauty/Skincare: heroTokens.textPlacement="split-left", cardTokens.hoverEffect="none", imageRatio="1:1", clean white backgrounds, decorativeTokens.dividerStyle="line"
+- Electronics: heroTokens.textPlacement="center", cardTokens.showQuickAdd=true, cardTokens.priceDisplay="prominent", decorativeTokens.sectionBgVariation=true
+- Food/FMCG: heroTokens.overlayGradient="none", warm tones, cardTokens.badgeStyle="tag", decorativeTokens.dividerStyle="gradient-fade"
 
 CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 

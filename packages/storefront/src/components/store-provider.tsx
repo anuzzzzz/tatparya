@@ -69,6 +69,10 @@ export function StoreProvider({ store, children }: StoreProviderProps) {
     radius: rawDesign.radius || 'rounded',
     imageStyle: rawDesign.imageStyle || 'subtle_shadow',
     animation: rawDesign.animation || 'fade',
+    // V2: Tier 3 component tokens
+    heroTokens: rawDesign.heroTokens || { overlayGradient: 'cinematic-bottom', textPlacement: 'bottom-left', showScrollHint: true, slideTransition: 'crossfade' },
+    cardTokens: rawDesign.cardTokens || { hoverEffect: 'zoom', showSecondImage: true, showQuickAdd: true, badgeStyle: 'pill', priceDisplay: 'stacked' },
+    decorativeTokens: rawDesign.decorativeTokens || { dividerStyle: 'gradient-fade', sectionBgVariation: true, useGlassmorphism: true, textureOverlay: 'none' },
   } as DesignTokens;
 
   const queryClient = useMemo(() => new QueryClient({

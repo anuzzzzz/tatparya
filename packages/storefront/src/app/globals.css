@@ -3,8 +3,16 @@
 @tailwind utilities;
 
 /* ============================================================
-   Default CSS Variables (overridden per-store via StoreProvider)
+   Tier 1 — Primitive Design Tokens (global, shared across all stores)
    ============================================================ */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Tier 2 — Semantic Defaults (overridden per-store via inline styles) */
 :root {
   --color-primary: #D4356A;
   --color-secondary: #F8E8EE;
@@ -23,69 +31,49 @@
   --spacing-container: 1rem;
   --spacing-gap: 1rem;
   --hero-overlay-opacity: 0.3;
+  --divider-color: color-mix(in srgb, var(--color-text) 6%, transparent);
 }
 
-/* ============================================================
-   Base Styles
-   ============================================================ */
+/* ============================================================ */
 @layer base {
   html {
     font-size: calc(100% * var(--font-scale, 1));
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
-
   body {
     @apply antialiased;
     font-family: var(--font-body);
     color: var(--color-text);
     background-color: var(--color-background);
   }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-  }
-
-  /* Hide scrollbar in some containers but keep functionality */
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 /* ============================================================
-   Animations
+   V2 Keyframe Animations
    ============================================================ */
 @layer utilities {
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slide-up {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes bounce-in {
-    0% { opacity: 0; transform: scale(0.95); }
-    50% { transform: scale(1.02); }
-    100% { opacity: 1; transform: scale(1); }
-  }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slide-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes bounce-in { 0% { opacity: 0; transform: scale(0.95); } 50% { transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes scale-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+  @keyframes slide-in-left { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes subtle-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
-  .animate-fade-in {
-    animation: fade-in 0.4s ease-out both;
-  }
-  .animate-slide-up {
-    animation: slide-up 0.5s ease-out both;
-  }
-  .animate-bounce-in {
-    animation: bounce-in 0.4s ease-out both;
-  }
-  .animate-stagger > * {
-    animation: slide-up 0.5s ease-out both;
-  }
+  .animate-fade-in { animation: fade-in 0.4s var(--ease-spring) both; }
+  .animate-slide-up { animation: slide-up 0.5s var(--ease-spring) both; }
+  .animate-bounce-in { animation: bounce-in 0.4s var(--ease-spring) both; }
+  .animate-scale-in { animation: scale-in 0.3s var(--ease-spring) both; }
+  .animate-toast-in { animation: toast-in 0.3s var(--ease-spring) both; }
+
+  /* Staggered children — 60ms delay cascade */
+  .animate-stagger > * { animation: slide-up 0.5s var(--ease-spring) both; }
   .animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
   .animate-stagger > *:nth-child(2) { animation-delay: 60ms; }
   .animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
@@ -94,104 +82,78 @@
   .animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
   .animate-stagger > *:nth-child(7) { animation-delay: 360ms; }
   .animate-stagger > *:nth-child(8) { animation-delay: 420ms; }
+  .animate-stagger > *:nth-child(9) { animation-delay: 480ms; }
+  .animate-stagger > *:nth-child(10) { animation-delay: 540ms; }
+  .animate-stagger > *:nth-child(11) { animation-delay: 600ms; }
+  .animate-stagger > *:nth-child(12) { animation-delay: 660ms; }
 
-  /* Hover zoom for product images */
-  .img-hover-zoom {
-    overflow: hidden;
-  }
-  .img-hover-zoom img {
-    transition: transform 0.4s ease;
-  }
-  .img-hover-zoom:hover img {
-    transform: scale(1.06);
-  }
+  /* Reveal system — controlled by useReveal hook */
+  .reveal-hidden { opacity: 0; transform: translateY(28px); transition: opacity 0.6s var(--ease-spring), transform 0.6s var(--ease-spring); }
+  .reveal-visible { opacity: 1; transform: translateY(0); }
 
-  /* Subtle shadow for images — adapts to dark/light */
-  .img-subtle-shadow {
-    box-shadow: 0 2px 12px color-mix(in srgb, var(--color-text) 8%, transparent);
-  }
+  /* Image hover effects */
+  .img-hover-zoom { overflow: hidden; }
+  .img-hover-zoom img { transition: transform 0.5s var(--ease-spring); }
+  .img-hover-zoom:hover img { transform: scale(1.06); }
+  .img-subtle-shadow { box-shadow: 0 2px 12px color-mix(in srgb, var(--color-text) 8%, transparent); }
+  .img-border-frame { border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); padding: 4px; }
 
-  /* Border frame style — adapts to dark/light */
-  .img-border-frame {
-    border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
-    padding: 4px;
-  }
-
-  /* Placeholder shimmer for loading states */
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
+  /* Skeleton shimmer */
   .skeleton {
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-text) 5%, transparent) 25%,
-      color-mix(in srgb, var(--color-text) 10%, transparent) 50%,
-      color-mix(in srgb, var(--color-text) 5%, transparent) 75%
-    );
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-text) 5%, transparent) 25%, color-mix(in srgb, var(--color-text) 10%, transparent) 50%, color-mix(in srgb, var(--color-text) 5%, transparent) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
     border-radius: var(--radius-sm);
   }
 
-  /* Toast notification */
-  @keyframes toast-in {
-    from { opacity: 0; transform: translateY(16px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+  /* Scroll-snap carousel */
+  .scroll-snap-x { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scroll-padding-left: 16px; }
+  .scroll-snap-x > * { scroll-snap-align: start; flex-shrink: 0; }
+
+  /* Marquee banner */
+  .marquee-track { display: flex; width: max-content; animation: marquee-scroll 25s linear infinite; }
+  .marquee-track:hover { animation-play-state: paused; }
+
+  /* Glassmorphism */
+  .glass-nav {
+    background: color-mix(in srgb, var(--color-background) 85%, transparent);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
   }
-  .animate-toast-in {
-    animation: toast-in 0.3s ease-out both;
-  }
+
+  /* Quick-add slide-up on hover */
+  .quick-add-btn { opacity: 0; transform: translateY(8px); transition: all 0.3s var(--ease-spring); }
+  .group:hover .quick-add-btn, .group:focus-within .quick-add-btn { opacity: 1; transform: translateY(0); }
+
+  /* Gradient divider */
+  .divider-gradient { height: 1px; background: linear-gradient(90deg, transparent, var(--divider-color), transparent); }
 }
 
 /* ============================================================
-   Component utilities
+   Components
    ============================================================ */
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-medium transition-all duration-200;
-    background-color: var(--color-primary);
-    color: white;
-    border-radius: var(--radius);
+    background-color: var(--color-primary); color: white; border-radius: var(--radius);
   }
-  .btn-primary:hover {
-    filter: brightness(0.9);
-  }
-  .btn-primary:active {
-    transform: scale(0.98);
-  }
+  .btn-primary:hover { filter: brightness(0.9); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-medium transition-all duration-200 border;
-    color: var(--color-text);
-    border-color: var(--color-text);
-    border-radius: var(--radius);
-    background: transparent;
+    color: var(--color-text); border-color: color-mix(in srgb, var(--color-text) 20%, transparent);
+    border-radius: var(--radius); background: transparent;
   }
-  .btn-secondary:hover {
-    background-color: var(--color-surface);
-  }
+  .btn-secondary:hover { background-color: var(--color-surface); }
+  .btn-secondary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
-  .container-store {
-    @apply w-full mx-auto px-4;
-    max-width: 1280px;
-  }
+  .container-store { @apply w-full mx-auto px-4; max-width: 1280px; }
+  .badge-discount { @apply text-xs font-bold px-2 py-0.5 uppercase tracking-wider; background-color: #E94560; color: white; border-radius: var(--radius-sm); }
+  .input-field { @apply w-full px-4 py-3 border text-sm outline-none transition-colors; border-color: rgba(0,0,0,0.15); border-radius: var(--radius); font-family: var(--font-body); }
+  .input-field:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent); }
 
-  .badge-discount {
-    @apply text-xs font-bold px-2 py-0.5 uppercase tracking-wider;
-    background-color: #E94560;
-    color: white;
-    border-radius: var(--radius-sm);
-  }
-
-  .input-field {
-    @apply w-full px-4 py-3 border text-sm outline-none transition-colors;
-    border-color: rgba(0, 0, 0, 0.15);
-    border-radius: var(--radius);
-    font-family: var(--font-body);
-  }
-  .input-field:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  }
+  .eyebrow { @apply text-[10px] md:text-xs uppercase tracking-[0.2em] font-semibold; color: var(--color-primary); }
+  .section-title { @apply font-display text-xl md:text-2xl font-bold leading-snug; color: var(--color-text); }
 }

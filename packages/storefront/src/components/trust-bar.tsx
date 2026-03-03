@@ -3,6 +3,8 @@
 import React from 'react';
 import { Truck, ShieldCheck, RotateCcw, CreditCard } from 'lucide-react';
 import { useStore } from './store-provider';
+import { useReveal } from '@/hooks/use-reveal';
+import { cn } from '@/lib/utils';
 
 const TRUST_ITEMS = [
   { icon: Truck, label: 'Free Shipping', sub: 'On orders above ₹499' },
@@ -13,10 +15,12 @@ const TRUST_ITEMS = [
 
 export function TrustBar() {
   const { design } = useStore();
+  const [revRef, visible] = useReveal(0.2);
 
   return (
     <section
-      className="border-y"
+      ref={revRef as React.RefObject<HTMLElement>}
+      className={cn('border-y transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden')}
       style={{
         backgroundColor: design.palette.surface,
         borderColor: `color-mix(in srgb, ${design.palette.text} 6%, transparent)`,
@@ -24,8 +28,12 @@ export function TrustBar() {
     >
       <div className="container-store py-5 md:py-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {TRUST_ITEMS.map(({ icon: Icon, label, sub }) => (
-            <div key={label} className="flex items-center gap-3">
+          {TRUST_ITEMS.map(({ icon: Icon, label, sub }, i) => (
+            <div
+              key={label}
+              className="flex items-center gap-3 animate-slide-up"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
               <div
                 className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full"
                 style={{

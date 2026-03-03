@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { ShoppingBag, Heart } from 'lucide-react';
 import { useStore } from './store-provider';
 import { formatPrice, discountPercent, imageUrl as resolveImage, cn } from '@/lib/utils';
 import { getImageRatioClass } from '@/lib/store-config';
@@ -17,100 +18,157 @@ interface ProductCardProps {
     tags?: string[];
   };
   index?: number;
+  onAddToCart?: (productName: string) => void;
 }
 
-export function ProductCard({ product, index = 0 }: ProductCardProps) {
+export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProps) {
   const { store, design } = useStore();
   const cardConfig = design.productCard;
+  const cardTokens = design.cardTokens;
   const storeUrl = `/${store.slug}`;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const firstImage = product.images?.[0];
+  const secondImage = product.images?.[1];
   const imgSrc = resolveImage(firstImage?.cardUrl || firstImage?.thumbnailUrl || firstImage?.originalUrl);
   const imgAlt = firstImage?.alt || product.name;
+  const secondImgSrc = secondImage ? resolveImage(secondImage.cardUrl || secondImage.thumbnailUrl || secondImage.originalUrl) : null;
 
-  // Responsive srcSet for all card variants
-  const imgSrcSet = firstImage ? [
-    firstImage.thumbnailUrl && `${resolveImage(firstImage.thumbnailUrl)} 300w`,
-    firstImage.cardUrl && `${resolveImage(firstImage.cardUrl)} 600w`,
-    firstImage.heroUrl && `${resolveImage(firstImage.heroUrl)} 1200w`,
-  ].filter(Boolean).join(', ') || undefined : undefined;
-  const imgSizes = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw';
+  const discount = product.compareAtPrice ? discountPercent(product.price, product.compareAtPrice) : 0;
 
-  const discount = product.compareAtPrice
-    ? discountPercent(product.price, product.compareAtPrice)
-    : 0;
+  // V2: Vertical-aware ratios
+  const vertical = store.vertical as string;
+  const autoRatio = (vertical === 'jewellery' || vertical === 'beauty') ? '1:1' : cardConfig.imageRatio;
+  const ratioClass = getImageRatioClass(autoRatio);
 
-  const ratioClass = getImageRatioClass(cardConfig.imageRatio);
-
-  // Image style classes
-  const imageStyleClass = cn(
-    design.imageStyle === 'hover_zoom' && 'img-hover-zoom',
-    design.imageStyle === 'subtle_shadow' && 'img-subtle-shadow',
-    design.imageStyle === 'border_frame' && 'img-border-frame',
-    design.imageStyle === 'rounded' && 'rounded-lg overflow-hidden',
-  );
-
-  // Stagger delay for animations
-  const staggerDelay = design.animation === 'staggered' ? { animationDelay: `${index * 60}ms` } : {};
+  // V2: Hover effect from Tier 3 tokens
+  const hoverEffect = cardTokens?.hoverEffect || 'zoom';
+  const showSecondImage = cardTokens?.showSecondImage !== false && !!secondImgSrc;
+  const showQuickAdd = cardTokens?.showQuickAdd !== false && !!onAddToCart;
 
   const linkUrl = `${storeUrl}/products/${product.slug}`;
 
-  // Compact style
-  if (cardConfig.style === 'compact') {
-    return (
-      <Link href={linkUrl} className="group block" style={staggerDelay}>
-        <div className={cn('relative', ratioClass, imageStyleClass, )} style={{ borderRadius: 'var(--radius)' }}>
+  // Stagger delay
+  const staggerStyle = design.animation === 'staggered' ? { animationDelay: `${index * 60}ms` } : {};
+
+  return (
+    <div
+      className="group relative animate-slide-up"
+      style={staggerStyle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Link href={linkUrl} className="block">
+        {/* Image container */}
+        <div
+          className={cn('relative overflow-hidden', ratioClass)}
+          style={{ borderRadius: 'var(--radius)', backgroundColor: design.palette.surface }}
+        >
+          {/* Skeleton placeholder */}
+          {!imgLoaded && (
+            <div className="absolute inset-0 skeleton" />
+          )}
+
+          {/* Primary image */}
           <img
             src={imgSrc}
-            srcSet={imgSrcSet}
-            sizes={imgSizes}
             alt={imgAlt}
-            className="absolute inset-0 w-full h-full object-cover"
+            className={cn(
+              'absolute inset-0 w-full h-full object-cover transition-all duration-500',
+              // V2: Hover zoom effect
+              hoverEffect === 'zoom' && hovered && 'scale-[1.06]',
+              hoverEffect === 'lift' && hovered && '-translate-y-1',
+              // Cross-fade to second image
+              showSecondImage && hovered && 'opacity-0',
+            )}
+            style={{ transitionTimingFunction: 'var(--ease-spring)' }}
             loading="lazy"
-            style={{ borderRadius: 'var(--radius)' }}
+            onLoad={() => setImgLoaded(true)}
           />
+
+          {/* V2: Second image on hover (cross-fade) */}
+          {showSecondImage && (
+            <img
+              src={secondImgSrc!}
+              alt={`${imgAlt} - alternate view`}
+              className={cn(
+                'absolute inset-0 w-full h-full object-cover transition-opacity duration-500',
+                hovered ? 'opacity-100' : 'opacity-0',
+              )}
+              loading="lazy"
+            />
+          )}
+
+          {/* Discount badge */}
           {discount > 0 && (
-            <span className="badge-discount absolute top-2 left-2">{discount}% off</span>
+            <span className="badge-discount absolute top-2 left-2 z-10">{discount}% off</span>
+          )}
+
+          {/* Tag badge (if no discount) */}
+          {product.tags?.[0] && !discount && (
+            <span
+              className="absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${design.palette.primary} 90%, transparent)`,
+                color: '#fff',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              {product.tags[0]}
+            </span>
+          )}
+
+          {/* V2: Wishlist heart (appears on hover) */}
+          <button
+            className={cn(
+              'absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300',
+              hovered ? 'opacity-100 scale-100' : 'opacity-0 scale-90',
+            )}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(8px)',
+              transitionTimingFunction: 'var(--ease-spring)',
+            }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            aria-label="Add to wishlist"
+          >
+            <Heart size={14} style={{ color: design.palette.text }} />
+          </button>
+
+          {/* V2: Quick-add button (slides up on hover with glassmorphism) */}
+          {showQuickAdd && (
+            <button
+              className="quick-add-btn absolute bottom-2 left-2 right-2 z-10 py-2.5 text-center text-xs font-semibold rounded-[var(--radius-sm)] focus-visible:outline-none focus-visible:ring-2"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.92)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                color: design.palette.text,
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAddToCart?.(product.name);
+              }}
+              aria-label={`Add ${product.name} to cart`}
+            >
+              <ShoppingBag size={13} className="inline mr-1.5" style={{ verticalAlign: 'middle' }} />
+              Add to Cart
+            </button>
           )}
         </div>
-        <div className="mt-2">
-          <p className="text-xs font-medium truncate" style={{ color: design.palette.text }}>
+
+        {/* Product info */}
+        <div className="mt-2.5">
+          <p
+            className="text-sm font-medium leading-snug truncate group-hover:opacity-70 transition-opacity"
+            style={{ color: design.palette.text }}
+          >
             {product.name}
           </p>
           {cardConfig.showPrice && (
-            <p className="text-xs mt-0.5" style={{ color: design.palette.primary }}>
-              {formatPrice(product.price)}
-            </p>
-          )}
-        </div>
-      </Link>
-    );
-  }
-
-  // Editorial style
-  if (cardConfig.style === 'editorial') {
-    return (
-      <Link href={linkUrl} className="group block" style={staggerDelay}>
-        <div className={cn('relative', ratioClass, imageStyleClass, )} style={{ borderRadius: 'var(--radius-lg)' }}>
-          <img
-            src={imgSrc}
-            srcSet={imgSrcSet}
-            sizes={imgSizes}
-            alt={imgAlt}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-            style={{ borderRadius: 'var(--radius-lg)' }}
-          />
-          {discount > 0 && (
-            <span className="badge-discount absolute top-3 left-3">{discount}% off</span>
-          )}
-        </div>
-        <div className="mt-4">
-          <h3 className="font-display text-base md:text-lg font-semibold leading-snug group-hover:opacity-70 transition-opacity" style={{ color: design.palette.text }}>
-            {product.name}
-          </h3>
-          {cardConfig.showPrice && (
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-1">
               <span className="text-sm font-bold" style={{ color: design.palette.primary }}>
                 {formatPrice(product.price)}
               </span>
@@ -123,88 +181,19 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           )}
         </div>
       </Link>
-    );
-  }
+    </div>
+  );
+}
 
-  // Hover reveal style
-  if (cardConfig.style === 'hover_reveal') {
-    return (
-      <Link href={linkUrl} className="group block" style={staggerDelay}>
-        <div
-          className={cn('relative overflow-hidden', ratioClass, )}
-          style={{ borderRadius: 'var(--radius)' }}
-        >
-          <img
-            src={imgSrc}
-            srcSet={imgSrcSet}
-            sizes={imgSizes}
-            alt={imgAlt}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-          {discount > 0 && (
-            <span className="badge-discount absolute top-2 left-2">{discount}% off</span>
-          )}
-          {/* Reveal overlay on hover */}
-          <div
-            className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{ background: `linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)` }}
-          >
-            <div className="p-4 w-full">
-              <p className="text-white text-sm font-medium truncate">{product.name}</p>
-              {cardConfig.showPrice && (
-                <p className="text-white/90 text-sm font-bold mt-0.5">
-                  {formatPrice(product.price)}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Visible below image on mobile */}
-        <div className="md:hidden mt-2">
-          <p className="text-sm font-medium truncate">{product.name}</p>
-          {cardConfig.showPrice && (
-            <p className="text-sm mt-0.5" style={{ color: design.palette.primary }}>
-              {formatPrice(product.price)}
-            </p>
-          )}
-        </div>
-      </Link>
-    );
-  }
-
-  // Default: Minimal style
+/** V2: Product card skeleton for loading states */
+export function ProductCardSkeleton() {
   return (
-    <Link href={linkUrl} className="group block" style={staggerDelay}>
-      <div className={cn('relative', ratioClass, imageStyleClass, )} style={{ borderRadius: 'var(--radius)' }}>
-        <img
-          src={imgSrc}
-          alt={imgAlt}
-          className="absolute inset-0 w-full h-full object-cover"
-          loading="lazy"
-          style={{ borderRadius: 'var(--radius)' }}
-        />
-        {discount > 0 && (
-          <span className="badge-discount absolute top-2 left-2">{discount}% off</span>
-        )}
+    <div>
+      <div className="aspect-[3/4] skeleton rounded-[var(--radius)]" />
+      <div className="mt-2.5 space-y-1.5">
+        <div className="skeleton h-4 w-3/4 rounded" />
+        <div className="skeleton h-3.5 w-1/3 rounded" />
       </div>
-      <div className="mt-3">
-        <h3 className="text-sm font-medium leading-snug group-hover:opacity-70 transition-opacity truncate" style={{ color: design.palette.text }}>
-          {product.name}
-        </h3>
-        {cardConfig.showPrice && (
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm font-bold" style={{ color: design.palette.primary }}>
-              {formatPrice(product.price)}
-            </span>
-            {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <span className="text-xs line-through" style={{ color: design.palette.textMuted }}>
-                {formatPrice(product.compareAtPrice)}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </Link>
+    </div>
   );
 }
