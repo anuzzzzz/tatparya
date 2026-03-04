@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@tatparya/shared'],
+  transpilePackages: ['@tatparya/shared', 'superjson'],
   images: {
     remotePatterns: [
       {
@@ -12,9 +12,6 @@ const nextConfig = {
         hostname: 'media.tatparya.in',
       },
     ],
-  },
-  experimental: {
-    serverComponentsExternalPackages: ['superjson'],
   },
 };
 
