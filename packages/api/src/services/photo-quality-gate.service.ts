@@ -245,7 +245,7 @@ async function callOpenAIGate(imageDataUrl: string, prompt: string): Promise<str
   });
 
   if (!response.ok) throw new Error(`OpenAI gate error: ${response.status}`);
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.choices?.[0]?.message?.content || '{}';
 }
 

@@ -219,7 +219,7 @@ async function callOpenAITriage(thumbnailDataUrls: string[]): Promise<string> {
     throw new Error(`OpenAI triage error (${response.status}): ${error}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.choices?.[0]?.message?.content || '{}';
 }
 

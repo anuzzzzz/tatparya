@@ -49,6 +49,8 @@ export interface PipelineInput {
   vertical?: string;
   mode: 'draft' | 'production';
   db: SupabaseClient;
+  /** Pre-loaded image buffers — skips storage download when provided (useful for dev/testing) */
+  preloadedBuffers?: Buffer[];
 }
 
 export interface PipelineOutput {
@@ -108,33 +110,52 @@ export async function processSellerPhotos(input: PipelineInput): Promise<Pipelin
   const imageBuffers: Buffer[] = [];
   const thumbnailDataUrls: string[] = [];
 
-  for (const mediaId of mediaIds) {
-    const { data: media } = await db
-      .from('media_assets')
-      .select('original_key, original_url')
-      .eq('id', mediaId)
-      .eq('store_id', storeId)
-      .single();
-
-    if (!media) {
-      console.warn(`[photo-pipeline] Media ${mediaId} not found, skipping`);
-      continue;
-    }
-
-    try {
-      const buffer = await downloadBuffer(media.original_key);
+  if (input.preloadedBuffers?.length) {
+    // Use pre-loaded buffers (dev/testing path — skip storage download)
+    for (let i = 0; i < input.preloadedBuffers.length; i++) {
+      const buffer = input.preloadedBuffers[i]!;
       imageBuffers.push(buffer);
 
-      // Generate thumbnail for AI classification (512px max, low quality)
-      const thumb = await sharp(buffer)
-        .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 60 })
-        .toBuffer();
+      try {
+        const thumb = await sharp(buffer)
+          .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 60 })
+          .toBuffer();
+        thumbnailDataUrls.push(`data:image/jpeg;base64,${thumb.toString('base64')}`);
+      } catch (err) {
+        console.warn(`[photo-pipeline] Failed to create thumbnail for preloaded buffer ${i}:`, err);
+      }
+    }
+  } else {
+    // Production path — load from storage
+    for (const mediaId of mediaIds) {
+      const { data: media } = await db
+        .from('media_assets')
+        .select('original_key, original_url')
+        .eq('id', mediaId)
+        .eq('store_id', storeId)
+        .single();
 
-      const b64 = thumb.toString('base64');
-      thumbnailDataUrls.push(`data:image/jpeg;base64,${b64}`);
-    } catch (err) {
-      console.warn(`[photo-pipeline] Failed to load ${mediaId}:`, err);
+      if (!media) {
+        console.warn(`[photo-pipeline] Media ${mediaId} not found, skipping`);
+        continue;
+      }
+
+      try {
+        const buffer = await downloadBuffer(media.original_key);
+        imageBuffers.push(buffer);
+
+        // Generate thumbnail for AI classification (512px max, low quality)
+        const thumb = await sharp(buffer)
+          .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 60 })
+          .toBuffer();
+
+        const b64 = thumb.toString('base64');
+        thumbnailDataUrls.push(`data:image/jpeg;base64,${b64}`);
+      } catch (err) {
+        console.warn(`[photo-pipeline] Failed to load ${mediaId}:`, err);
+      }
     }
   }
 

@@ -290,7 +290,7 @@ export function assignPhotosToSections(
 
 function normalizeClassifications(
   raw: PhotoClassification[],
-  totalPhotos: number,
+  _totalPhotos: number,
 ): PhotoClassification[] {
   return raw.map(c => ({
     imageIndex: c.imageIndex ?? 0,
@@ -390,7 +390,7 @@ async function callOpenAIClassifier(thumbnailDataUrls: string[], verticalHint: s
     throw new Error(`OpenAI classifier error (${response.status}): ${err}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.choices?.[0]?.message?.content || '{}';
 }
 

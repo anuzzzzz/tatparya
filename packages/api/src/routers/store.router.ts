@@ -4,6 +4,7 @@ import { router, protectedProcedure, publicProcedure } from '../trpc/trpc.js';
 import { CreateStoreInput, UpdateStoreInput, GetStoreInput } from '@tatparya/shared';
 import { emitEvent } from '../lib/event-bus.js';
 import { generateStoreDesign } from '../services/store-design-ai.service.js';
+import { processSellerPhotos } from '../services/photo-pipeline-orchestrator.service.js';
 
 export const storeRouter = router({
   /**
@@ -396,6 +397,223 @@ export const storeRouter = router({
         heroTagline: result.heroTagline,
         heroSubtext: result.heroSubtext,
         processingTimeMs: result.processingTimeMs,
+      };
+    }),
+
+  /**
+   * Dev-only: Full pipeline — photos → store → pipeline → design.
+   *
+   * One-shot endpoint for testing the complete flow:
+   *  1. Create store
+   *  2. Download images → local storage → media_assets records
+   *  3. Run photo pipeline (draft mode)
+   *  4. Generate AI store design
+   *  5. Return complete store + pipeline results
+   *
+   * Accepts external image URLs or base64 data URIs.
+   */
+  devFullPipeline: publicProcedure
+    .input(z.object({
+      name: z.string().min(1),
+      vertical: z.string().min(1),
+      description: z.string().optional(),
+      productImages: z.array(z.string().min(1)).min(1).max(10),
+      sellerContext: z.object({
+        audience: z.string().optional(),
+        priceRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        brandVibe: z.string().optional(),
+      }).optional(),
+      sellerHints: z.string().optional(),
+      pipelineMode: z.enum(['draft', 'production']).default('draft'),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const totalStart = Date.now();
+
+      // ── Step 1: Create store ──
+      const slug = input.name
+        .toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-').replace(/^-|-$/g, '')
+        + '-' + Date.now().toString(36);
+
+      const DEV_OWNER_ID = '01e14d64-a028-4c4d-b6fe-7b13f4bbf007';
+
+      const { data: store, error: storeError } = await ctx.serviceDb
+        .from('stores')
+        .insert({
+          owner_id: DEV_OWNER_ID,
+          name: input.name,
+          slug,
+          vertical: input.vertical,
+          description: input.description || null,
+          store_config: {
+            design: { layout: 'minimal', palette: { primary: '#D4356A', background: '#FFFAF5', text: '#1A1A2E' } },
+            sections: { homepage: [], productPage: [] },
+            sellerContext: input.sellerContext || {},
+            language: 'en', currency: 'INR', integrations: {},
+          },
+          whatsapp_config: { enabled: false },
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (storeError || !store) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Store creation failed: ${storeError?.message}` });
+      }
+
+      const storeId = store.id as string;
+      console.log(`[full-pipeline] Store created: ${storeId} (${slug})`);
+
+      // ── Step 2: Ingest images → local storage + media_assets ──
+      // Force local storage for dev pipeline (avoids R2 issues in dev)
+      const { generateMediaKey } = await import('../lib/storage.js');
+      const { mkdirSync, writeFileSync } = await import('fs');
+      const { join, dirname } = await import('path');
+      const localUploadDir = join(process.cwd(), '../storefront/public/uploads');
+      const mediaIds: string[] = [];
+      const imageBuffers: Buffer[] = [];
+
+      for (let i = 0; i < input.productImages.length; i++) {
+        const imgSrc = input.productImages[i]!;
+        let buffer: Buffer;
+
+        try {
+          if (imgSrc.startsWith('data:')) {
+            // Base64 data URI
+            const b64 = imgSrc.split(',')[1];
+            if (!b64) throw new Error('Invalid data URI');
+            buffer = Buffer.from(b64, 'base64');
+          } else {
+            // External URL — download it
+            const resp = await fetch(imgSrc);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            buffer = Buffer.from(await resp.arrayBuffer());
+          }
+
+          // Save to local storage (dev-safe, always writes locally)
+          const key = generateMediaKey(storeId, 'originals', `photo-${i}.jpg`);
+          const filePath = join(localUploadDir, key);
+          mkdirSync(dirname(filePath), { recursive: true });
+          writeFileSync(filePath, buffer);
+          const publicUrl = `/uploads/${key}`;
+
+          // Keep buffer for pipeline (avoids re-download from R2)
+          imageBuffers.push(buffer);
+
+          // Create media_assets record
+          const { data: media, error: mediaError } = await ctx.serviceDb
+            .from('media_assets')
+            .insert({
+              store_id: storeId,
+              original_key: key,
+              original_url: publicUrl,
+              filename: `photo-${i}.jpg`,
+              content_type: 'image/jpeg',
+              file_size_bytes: buffer.length,
+              enhancement_status: 'pending',
+            })
+            .select('id')
+            .single();
+
+          if (mediaError || !media) {
+            console.warn(`[full-pipeline] media_assets insert failed for image ${i}:`, mediaError?.message);
+            continue;
+          }
+
+          mediaIds.push(media.id as string);
+          console.log(`[full-pipeline] Image ${i} ingested: ${media.id} (${(buffer.length / 1024).toFixed(0)}KB)`);
+        } catch (err) {
+          console.warn(`[full-pipeline] Failed to ingest image ${i}:`, err);
+        }
+      }
+
+      if (mediaIds.length === 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No images could be ingested. Check your image URLs.',
+        });
+      }
+
+      // ── Step 3: Run photo pipeline ──
+      console.log(`[full-pipeline] Running photo pipeline (${input.pipelineMode}) on ${mediaIds.length} images...`);
+      const pipelineResult = await processSellerPhotos({
+        storeId,
+        mediaIds,
+        vertical: input.vertical,
+        mode: input.pipelineMode,
+        db: ctx.serviceDb,
+        preloadedBuffers: imageBuffers,
+      });
+
+      console.log(`[full-pipeline] Pipeline done in ${pipelineResult.timing.totalMs}ms — ${pipelineResult.summary.usablePhotos} usable, score ${pipelineResult.summary.overallScore}`);
+
+      // ── Step 4: Generate AI store design ──
+      // Use the original image URLs for the design AI (it needs viewable images)
+      const designImages = input.productImages.slice(0, 5);
+
+      console.log(`[full-pipeline] Generating store design...`);
+      const designResult = await generateStoreDesign({
+        storeName: input.name,
+        vertical: input.vertical,
+        productImages: designImages,
+        sellerContext: input.sellerContext,
+        sellerHints: input.sellerHints,
+      });
+
+      // ── Step 5: Merge into store config ──
+      const existingConfig = (store.store_config || {}) as Record<string, any>;
+      const finalConfig = {
+        ...existingConfig,
+        design: designResult.design,
+        heroTagline: designResult.heroTagline,
+        heroSubtext: designResult.heroSubtext,
+        storeBio: designResult.storeBio,
+        sections: {
+          homepage: designResult.sectionLayout.map((s: any) => ({
+            type: s.type,
+            config: { variant: s.variant, background_hint: s.background_hint, position: s.position, required: s.required },
+          })),
+          productPage: [],
+        },
+        // Attach pipeline summary for debugging
+        photoPipeline: {
+          summary: pipelineResult.summary,
+          sectionAssignment: pipelineResult.sectionAssignment,
+          timing: pipelineResult.timing,
+        },
+        language: 'en', currency: 'INR', integrations: {},
+      };
+
+      const { data: updated, error: updateError } = await ctx.serviceDb
+        .from('stores')
+        .update({ store_config: finalConfig, description: designResult.storeBio })
+        .eq('id', storeId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Store update failed: ${updateError.message}` });
+      }
+
+      const totalMs = Date.now() - totalStart;
+      console.log(`[full-pipeline] Complete in ${totalMs}ms — store ${slug} is ready`);
+
+      return {
+        store: mapStoreRow(updated!),
+        pipeline: pipelineResult.summary,
+        design: {
+          heroTagline: designResult.heroTagline,
+          heroSubtext: designResult.heroSubtext,
+          storeBio: designResult.storeBio,
+          archetypeId: designResult.archetypeId,
+        },
+        timing: {
+          ...pipelineResult.timing,
+          designMs: designResult.processingTimeMs,
+          totalMs,
+        },
+        storefrontUrl: `/${slug}`,
       };
     }),
 });

@@ -56,6 +56,9 @@ export const EventType = z.enum([
   'image.enhancement_started',
   'image.enhancement_completed',
   'image.enhancement_failed',
+
+  // Photo pipeline events
+  'photos.pipeline_completed',
 ]);
 
 export type EventType = z.infer<typeof EventType>;
