@@ -6,6 +6,7 @@ import { useStore } from './store-provider';
 import { useReveal } from '@/hooks/use-reveal';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
+import { TextureOverlay } from './texture-overlay';
 
 interface HeroProps {
   imageUrl?: string;
@@ -17,7 +18,6 @@ interface HeroProps {
 export function HeroSection({ imageUrl, images, variant: explicitVariant }: HeroProps) {
   const { store, design, config } = useStore();
   const heroConfig = design.hero;
-  const heroTokens = design.heroTokens;
   const storeUrl = `/${store.slug}`;
 
   const heading = (config as any).heroTagline || store.name;
@@ -55,13 +55,14 @@ function mapHeroStyle(style: string): string {
 }
 
 // ============================================================
-// HERO: Full Bleed — Cinematic gradient overlay
+// HERO: Full Bleed — Cinematic gradient overlay + TEXTURE
 // ============================================================
 function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub: string; link: string; imageUrl?: string }) {
   const { design } = useStore();
   const p = design.palette;
   const heroTokens = design.heroTokens;
   const bespoke = design.bespokeStyles?.hero || {};
+  const textureHint = (design.decorativeTokens as any)?.textureOverlay || 'none';
   const height = design.hero.height === 'full' ? 'min-h-[65vh] md:min-h-[85vh]' : design.hero.height === 'half' ? 'min-h-[45vh] md:min-h-[50vh]' : 'min-h-[35vh]';
 
   // V3: Use bespoke overlay gradient if AI generated one, else fall back to Tier 3 token
@@ -88,6 +89,8 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
       }}
     >
       {imageUrl && <div className="absolute inset-0" style={{ background: overlayGradient }} />}
+      {/* V3.1: Texture overlay from Director's textureHint */}
+      <TextureOverlay hint={textureHint} />
       <div className="relative z-10 px-6 pb-12 md:pb-16 max-w-xl" style={{ animation: 'slide-up 0.8s var(--ease-spring) 0.2s both' }}>
         <h1
           className="font-display font-bold mb-4"
@@ -124,12 +127,13 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
 }
 
 // ============================================================
-// HERO: Slideshow — Auto-advancing with crossfade
+// HERO: Slideshow — Auto-advancing with crossfade + TEXTURE
 // ============================================================
 function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: string; sub: string; link: string; imageUrl?: string; images?: string[] }) {
   const { design } = useStore();
   const p = design.palette;
   const bespoke = design.bespokeStyles?.hero || {};
+  const textureHint = (design.decorativeTokens as any)?.textureOverlay || 'none';
   const allImages = images?.length ? images : imageUrl ? [imageUrl] : [];
   const [current, setCurrent] = useState(0);
 
@@ -165,6 +169,8 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
       ))}
       {/* Bespoke overlay */}
       <div className="absolute inset-0 z-[2]" style={{ background: overlayGradient }} />
+      {/* V3.1: Texture overlay from Director's textureHint */}
+      <TextureOverlay hint={textureHint} className="z-[3]" />
 
       <div className="relative z-10 flex flex-col justify-end h-[65vh] md:h-[80vh] px-6 pb-12 md:pb-16">
         <div className="max-w-xl" style={{ animation: 'slide-up 0.8s var(--ease-spring) 0.2s both' }}>

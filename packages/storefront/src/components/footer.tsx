@@ -4,22 +4,27 @@ import React from 'react';
 import Link from 'next/link';
 import { useStore } from './store-provider';
 import { MessageCircle, Instagram, Mail } from 'lucide-react';
+import { TextureOverlay } from './texture-overlay';
 
 export function Footer() {
   const { store, design } = useStore();
   const storeUrl = `/${store.slug}`;
   const whatsappPhone = (store.whatsappConfig as any)?.businessPhone;
+  const textureHint = (design.decorativeTokens as any)?.textureOverlay || 'none';
 
   return (
     <footer
-      className="mt-auto border-t"
+      className="mt-auto border-t relative overflow-hidden"
       style={{
         backgroundColor: design.palette.surface,
         borderColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
         color: design.palette.textMuted,
       }}
     >
-      <div className="container-store py-10 md:py-14">
+      {/* V3.1: Texture overlay in footer for handcrafted feel */}
+      <TextureOverlay hint={textureHint} opacity={0.02} />
+
+      <div className="container-store py-10 md:py-14 relative z-[2]">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
@@ -39,133 +44,108 @@ export function Footer() {
                   href={`https://wa.me/${whatsappPhone}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                  className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
                   style={{
-                    backgroundColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
-                    color: design.palette.textMuted,
+                    backgroundColor: `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`,
+                    color: design.palette.primary,
                   }}
-                  aria-label="WhatsApp"
                 >
                   <MessageCircle size={14} />
                 </a>
               )}
               <a
                 href="#"
-                className="w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
                 style={{
-                  backgroundColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
-                  color: design.palette.textMuted,
+                  backgroundColor: `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`,
+                  color: design.palette.primary,
                 }}
-                aria-label="Instagram"
               >
                 <Instagram size={14} />
               </a>
               <a
                 href="#"
-                className="w-8 h-8 flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
                 style={{
-                  backgroundColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
-                  color: design.palette.textMuted,
+                  backgroundColor: `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`,
+                  color: design.palette.primary,
                 }}
-                aria-label="Email"
               >
                 <Mail size={14} />
               </a>
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Links */}
           <div>
             <h4
-              className="text-[10px] font-bold uppercase tracking-widest mb-4"
+              className="text-[11px] font-bold uppercase tracking-wider mb-3"
               style={{ color: design.palette.text }}
             >
               Shop
             </h4>
-            <div className="space-y-2.5 text-xs">
-              <Link href={storeUrl} className="block hover:opacity-70 transition-opacity">
-                Home
-              </Link>
-              <Link href={`${storeUrl}/collections/all`} className="block hover:opacity-70 transition-opacity">
+            <nav className="flex flex-col gap-1.5">
+              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">
                 All Products
               </Link>
-              <Link href={`${storeUrl}/cart`} className="block hover:opacity-70 transition-opacity">
-                Cart
+              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">
+                New Arrivals
               </Link>
-            </div>
+              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">
+                Best Sellers
+              </Link>
+            </nav>
           </div>
 
-          {/* Policies */}
           <div>
             <h4
-              className="text-[10px] font-bold uppercase tracking-widest mb-4"
+              className="text-[11px] font-bold uppercase tracking-wider mb-3"
               style={{ color: design.palette.text }}
             >
-              Policies
+              Help
             </h4>
-            <div className="space-y-2.5 text-xs">
-              <span className="block opacity-60">Shipping Policy</span>
-              <span className="block opacity-60">Return & Refund</span>
-              <span className="block opacity-60">Privacy Policy</span>
-              <span className="block opacity-60">Terms of Service</span>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4
-              className="text-[10px] font-bold uppercase tracking-widest mb-4"
-              style={{ color: design.palette.text }}
-            >
-              Contact
-            </h4>
-            <div className="space-y-2.5 text-xs">
+            <nav className="flex flex-col gap-1.5">
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Shipping</a>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Returns</a>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Contact Us</a>
               {whatsappPhone && (
                 <a
                   href={`https://wa.me/${whatsappPhone}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block hover:opacity-70 transition-opacity"
+                  className="text-xs hover:opacity-80 transition-opacity"
                 >
-                  WhatsApp: +{whatsappPhone}
+                  WhatsApp Support
                 </a>
               )}
-              {store.businessName && (
-                <p className="opacity-70">{store.businessName}</p>
-              )}
-              {store.gstin && (
-                <p className="opacity-50">GSTIN: {store.gstin}</p>
-              )}
-            </div>
+            </nav>
+          </div>
+
+          <div>
+            <h4
+              className="text-[11px] font-bold uppercase tracking-wider mb-3"
+              style={{ color: design.palette.text }}
+            >
+              Legal
+            </h4>
+            <nav className="flex flex-col gap-1.5">
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Privacy Policy</a>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Terms of Service</a>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Refund Policy</a>
+            </nav>
           </div>
         </div>
 
-        {/* Payment methods + bottom bar */}
+        {/* Bottom bar */}
         <div
-          className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4"
+          className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3"
           style={{ borderColor: `color-mix(in srgb, ${design.palette.text} 6%, transparent)` }}
         >
-          <div className="flex items-center gap-4 text-[10px] opacity-50">
-            <span>© {new Date().getFullYear()} {store.name}</span>
-            <span>·</span>
+          <p className="text-[10px]">
+            © {new Date().getFullYear()} {store.name}. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4 text-[10px] opacity-60">
             <span>Powered by Tatparya</span>
-          </div>
-
-          {/* Payment method badges */}
-          <div className="flex items-center gap-3">
-            {['UPI', 'COD', 'Cards', 'Net Banking'].map((method) => (
-              <span
-                key={method}
-                className="text-[9px] font-semibold uppercase tracking-wider px-2 py-1"
-                style={{
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: `color-mix(in srgb, ${design.palette.text} 5%, transparent)`,
-                  color: design.palette.textMuted,
-                }}
-              >
-                {method}
-              </span>
-            ))}
           </div>
         </div>
       </div>

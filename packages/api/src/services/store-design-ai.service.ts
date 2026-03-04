@@ -1,6 +1,7 @@
 import { env } from '../env.js';
 import { selectArchetype, getRepresentativeComposition } from '../lib/archetypes.js';
 import type { SectionPattern, Composition } from '../lib/archetypes.js';
+import { validateDesignOutput, buildCorrectiveGuidance } from './design-validator.service.js';
 
 // ============================================================
 // Store Design AI Service v3 — Two-Pass Director → Stylist
@@ -320,10 +321,28 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     parsed.design.fonts.body = director.typography.bodyFont;
   }
 
-  // WCAG palette validation
-  if (parsed.design?.palette) {
-    parsed.design.palette = validateAndFixPalette(parsed.design.palette);
+  // ── PASS 3: VALIDATOR (no API call — pure logic) ──
+  const validation = validateDesignOutput(parsed.design, director);
+  console.log(`[design-ai] Pass 3 Validator: score=${validation.score}/100 passed=${validation.passed}`);
+  if (validation.corrections.length > 0) {
+    console.log(`[design-ai] Corrections: ${validation.corrections.map(c => `${c.severity}:${c.field}`).join(', ')}`);
   }
+  if (validation.autoFixed.length > 0) {
+    console.log(`[design-ai] Auto-fixed: ${validation.autoFixed.join(', ')}`);
+  }
+
+  // Apply auto-fixed palette from validator
+  if (parsed.design?.palette) {
+    parsed.design.palette = validation.palette;
+  }
+
+  // If validation fails hard and we have budget for a re-run, log the corrective guidance
+  // (Optional: uncomment to enable Stylist re-run on failure)
+  // if (!validation.passed) {
+  //   const guidance = buildCorrectiveGuidance(validation);
+  //   console.warn(`[design-ai] Validator FAILED (${validation.score}). Corrective guidance:\n${guidance}`);
+  //   // Could re-run Stylist here with `guidance` appended to the prompt
+  // }
 
   // Merge Director rhythm into section layout
   const rhythm = director.rhythm || [];
