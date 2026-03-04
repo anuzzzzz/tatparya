@@ -16,12 +16,15 @@ interface ProductCardProps {
     compareAtPrice?: number | null;
     images?: Array<{ heroUrl?: string; cardUrl?: string; thumbnailUrl?: string; originalUrl: string; alt?: string }>;
     tags?: string[];
+    category?: string;
   };
   index?: number;
+  /** V3: Card visual variant — editorial, minimal, bold */
+  variant?: 'default' | 'editorial' | 'minimal' | 'bold';
   onAddToCart?: (productName: string) => void;
 }
 
-export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProps) {
+export function ProductCard({ product, index = 0, variant: explicitVariant, onAddToCart }: ProductCardProps) {
   const { store, design } = useStore();
   const cardConfig = design.productCard;
   const cardTokens = design.cardTokens;
@@ -49,18 +52,29 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
 
   // V3: Bespoke card styles from AI
   const bespokeCard = design.bespokeStyles?.card || {};
-  const bespokeHoverTransform = bespokeCard.hoverTransform;
-  const bespokeShadowOnHover = bespokeCard.shadowOnHover;
+  const bespokeHoverTransform = bespokeCard.hoverTransform || 'translateY(-4px)';
+  const bespokeShadowOnHover = bespokeCard.shadowOnHover || '0 8px 32px rgba(0,0,0,0.08)';
+
+  // V3: Pick variant from explicit prop, config, or default
+  const variant = explicitVariant || (cardConfig.style === 'editorial' ? 'editorial' : 'default');
 
   const linkUrl = `${storeUrl}/products/${product.slug}`;
-
-  // Stagger delay
   const staggerStyle = design.animation === 'staggered' ? { animationDelay: `${index * 60}ms` } : {};
+
+  // V3: Category label from product data or first tag
+  const categoryLabel = product.category || product.tags?.[0];
 
   return (
     <div
       className="group relative animate-slide-up"
-      style={staggerStyle}
+      style={{
+        ...staggerStyle,
+        // V3: Bespoke hover transform on the whole card
+        transform: hovered ? bespokeHoverTransform : 'translateY(0)',
+        boxShadow: hovered ? bespokeShadowOnHover : '0 0 0 rgba(0,0,0,0)',
+        transition: 'transform 0.4s var(--ease-spring), box-shadow 0.4s var(--ease-spring)',
+        borderRadius: 'var(--radius)',
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -71,9 +85,7 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
           style={{ borderRadius: 'var(--radius)', backgroundColor: design.palette.surface }}
         >
           {/* Skeleton placeholder */}
-          {!imgLoaded && (
-            <div className="absolute inset-0 skeleton" />
-          )}
+          {!imgLoaded && <div className="absolute inset-0 skeleton" />}
 
           {/* Primary image */}
           <img
@@ -81,10 +93,8 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
             alt={imgAlt}
             className={cn(
               'absolute inset-0 w-full h-full object-cover transition-all duration-500',
-              // V2: Hover zoom effect
               hoverEffect === 'zoom' && hovered && 'scale-[1.06]',
               hoverEffect === 'lift' && hovered && '-translate-y-1',
-              // Cross-fade to second image
               showSecondImage && hovered && 'opacity-0',
             )}
             style={{ transitionTimingFunction: 'var(--ease-spring)' }}
@@ -105,15 +115,20 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
             />
           )}
 
-          {/* Discount badge */}
-          {discount > 0 && (
-            <span className="badge-discount absolute top-2 left-2 z-10">{discount}% off</span>
-          )}
-
-          {/* Tag badge (if no discount) */}
-          {product.tags?.[0] && !discount && (
+          {/* V3: Badge system — discount (red) > tag (primary) */}
+          {discount > 0 ? (
+            <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold px-2.5 py-1 uppercase tracking-wider"
+              style={{
+                backgroundColor: '#E94560',
+                color: '#fff',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              {discount}% off
+            </span>
+          ) : product.tags?.[0] ? (
             <span
-              className="absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5"
+              className="absolute top-2.5 left-2.5 z-10 text-[10px] font-semibold px-2.5 py-1"
               style={{
                 backgroundColor: `color-mix(in srgb, ${design.palette.primary} 90%, transparent)`,
                 color: '#fff',
@@ -122,12 +137,12 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
             >
               {product.tags[0]}
             </span>
-          )}
+          ) : null}
 
           {/* V2: Wishlist heart (appears on hover) */}
           <button
             className={cn(
-              'absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300',
+              'absolute top-2.5 right-2.5 z-10 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300',
               hovered ? 'opacity-100 scale-100' : 'opacity-0 scale-90',
             )}
             style={{
@@ -141,10 +156,10 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
             <Heart size={14} style={{ color: design.palette.text }} />
           </button>
 
-          {/* V2: Quick-add button (slides up on hover with glassmorphism) */}
+          {/* V2: Quick-add button (slides up on hover) */}
           {showQuickAdd && (
             <button
-              className="quick-add-btn absolute bottom-2 left-2 right-2 z-10 py-2.5 text-center text-xs font-semibold rounded-[var(--radius-sm)] focus-visible:outline-none focus-visible:ring-2"
+              className="quick-add-btn absolute bottom-2.5 left-2.5 right-2.5 z-10 py-2.5 text-center text-xs font-semibold rounded-[var(--radius-sm)] focus-visible:outline-none focus-visible:ring-2"
               style={{
                 backgroundColor: 'rgba(255,255,255,0.92)',
                 backdropFilter: 'blur(8px)',
@@ -165,16 +180,39 @@ export function ProductCard({ product, index = 0, onAddToCart }: ProductCardProp
         </div>
 
         {/* Product info */}
-        <div className="mt-2.5">
+        <div className="mt-3">
+          {/* V3: Category label — small muted text above product name */}
+          {variant === 'editorial' && categoryLabel && (
+            <p className="text-[10px] uppercase tracking-widest font-medium mb-0.5"
+              style={{ color: design.palette.primary, opacity: 0.8 }}>
+              {categoryLabel}
+            </p>
+          )}
+
           <p
-            className="text-sm font-medium leading-snug truncate group-hover:opacity-70 transition-opacity"
-            style={{ color: design.palette.text }}
+            className={cn(
+              'leading-snug group-hover:opacity-70 transition-opacity',
+              variant === 'editorial' ? 'text-sm font-semibold' : 'text-sm font-medium',
+              variant === 'minimal' && 'text-xs',
+            )}
+            style={{
+              color: design.palette.text,
+              fontFamily: variant === 'editorial' ? 'var(--font-display)' : undefined,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical' as const,
+              overflow: 'hidden',
+            }}
           >
             {product.name}
           </p>
+
           {cardConfig.showPrice && (
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm font-bold" style={{ color: design.palette.primary }}>
+              <span
+                className={cn('font-bold', variant === 'minimal' ? 'text-xs' : 'text-sm')}
+                style={{ color: design.palette.primary }}
+              >
                 {formatPrice(product.price)}
               </span>
               {product.compareAtPrice && product.compareAtPrice > product.price && (
@@ -195,7 +233,7 @@ export function ProductCardSkeleton() {
   return (
     <div>
       <div className="aspect-[3/4] skeleton rounded-[var(--radius)]" />
-      <div className="mt-2.5 space-y-1.5">
+      <div className="mt-3 space-y-1.5">
         <div className="skeleton h-4 w-3/4 rounded" />
         <div className="skeleton h-3.5 w-1/3 rounded" />
       </div>

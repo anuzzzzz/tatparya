@@ -1,43 +1,53 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from './store-provider';
 import { useReveal } from '@/hooks/use-reveal';
 import { cn } from '@/lib/utils';
 
-interface Stat {
+interface StatItem {
+  value: number;
+  suffix?: string;
+  prefix?: string;
   label: string;
-  value: string;
-  /** Numeric part for animation (e.g. 10000 from "10,000+") */
-  numericValue?: number;
 }
 
-const DEFAULT_STATS: Stat[] = [
-  { label: 'Happy Customers', value: '10,000+', numericValue: 10000 },
-  { label: 'Products', value: '500+', numericValue: 500 },
-  { label: 'Cities Delivered', value: '100+', numericValue: 100 },
-  { label: 'Years in Business', value: '5+', numericValue: 5 },
+const DEFAULT_STATS: StatItem[] = [
+  { value: 5000, suffix: '+', label: 'Happy Customers' },
+  { value: 150, suffix: '+', label: 'Products' },
+  { value: 4.8, label: 'Customer Rating' },
+  { value: 10, suffix: '+', label: 'Years of Craft' },
 ];
 
-interface StatsBarProps {
-  stats?: Stat[];
-}
-
-export function StatsBar({ stats = DEFAULT_STATS }: StatsBarProps) {
-  const { design } = useStore();
-  const p = design.palette;
-  const [revRef, visible] = useReveal(0.2);
+export function StatsBar() {
+  const { design, config } = useStore();
+  const stats = (config as any)?.stats || DEFAULT_STATS;
+  const [ref, visible] = useReveal(0.2);
 
   return (
     <section
-      ref={revRef as React.RefObject<HTMLElement>}
-      className={cn('py-8 md:py-10 transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden')}
-      style={{ backgroundColor: p.surface }}
+      ref={ref as React.RefObject<HTMLElement>}
+      className={cn('py-10 md:py-14 transition-all duration-700', visible ? 'reveal-visible' : 'reveal-hidden')}
+      style={{ backgroundColor: design.palette.surface }}
     >
       <div className="container-store">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {stats.map((stat, i) => (
-            <AnimatedStat key={i} stat={stat} visible={visible} index={i} palette={p} />
+        <div className="flex items-center justify-center gap-10 md:gap-20 flex-wrap">
+          {stats.map((stat: StatItem, i: number) => (
+            <div key={i} className="text-center">
+              <AnimatedNumber
+                value={stat.value}
+                suffix={stat.suffix}
+                prefix={stat.prefix}
+                active={visible}
+                delay={i * 150}
+                color={design.palette.text}
+                displayFont={true}
+              />
+              <p className="text-[11px] md:text-xs mt-1 font-medium tracking-wide uppercase"
+                style={{ color: design.palette.textMuted, letterSpacing: '0.08em' }}>
+                {stat.label}
+              </p>
+            </div>
           ))}
         </div>
       </div>
@@ -45,54 +55,57 @@ export function StatsBar({ stats = DEFAULT_STATS }: StatsBarProps) {
   );
 }
 
-function AnimatedStat({ stat, visible, index, palette }: { stat: Stat; visible: boolean; index: number; palette: any }) {
-  const [displayValue, setDisplayValue] = useState('0');
+function AnimatedNumber({ value, suffix, prefix, active, delay, color, displayFont }: {
+  value: number;
+  suffix?: string;
+  prefix?: string;
+  active: boolean;
+  delay: number;
+  color: string;
+  displayFont?: boolean;
+}) {
+  const [display, setDisplay] = useState(0);
+  const frameRef = useRef<number>();
 
   useEffect(() => {
-    if (!visible || !stat.numericValue) {
-      if (visible) setDisplayValue(stat.value);
-      return;
-    }
+    if (!active) return;
 
-    const target = stat.numericValue;
-    const duration = 1200;
-    const startTime = Date.now() + index * 150; // stagger start
+    const timeout = setTimeout(() => {
+      const duration = 1200;
+      const start = performance.now();
+      const isFloat = value % 1 !== 0;
 
-    const animate = () => {
-      const now = Date.now();
-      const elapsed = now - startTime;
-      if (elapsed < 0) {
-        requestAnimationFrame(animate);
-        return;
-      }
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(eased * target);
+      const animate = (now: number) => {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = eased * value;
+        setDisplay(isFloat ? parseFloat(current.toFixed(1)) : Math.floor(current));
+        if (progress < 1) {
+          frameRef.current = requestAnimationFrame(animate);
+        }
+      };
 
-      if (target >= 1000) {
-        setDisplayValue(current.toLocaleString('en-IN') + (stat.value.includes('+') ? '+' : ''));
-      } else {
-        setDisplayValue(current + (stat.value.includes('+') ? '+' : ''));
-      }
+      frameRef.current = requestAnimationFrame(animate);
+    }, delay);
 
-      if (progress < 1) requestAnimationFrame(animate);
+    return () => {
+      clearTimeout(timeout);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-
-    requestAnimationFrame(animate);
-  }, [visible, stat, index]);
+  }, [active, value, delay]);
 
   return (
-    <div style={{ animationDelay: `${index * 60}ms` }}>
-      <div
-        className="text-2xl md:text-3xl font-bold font-display tabular-nums"
-        style={{ color: palette.primary }}
-      >
-        {visible ? displayValue : '0'}
-      </div>
-      <div className="text-xs mt-1" style={{ color: palette.textMuted }}>
-        {stat.label}
-      </div>
-    </div>
+    <span
+      className="text-2xl md:text-3xl font-bold tabular-nums"
+      style={{
+        color,
+        fontFamily: displayFont ? 'var(--font-display)' : undefined,
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {prefix}{active ? display : 0}{suffix}
+    </span>
   );
 }

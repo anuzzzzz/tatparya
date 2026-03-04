@@ -22,21 +22,41 @@ export function Navbar() {
   const useGlass = design.decorativeTokens?.useGlassmorphism !== false;
   const isSticky = nav.style === 'sticky_minimal' || nav.style === 'top_bar';
 
+  // V3: Transparent navbar over hero — white text when unscrolled
+  const heroStyle = design.hero?.style || 'full_bleed';
+  const hasImageHero = ['full_bleed', 'parallax', 'carousel', 'video', 'gradient'].includes(heroStyle);
+  const isTransparent = !scrolled && hasImageHero;
+  const textColor = isTransparent ? '#fff' : design.palette.text;
+  const textMuted = isTransparent ? 'rgba(255,255,255,0.7)' : design.palette.textMuted;
+
   return (
     <header
       className={cn(
-        'w-full z-50 transition-all duration-300',
-        isSticky && 'sticky top-0',
-        scrolled && useGlass && 'glass-nav',
-        scrolled && 'shadow-sm',
+        'w-full z-50 transition-all duration-500',
+        isSticky && 'fixed top-0 left-0 right-0',
       )}
       style={{
-        backgroundColor: scrolled && useGlass ? undefined : design.palette.background,
+        backgroundColor: scrolled
+          ? (useGlass ? 'rgba(255,255,255,0.0)' : design.palette.background)
+          : 'transparent',
+        backdropFilter: scrolled && useGlass ? 'blur(20px) saturate(180%)' : undefined,
+        WebkitBackdropFilter: scrolled && useGlass ? 'blur(20px) saturate(180%)' : undefined,
         borderBottom: scrolled
           ? `1px solid color-mix(in srgb, ${design.palette.text} 8%, transparent)`
           : '1px solid transparent',
+        boxShadow: scrolled ? '0 1px 12px rgba(0,0,0,0.04)' : 'none',
       }}
     >
+      {/* Glass background layer — separate so we can tint it with the store's bg color */}
+      {scrolled && useGlass && (
+        <div
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${design.palette.background} 85%, transparent)`,
+          }}
+        />
+      )}
+
       <nav className="container-store flex items-center justify-between h-14 md:h-16">
         {/* Left: hamburger + brand */}
         <div className="flex items-center gap-3">
@@ -44,14 +64,17 @@ export function Navbar() {
             className="md:hidden p-1.5 -ml-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            style={{ '--tw-ring-color': design.palette.primary } as React.CSSProperties}
+            style={{
+              color: textColor,
+              '--tw-ring-color': design.palette.primary,
+            } as React.CSSProperties}
           >
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
           <Link
             href={storeUrl}
-            className="font-display text-lg md:text-xl font-bold tracking-tight truncate max-w-[180px] md:max-w-none hover:opacity-80 transition-opacity"
-            style={{ color: design.palette.text }}
+            className="font-display text-lg md:text-xl font-bold tracking-tight truncate max-w-[180px] md:max-w-none transition-colors duration-500"
+            style={{ color: textColor }}
           >
             {store.name}
           </Link>
@@ -59,18 +82,33 @@ export function Navbar() {
 
         {/* Center: nav links (desktop) */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link href={storeUrl} className="hover:opacity-70 transition-opacity">Home</Link>
-          <Link href={`${storeUrl}/collections/all`} className="hover:opacity-70 transition-opacity">Shop</Link>
+          <Link
+            href={storeUrl}
+            className="transition-opacity duration-200 hover:opacity-70"
+            style={{ color: textColor }}
+          >
+            Home
+          </Link>
+          <Link
+            href={`${storeUrl}/collections/all`}
+            className="transition-opacity duration-200 hover:opacity-70"
+            style={{ color: textColor }}
+          >
+            Shop
+          </Link>
         </div>
 
         {/* Right: actions */}
         <div className="flex items-center gap-1">
           {nav.showSearch && (
             <button
-              className="p-2 hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="p-2 transition-opacity duration-200 hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
               onClick={() => setSearchOpen(!searchOpen)}
               aria-label="Search"
-              style={{ '--tw-ring-color': design.palette.primary } as React.CSSProperties}
+              style={{
+                color: textColor,
+                '--tw-ring-color': design.palette.primary,
+              } as React.CSSProperties}
             >
               <Search size={20} />
             </button>
@@ -81,8 +119,8 @@ export function Navbar() {
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden md:flex p-2 hover:opacity-70 transition-opacity"
-              style={{ color: '#25D366' }}
+              className="hidden md:flex p-2 transition-opacity duration-200 hover:opacity-70"
+              style={{ color: isTransparent ? '#25D366' : '#25D366' }}
               aria-label="WhatsApp"
             >
               <MessageCircle size={20} />
@@ -92,9 +130,12 @@ export function Navbar() {
           {nav.showCart && (
             <Link
               href={`${storeUrl}/cart`}
-              className="relative p-2 hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="relative p-2 transition-opacity duration-200 hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
               aria-label={`Cart with ${cartCount} items`}
-              style={{ '--tw-ring-color': design.palette.primary } as React.CSSProperties}
+              style={{
+                color: textColor,
+                '--tw-ring-color': design.palette.primary,
+              } as React.CSSProperties}
             >
               <ShoppingBag size={20} />
               {cartCount > 0 && (
@@ -112,18 +153,25 @@ export function Navbar() {
 
       {/* Search bar (slide down) */}
       {searchOpen && (
-        <div className="border-t px-4 py-3 animate-slide-up" style={{ borderColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)` }}>
+        <div
+          className="border-t px-4 py-3 animate-slide-up"
+          style={{
+            borderColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
+            backgroundColor: design.palette.background,
+          }}
+        >
           <form action={`${storeUrl}/collections/all`} method="GET" className="container-store flex items-center gap-2">
-            <Search size={18} className="opacity-40 flex-shrink-0" />
+            <Search size={18} className="opacity-40 flex-shrink-0" style={{ color: design.palette.text }} />
             <input
               name="search"
               type="text"
               placeholder="Search products..."
               className="flex-1 bg-transparent outline-none text-sm py-1"
+              style={{ color: design.palette.text }}
               autoFocus
             />
             <button type="button" onClick={() => setSearchOpen(false)} className="p-1 opacity-60" aria-label="Close search">
-              <X size={16} />
+              <X size={16} style={{ color: design.palette.text }} />
             </button>
           </form>
         </div>
@@ -138,8 +186,8 @@ export function Navbar() {
             borderColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
           }}
         >
-          <Link href={storeUrl} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link href={`${storeUrl}/collections/all`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)}>Shop All</Link>
+          <Link href={storeUrl} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Home</Link>
+          <Link href={`${storeUrl}/collections/all`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Shop All</Link>
           {nav.showWhatsapp && (
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-medium py-1" style={{ color: '#25D366' }}>
               <MessageCircle size={16} /> Chat with us

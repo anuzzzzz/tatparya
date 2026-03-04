@@ -50,10 +50,16 @@
   h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Selection color matches store primary */
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    color: var(--color-text);
+  }
 }
 
 /* ============================================================
-   V2 Keyframe Animations
+   V2+V3 Keyframe Animations
    ============================================================ */
 @layer utilities {
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -66,11 +72,31 @@
   @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes subtle-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
+  /* V3: Hero-specific entrance animations */
+  @keyframes hero-text-up {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes hero-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
   .animate-fade-in { animation: fade-in 0.4s var(--ease-spring) both; }
   .animate-slide-up { animation: slide-up 0.5s var(--ease-spring) both; }
   .animate-bounce-in { animation: bounce-in 0.4s var(--ease-spring) both; }
   .animate-scale-in { animation: scale-in 0.3s var(--ease-spring) both; }
   .animate-toast-in { animation: toast-in 0.3s var(--ease-spring) both; }
+
+  /* V3: Hero staggered entrance */
+  .hero-stagger > *:nth-child(1) { animation: hero-text-up 0.7s var(--ease-spring) 0.1s both; }
+  .hero-stagger > *:nth-child(2) { animation: hero-text-up 0.7s var(--ease-spring) 0.2s both; }
+  .hero-stagger > *:nth-child(3) { animation: hero-text-up 0.7s var(--ease-spring) 0.35s both; }
+  .hero-stagger > *:nth-child(4) { animation: hero-text-up 0.7s var(--ease-spring) 0.5s both; }
 
   /* Staggered children — 60ms delay cascade */
   .animate-stagger > * { animation: slide-up 0.5s var(--ease-spring) both; }
@@ -114,11 +140,11 @@
   .marquee-track { display: flex; width: max-content; animation: marquee-scroll 25s linear infinite; }
   .marquee-track:hover { animation-play-state: paused; }
 
-  /* Glassmorphism */
+  /* V3: Glass nav — now handled by inline styles for store-aware tinting */
   .glass-nav {
     background: color-mix(in srgb, var(--color-background) 85%, transparent);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
 
   /* Quick-add slide-up on hover */

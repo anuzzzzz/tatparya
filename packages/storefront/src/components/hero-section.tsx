@@ -64,6 +64,7 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
   const bespoke = design.bespokeStyles?.hero || {};
   const textureHint = (design.decorativeTokens as any)?.textureOverlay || 'none';
   const height = design.hero.height === 'full' ? 'min-h-[65vh] md:min-h-[85vh]' : design.hero.height === 'half' ? 'min-h-[45vh] md:min-h-[50vh]' : 'min-h-[35vh]';
+  const provenanceBadge = (design as any).heroProvenanceBadge || ((design as any).bespokeStyles?.provenanceBadge);
 
   // V3: Use bespoke overlay gradient if AI generated one, else fall back to Tier 3 token
   const overlayGradient = bespoke.overlayGradient
@@ -91,7 +92,14 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
       {imageUrl && <div className="absolute inset-0" style={{ background: overlayGradient }} />}
       {/* V3.1: Texture overlay from Director's textureHint */}
       <TextureOverlay hint={textureHint} />
-      <div className="relative z-10 px-6 pb-12 md:pb-16 max-w-xl" style={{ animation: 'slide-up 0.8s var(--ease-spring) 0.2s both' }}>
+      <div className="relative z-10 px-6 pb-12 md:pb-16 max-w-xl hero-stagger">
+        {/* V3: Provenance badge — "Est. 1987 · Varanasi" */}
+        {provenanceBadge && (
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.25em] font-medium mb-4"
+            style={{ color: imageUrl ? 'rgba(255,255,255,0.6)' : p.textMuted }}>
+            {provenanceBadge}
+          </p>
+        )}
         <h1
           className="font-display font-bold mb-4"
           style={{
@@ -173,7 +181,7 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
       <TextureOverlay hint={textureHint} className="z-[3]" />
 
       <div className="relative z-10 flex flex-col justify-end h-[65vh] md:h-[80vh] px-6 pb-12 md:pb-16">
-        <div className="max-w-xl" style={{ animation: 'slide-up 0.8s var(--ease-spring) 0.2s both' }}>
+        <div className="max-w-xl hero-stagger">
           <h1
             className="font-display font-bold text-white mb-4"
             style={{

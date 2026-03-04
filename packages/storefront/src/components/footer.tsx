@@ -3,15 +3,34 @@
 import React from 'react';
 import Link from 'next/link';
 import { useStore } from './store-provider';
-import { MessageCircle, Instagram, Mail } from 'lucide-react';
+import { MessageCircle, Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import { TextureOverlay } from './texture-overlay';
 
-export function Footer() {
-  const { store, design } = useStore();
+interface FooterProps {
+  /** V3: Visual variant — auto-inferred from vertical if not set */
+  variant?: 'default' | 'minimal' | 'dark';
+}
+
+export function Footer({ variant: explicitVariant }: FooterProps) {
+  const { store, design, config } = useStore();
   const storeUrl = `/${store.slug}`;
   const whatsappPhone = (store.whatsappConfig as any)?.businessPhone;
   const textureHint = (design.decorativeTokens as any)?.textureOverlay || 'none';
+  const storeBio = (config as any)?.storeBio || store.description;
 
+  // V3: Auto-infer variant from vertical/mood
+  const vertical = store.vertical as string;
+  const variant = explicitVariant || inferFooterVariant(vertical, design);
+
+  if (variant === 'dark') return (
+    <DarkFooter storeUrl={storeUrl} whatsappPhone={whatsappPhone} storeBio={storeBio} textureHint={textureHint} />
+  );
+
+  if (variant === 'minimal') return (
+    <MinimalFooter storeUrl={storeUrl} whatsappPhone={whatsappPhone} storeBio={storeBio} />
+  );
+
+  // Default variant
   return (
     <footer
       className="mt-auto border-t relative overflow-hidden"
@@ -21,134 +40,224 @@ export function Footer() {
         color: design.palette.textMuted,
       }}
     >
-      {/* V3.1: Texture overlay in footer for handcrafted feel */}
       <TextureOverlay hint={textureHint} opacity={0.02} />
 
-      <div className="container-store py-10 md:py-14 relative z-[2]">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="container-store py-12 md:py-16 relative z-[2]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <h3
-              className="font-display text-lg font-bold mb-3"
-              style={{ color: design.palette.text }}
-            >
+            <h3 className="font-display text-xl md:text-2xl font-bold mb-3"
+              style={{ color: design.palette.text }}>
               {store.name}
             </h3>
-            {store.description && (
-              <p className="text-xs leading-relaxed mb-4 max-w-[280px]">{store.description}</p>
+            {storeBio && (
+              <p className="text-xs leading-relaxed mb-5 max-w-[280px]">{storeBio}</p>
             )}
-            {/* Social */}
-            <div className="flex gap-2">
-              {whatsappPhone && (
-                <a
-                  href={`https://wa.me/${whatsappPhone}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
-                  style={{
-                    backgroundColor: `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`,
-                    color: design.palette.primary,
-                  }}
-                >
-                  <MessageCircle size={14} />
-                </a>
-              )}
-              <a
-                href="#"
-                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
-                style={{
-                  backgroundColor: `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`,
-                  color: design.palette.primary,
-                }}
-              >
-                <Instagram size={14} />
-              </a>
-              <a
-                href="#"
-                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
-                style={{
-                  backgroundColor: `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`,
-                  color: design.palette.primary,
-                }}
-              >
-                <Mail size={14} />
-              </a>
-            </div>
+            <SocialLinks whatsappPhone={whatsappPhone} />
           </div>
 
-          {/* Links */}
-          <div>
-            <h4
-              className="text-[11px] font-bold uppercase tracking-wider mb-3"
-              style={{ color: design.palette.text }}
-            >
-              Shop
-            </h4>
-            <nav className="flex flex-col gap-1.5">
-              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">
-                All Products
-              </Link>
-              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">
-                New Arrivals
-              </Link>
-              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">
-                Best Sellers
-              </Link>
-            </nav>
-          </div>
+          <FooterLinks storeUrl={storeUrl} title="Shop" links={[
+            { label: 'All Products', href: `${storeUrl}/collections/all` },
+            { label: 'New Arrivals', href: `${storeUrl}/collections/all` },
+            { label: 'Best Sellers', href: `${storeUrl}/collections/all` },
+          ]} />
 
-          <div>
-            <h4
-              className="text-[11px] font-bold uppercase tracking-wider mb-3"
-              style={{ color: design.palette.text }}
-            >
-              Help
-            </h4>
-            <nav className="flex flex-col gap-1.5">
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Shipping</a>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Returns</a>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Contact Us</a>
-              {whatsappPhone && (
-                <a
-                  href={`https://wa.me/${whatsappPhone}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs hover:opacity-80 transition-opacity"
-                >
-                  WhatsApp Support
-                </a>
-              )}
-            </nav>
-          </div>
+          <FooterLinks storeUrl={storeUrl} title="Help" links={[
+            { label: 'Shipping', href: '#' },
+            { label: 'Returns', href: '#' },
+            { label: 'Contact Us', href: '#' },
+            ...(whatsappPhone ? [{ label: 'WhatsApp Support', href: `https://wa.me/${whatsappPhone}`, external: true }] : []),
+          ]} />
 
-          <div>
-            <h4
-              className="text-[11px] font-bold uppercase tracking-wider mb-3"
-              style={{ color: design.palette.text }}
-            >
-              Legal
-            </h4>
-            <nav className="flex flex-col gap-1.5">
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Privacy Policy</a>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Terms of Service</a>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Refund Policy</a>
-            </nav>
-          </div>
+          <FooterLinks storeUrl={storeUrl} title="Legal" links={[
+            { label: 'Privacy Policy', href: '#' },
+            { label: 'Terms of Service', href: '#' },
+            { label: 'Refund Policy', href: '#' },
+          ]} />
         </div>
 
-        {/* Bottom bar */}
-        <div
-          className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3"
-          style={{ borderColor: `color-mix(in srgb, ${design.palette.text} 6%, transparent)` }}
-        >
-          <p className="text-[10px]">
-            © {new Date().getFullYear()} {store.name}. All rights reserved.
-          </p>
-          <div className="flex items-center gap-4 text-[10px] opacity-60">
-            <span>Powered by Tatparya</span>
+        <BottomBar storeName={store.name} />
+      </div>
+    </footer>
+  );
+}
+
+// ============================================================
+// V3: Dark Footer — jewellery, fashion-luxury
+// ============================================================
+function DarkFooter({ storeUrl, whatsappPhone, storeBio, textureHint }: { storeUrl: string; whatsappPhone?: string; storeBio?: string; textureHint: string }) {
+  const { store, design } = useStore();
+  return (
+    <footer className="mt-auto relative overflow-hidden"
+      style={{ backgroundColor: design.palette.text, color: 'rgba(255,255,255,0.6)' }}>
+      <TextureOverlay hint={textureHint} opacity={0.03} />
+      <div className="container-store py-14 md:py-20 relative z-[2]">
+        {/* Big brand name */}
+        <div className="text-center mb-12">
+          <h3 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-3" style={{ color: '#fff' }}>
+            {store.name}
+          </h3>
+          {storeBio && (
+            <p className="text-xs md:text-sm max-w-md mx-auto leading-relaxed opacity-60">{storeBio}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+          <div className="col-span-2 md:col-span-1">
+            <SocialLinks whatsappPhone={whatsappPhone} dark />
           </div>
+          <FooterLinks storeUrl={storeUrl} title="Shop" dark links={[
+            { label: 'All Products', href: `${storeUrl}/collections/all` },
+            { label: 'New Arrivals', href: `${storeUrl}/collections/all` },
+            { label: 'Best Sellers', href: `${storeUrl}/collections/all` },
+          ]} />
+          <FooterLinks storeUrl={storeUrl} title="Help" dark links={[
+            { label: 'Shipping', href: '#' },
+            { label: 'Returns', href: '#' },
+            { label: 'Contact', href: '#' },
+          ]} />
+          <FooterLinks storeUrl={storeUrl} title="Legal" dark links={[
+            { label: 'Privacy', href: '#' },
+            { label: 'Terms', href: '#' },
+            { label: 'Refunds', href: '#' },
+          ]} />
+        </div>
+
+        <div className="mt-12 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3"
+          style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <p className="text-[10px] opacity-40">© {new Date().getFullYear()} {store.name}. All rights reserved.</p>
+          <span className="text-[10px] opacity-30">Powered by Tatparya</span>
         </div>
       </div>
     </footer>
   );
+}
+
+// ============================================================
+// V3: Minimal Footer — beauty, modern-minimal
+// ============================================================
+function MinimalFooter({ storeUrl, whatsappPhone, storeBio }: { storeUrl: string; whatsappPhone?: string; storeBio?: string }) {
+  const { store, design } = useStore();
+  return (
+    <footer className="mt-auto border-t"
+      style={{ backgroundColor: design.palette.background, borderColor: `color-mix(in srgb, ${design.palette.text} 6%, transparent)`, color: design.palette.textMuted }}>
+      <div className="container-store py-10 md:py-12">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+          {/* Brand + bio */}
+          <div className="max-w-sm">
+            <h3 className="font-display text-lg font-bold mb-2" style={{ color: design.palette.text }}>{store.name}</h3>
+            {storeBio && <p className="text-xs leading-relaxed opacity-70">{storeBio}</p>}
+          </div>
+          {/* Links in a row */}
+          <div className="flex gap-8 md:gap-12">
+            <nav className="flex flex-col gap-1.5">
+              <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">Shop</Link>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Shipping</a>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Returns</a>
+            </nav>
+            <nav className="flex flex-col gap-1.5">
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Privacy</a>
+              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Terms</a>
+              {whatsappPhone && (
+                <a href={`https://wa.me/${whatsappPhone}`} className="text-xs hover:opacity-80 transition-opacity" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+              )}
+            </nav>
+          </div>
+        </div>
+        <div className="mt-8 pt-4 border-t flex items-center justify-between"
+          style={{ borderColor: `color-mix(in srgb, ${design.palette.text} 5%, transparent)` }}>
+          <p className="text-[10px]">© {new Date().getFullYear()} {store.name}</p>
+          <span className="text-[10px] opacity-40">Powered by Tatparya</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ============================================================
+// Shared sub-components
+// ============================================================
+
+function SocialLinks({ whatsappPhone, dark }: { whatsappPhone?: string; dark?: boolean }) {
+  const { design } = useStore();
+  const bg = dark
+    ? 'rgba(255,255,255,0.08)'
+    : `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`;
+  const color = dark ? 'rgba(255,255,255,0.7)' : design.palette.primary;
+
+  return (
+    <div className="flex gap-2">
+      {whatsappPhone && (
+        <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer"
+          className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
+          style={{ backgroundColor: bg, color }}>
+          <MessageCircle size={15} />
+        </a>
+      )}
+      <a href="#" className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
+        style={{ backgroundColor: bg, color }}>
+        <Instagram size={15} />
+      </a>
+      <a href="#" className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
+        style={{ backgroundColor: bg, color }}>
+        <Mail size={15} />
+      </a>
+    </div>
+  );
+}
+
+function FooterLinks({ storeUrl, title, links, dark }: {
+  storeUrl: string;
+  title: string;
+  links: Array<{ label: string; href: string; external?: boolean }>;
+  dark?: boolean;
+}) {
+  const { design } = useStore();
+  const headingColor = dark ? 'rgba(255,255,255,0.9)' : design.palette.text;
+
+  return (
+    <div>
+      <h4 className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: headingColor }}>
+        {title}
+      </h4>
+      <nav className="flex flex-col gap-1.5">
+        {links.map(link => (
+          link.external ? (
+            <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
+              className="text-xs hover:opacity-80 transition-opacity">{link.label}</a>
+          ) : (
+            <Link key={link.label} href={link.href}
+              className="text-xs hover:opacity-80 transition-opacity">{link.label}</Link>
+          )
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+function BottomBar({ storeName }: { storeName: string }) {
+  const { design } = useStore();
+  return (
+    <div
+      className="mt-12 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3"
+      style={{ borderColor: `color-mix(in srgb, ${design.palette.text} 6%, transparent)` }}
+    >
+      <p className="text-[10px]">© {new Date().getFullYear()} {storeName}. All rights reserved.</p>
+      <span className="text-[10px] opacity-40">Powered by Tatparya</span>
+    </div>
+  );
+}
+
+// ============================================================
+// Auto-infer footer variant from vertical + design tokens
+// ============================================================
+function inferFooterVariant(vertical: string, design: any): 'default' | 'minimal' | 'dark' {
+  const colorMood = design.bespokeStyles?.colorMood;
+  // Dark footer for luxury/premium verticals or explicitly dark mood
+  if (colorMood === 'dark' || colorMood === 'dramatic') return 'dark';
+  if (vertical === 'jewellery') return 'dark';
+  // Minimal footer for beauty/modern vibes
+  if (vertical === 'beauty') return 'minimal';
+  if (colorMood === 'clean' || colorMood === 'fresh') return 'minimal';
+  return 'default';
 }
