@@ -548,6 +548,86 @@ export const storeRouter = router({
 
       console.log(`[full-pipeline] Pipeline done in ${pipelineResult.timing.totalMs}ms — ${pipelineResult.summary.usablePhotos} usable, score ${pipelineResult.summary.overallScore}`);
 
+      // ── Step 3b: Create products from triage groups ──
+      const triageGroups = pipelineResult.triage?.groups || [];
+      const createdProducts: string[] = [];
+
+      // If triage returned groups, use them; otherwise treat each image as its own product
+      const productGroups = triageGroups.length > 0
+        ? triageGroups
+        : mediaIds.map((_, i) => ({ imageIndices: [i], label: `Product ${i + 1}`, confidence: 1 }));
+
+      for (let g = 0; g < productGroups.length; g++) {
+        const group = productGroups[g]!;
+        const productName = group.label || `Product ${g + 1}`;
+        const productSlug = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `product-${g + 1}`;
+
+        // Build images array from media_assets for this group's image indices
+        const productImages: Record<string, unknown>[] = [];
+        for (const imgIdx of group.imageIndices) {
+          const mediaId = mediaIds[imgIdx];
+          if (!mediaId) continue;
+
+          // Fetch the media_asset to get all variant URLs
+          const { data: media } = await ctx.serviceDb
+            .from('media_assets')
+            .select('*')
+            .eq('id', mediaId)
+            .single();
+
+          if (media) {
+            productImages.push({
+              id: media.id,
+              originalUrl: media.original_url,
+              heroUrl: media.hero_url || undefined,
+              cardUrl: media.card_url || undefined,
+              thumbnailUrl: media.thumbnail_url || undefined,
+              squareUrl: media.square_url || undefined,
+              ogUrl: media.og_url || undefined,
+              alt: productName,
+              position: productImages.length,
+              enhancementStatus: media.enhancement_status || 'pending',
+            });
+          }
+        }
+
+        if (productImages.length === 0) continue;
+
+        const { data: product, error: productError } = await ctx.serviceDb
+          .from('products')
+          .insert({
+            store_id: storeId,
+            name: productName,
+            slug: `${productSlug}-${storeId.slice(0, 4)}`,
+            description: `${productName} from ${input.name}`,
+            price: 0,
+            status: 'active',
+            images: productImages,
+            tags: [input.vertical],
+          })
+          .select('id')
+          .single();
+
+        if (productError) {
+          console.warn(`[full-pipeline] Product creation failed for "${productName}":`, productError.message);
+        } else {
+          createdProducts.push(product!.id as string);
+          // Link media_assets to this product
+          for (const imgIdx of group.imageIndices) {
+            const mediaId = mediaIds[imgIdx];
+            if (mediaId) {
+              await ctx.serviceDb
+                .from('media_assets')
+                .update({ product_id: product!.id })
+                .eq('id', mediaId);
+            }
+          }
+          console.log(`[full-pipeline] Product created: "${productName}" with ${productImages.length} images`);
+        }
+      }
+
+      console.log(`[full-pipeline] ${createdProducts.length} products created from ${productGroups.length} groups`);
+
       // ── Step 4: Generate AI store design ──
       // Use the original image URLs for the design AI (it needs viewable images)
       const designImages = input.productImages.slice(0, 5);
@@ -572,6 +652,8 @@ export const storeRouter = router({
         sections: {
           homepage: designResult.sectionLayout.map((s: any) => ({
             type: s.type,
+            vibeWeight: s.vibeWeight,
+            colorIntensity: s.colorIntensity,
             config: { variant: s.variant, background_hint: s.background_hint, position: s.position, required: s.required },
           })),
           productPage: [],

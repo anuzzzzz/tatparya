@@ -45,7 +45,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   } catch { /* categories might not exist */ }
 
   const heroImages = pickHeroImages(productItems);
-  const config = store.config as any;
+  const config = (store.storeConfig || store.config) as any;
   const sectionLayout = config?.sections?.homepage || [];
 
   // V2: Get decorative settings
@@ -71,7 +71,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   let productSectionCount = 0;
 
   return (
-    <div>
+    <div style={{ marginTop: '-64px' }}>
       {sectionLayout.map((section: any, index: number) => {
         const isProductSection = ['product_carousel', 'featured_products', 'product_grid'].includes(section.type);
         if (isProductSection) productSectionCount++;
@@ -340,7 +340,7 @@ function ClassicLayout({
   useBgVariation: boolean; dividerStyle: string;
 }) {
   return (
-    <div>
+    <div style={{ marginTop: '-64px' }}>
       <HeroSection imageUrl={heroImages[0]} images={heroImages} variant="full_bleed" />
       <TrustBar />
       <SectionDivider style={dividerStyle as any} />

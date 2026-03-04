@@ -250,7 +250,9 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
   const archetype = selectArchetype(input.vertical, input.sellerContext);
   console.log(`[design-ai] Archetype: ${archetype.id} (${archetype.name}) | Provider: ${provider} | Pipeline: Director>Stylist`);
 
-  const sectionPattern = archetype.section_pattern || [];
+  const rawSectionPattern = archetype.section_pattern || [];
+  const sectionPattern = sanitizeSectionPattern(rawSectionPattern);
+  console.log(`[design-ai] Sections: ${rawSectionPattern.length} raw → ${sectionPattern.length} sanitized`);
   const representative = getRepresentativeComposition(archetype.id);
 
   // ── PASS 1: DIRECTOR (no images — text only, fast) ──
@@ -444,6 +446,60 @@ function validateDirector(d: DirectorOutput, n: number): DirectorOutput {
   if (!valid.includes(d.signatureEffect)) d.signatureEffect = 'none';
 
   return d;
+}
+
+/**
+ * Sanitize archetype section patterns:
+ * 1. Move hero sections to the top
+ * 2. Deduplicate consecutive same-type sections
+ * 3. Cap at 12 sections max
+ * 4. Ensure sensible ordering (hero → content → social proof → footer-adjacent)
+ */
+function sanitizeSectionPattern(sections: SectionPattern[]): SectionPattern[] {
+  if (!sections.length) return sections;
+
+  // Separate hero and non-hero sections
+  const heroes = sections.filter(s => s.type.startsWith('hero_'));
+  const nonHeroes = sections.filter(s => !s.type.startsWith('hero_'));
+
+  // Keep only the first hero (best one)
+  const bestHero = heroes[0];
+
+  // Deduplicate: keep max 1 of each type (except product sections which can repeat)
+  const repeatAllowed = new Set(['product_carousel', 'featured_products', 'product_grid', 'collection_banner']);
+  const seen = new Set<string>();
+  const deduped: SectionPattern[] = [];
+  for (const s of nonHeroes) {
+    if (s.type === 'announcement_bar') continue; // Skip empty announcement bars
+    if (!repeatAllowed.has(s.type) && seen.has(s.type)) continue;
+    seen.add(s.type);
+    deduped.push(s);
+  }
+
+  // Prioritize section ordering
+  const topSections = ['trust_bar'];
+  const midSections = ['category_grid', 'product_carousel', 'featured_products', 'product_grid', 'collection_banner'];
+  const bottomSections = ['testimonials', 'testimonial_cards', 'stats_bar', 'newsletter', 'about_brand', 'ugc_gallery', 'logo_bar', 'video_section', 'quote_block'];
+
+  const top = deduped.filter(s => topSections.includes(s.type));
+  const mid = deduped.filter(s => midSections.includes(s.type));
+  const bottom = deduped.filter(s => bottomSections.includes(s.type));
+  const rest = deduped.filter(s => !topSections.includes(s.type) && !midSections.includes(s.type) && !bottomSections.includes(s.type));
+
+  // Assemble: hero → trust → products/categories → social proof → rest
+  const ordered = [
+    ...(bestHero ? [bestHero] : []),
+    ...top,
+    ...mid,
+    ...rest,
+    ...bottom,
+  ];
+
+  // Cap at 12 sections
+  const capped = ordered.slice(0, 12);
+
+  // Re-assign positions
+  return capped.map((s, i) => ({ ...s, position: i }));
 }
 
 function findAccentSectionIndex(sections: SectionPattern[], weights: number[]): number {

@@ -86,7 +86,9 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
         backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundColor: !imageUrl ? p.surface : undefined,
+        background: !imageUrl
+          ? `linear-gradient(135deg, ${p.primary}15 0%, ${p.surface} 50%, ${p.secondary}88 100%)`
+          : undefined,
       }}
     >
       {imageUrl && <div className="absolute inset-0" style={{ background: overlayGradient }} />}

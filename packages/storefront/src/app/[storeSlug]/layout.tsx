@@ -50,7 +50,16 @@ export default async function StoreLayout({ children, params }: StoreLayoutProps
       <div style={cssVarsToStyle(cssVars)} className="min-h-screen flex flex-col">
         <StoreProvider store={store as any}>
           <Navbar />
-          <main className="flex-1">{children}</main>
+          {/*
+            The navbar is `fixed`, so main content needs top padding.
+            The homepage hero handles its own overlap with the transparent navbar.
+            All other pages (products, collections, cart, etc.) need clearance.
+            
+            We use pt-16 (64px) which matches h-16 (md navbar height).
+            The homepage page.tsx will use negative margin on the hero
+            to pull it back behind the navbar.
+          */}
+          <main className="flex-1 pt-16">{children}</main>
           <Footer />
           <WhatsAppButton />
         </StoreProvider>
