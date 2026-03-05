@@ -66,12 +66,10 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
   const height = design.hero.height === 'full' ? 'min-h-[65vh] md:min-h-[85vh]' : design.hero.height === 'half' ? 'min-h-[45vh] md:min-h-[50vh]' : 'min-h-[35vh]';
   const provenanceBadge = (design as any).heroProvenanceBadge || ((design as any).bespokeStyles?.provenanceBadge);
 
-  // V3: Use bespoke overlay gradient if AI generated one, else fall back to Tier 3 token
-  const overlayGradient = bespoke.overlayGradient
-    ? bespoke.overlayGradient
-    : heroTokens?.overlayGradient === 'center-vignette'
-      ? `radial-gradient(ellipse at center, transparent 30%, ${p.text}CC 100%)`
-      : `linear-gradient(180deg, ${p.text}66 0%, ${p.text}44 25%, ${p.text}88 65%, ${p.text}DD 100%)`;
+  // Dark overlay — always use hardcoded gradient (bespoke ones are often too light)
+  const overlayGradient = heroTokens?.overlayGradient === 'center-vignette'
+    ? `radial-gradient(ellipse at center, transparent 30%, ${p.text}CC 100%)`
+    : `linear-gradient(180deg, ${p.text}77 0%, ${p.text}44 25%, ${p.text}99 65%, ${p.text}EE 100%)`;
 
   // V3: Bespoke hero typography — cap at 4rem max to prevent oversized text
   const rawFontSize = bespoke.fontSize || '';
@@ -160,9 +158,8 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
     return <HeroMinimal heading={heading} sub={sub} link={link} />;
   }
 
-  // V3: Bespoke overlay and typography
-  const overlayGradient = bespoke.overlayGradient
-    || `linear-gradient(180deg, ${p.text}66 0%, ${p.text}44 25%, ${p.text}88 65%, ${p.text}DD 100%)`;
+  // Dark overlay — always use hardcoded gradient (bespoke ones are often too light)
+  const overlayGradient = `linear-gradient(180deg, ${p.text}77 0%, ${p.text}44 25%, ${p.text}99 65%, ${p.text}EE 100%)`;
   const rawSlideshowFontSize = bespoke.fontSize || '';
   const heroFontSize = (rawSlideshowFontSize && /\d+(\.\d+)?rem/.test(rawSlideshowFontSize) && parseFloat(rawSlideshowFontSize.match(/(\d+(\.\d+)?)rem[^,]*\)$/)?.[1] || '0') > 4.5)
     ? 'clamp(1.8rem, 5vw, 3.5rem)'
