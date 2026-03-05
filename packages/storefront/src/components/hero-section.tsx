@@ -71,10 +71,13 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
     ? bespoke.overlayGradient
     : heroTokens?.overlayGradient === 'center-vignette'
       ? `radial-gradient(ellipse at center, transparent 30%, ${p.text}CC 100%)`
-      : `linear-gradient(180deg, ${p.text}33 0%, ${p.text}11 25%, ${p.text}66 65%, ${p.text}DD 100%)`;
+      : `linear-gradient(180deg, ${p.text}66 0%, ${p.text}44 25%, ${p.text}88 65%, ${p.text}DD 100%)`;
 
-  // V3: Bespoke hero typography
-  const heroFontSize = bespoke.fontSize || 'clamp(2rem, 6vw, 3.5rem)';
+  // V3: Bespoke hero typography — cap at 4rem max to prevent oversized text
+  const rawFontSize = bespoke.fontSize || '';
+  const heroFontSize = (rawFontSize && /\d+(\.\d+)?rem/.test(rawFontSize) && parseFloat(rawFontSize.match(/(\d+(\.\d+)?)rem[^,]*\)$/)?.[1] || '0') > 4.5)
+    ? 'clamp(1.8rem, 5vw, 3.5rem)'
+    : rawFontSize || 'clamp(1.8rem, 5vw, 3.5rem)';
   const heroLineHeight = bespoke.lineHeight || '1.05';
   const heroLetterSpacing = bespoke.letterSpacing || '-0.03em';
   const heroTextShadow = bespoke.textShadow || (imageUrl ? '0 4px 32px rgba(0,0,0,0.3)' : 'none');
@@ -159,8 +162,11 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
 
   // V3: Bespoke overlay and typography
   const overlayGradient = bespoke.overlayGradient
-    || `linear-gradient(180deg, ${p.text}33 0%, ${p.text}11 25%, ${p.text}66 65%, ${p.text}DD 100%)`;
-  const heroFontSize = bespoke.fontSize || 'clamp(2rem, 6vw, 3.5rem)';
+    || `linear-gradient(180deg, ${p.text}66 0%, ${p.text}44 25%, ${p.text}88 65%, ${p.text}DD 100%)`;
+  const rawSlideshowFontSize = bespoke.fontSize || '';
+  const heroFontSize = (rawSlideshowFontSize && /\d+(\.\d+)?rem/.test(rawSlideshowFontSize) && parseFloat(rawSlideshowFontSize.match(/(\d+(\.\d+)?)rem[^,]*\)$/)?.[1] || '0') > 4.5)
+    ? 'clamp(1.8rem, 5vw, 3.5rem)'
+    : rawSlideshowFontSize || 'clamp(1.8rem, 5vw, 3.5rem)';
   const heroLineHeight = bespoke.lineHeight || '1.05';
   const heroLetterSpacing = bespoke.letterSpacing || '-0.03em';
 

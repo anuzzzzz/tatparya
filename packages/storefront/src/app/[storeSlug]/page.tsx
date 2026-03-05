@@ -246,34 +246,13 @@ function SectionRenderer({
     case 'stats_bar':
       return <StatsBar />;
 
-    // ── Logo bar ──
+    // ── Logo bar — hidden until real partner brands exist ──
     case 'logo_bar':
-      return (
-        <section className="py-8 md:py-10" style={bgStyle}>
-          <div className="container-store text-center">
-            <p className="eyebrow mb-6">Trusted By</p>
-            <div className="flex items-center justify-center gap-8 md:gap-12 opacity-40">
-              {['Brand 1', 'Brand 2', 'Brand 3', 'Brand 4'].map((name, i) => (
-                <div key={i} className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{name}</div>
-              ))}
-            </div>
-          </div>
-        </section>
-      );
+      return null;
 
-    // ── Video section ──
+    // ── Video section — hidden until a video URL is provided ──
     case 'video_section':
-      return (
-        <section className="py-12 md:py-16" style={bgStyle}>
-          <div className="container-store text-center">
-            <div className="aspect-video max-w-3xl mx-auto rounded-[var(--radius-lg)] overflow-hidden" style={{ backgroundColor: 'var(--color-surface)' }}>
-              <div className="w-full h-full flex items-center justify-center">
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Video placeholder — add your brand story video</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      );
+      return null;
 
     // ── UGC gallery ──
     case 'ugc_gallery':

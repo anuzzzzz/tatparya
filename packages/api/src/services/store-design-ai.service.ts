@@ -79,9 +79,12 @@ Return ONLY valid JSON:
 RULES — BE BOLD, NOT SAFE:
 
 TYPOGRAPHY:
-- Luxury/Heritage: heroFontSize MUST hit 80px+ on desktop. clamp(2.8rem, 9vw, 6rem) minimum. Line-height 0.88-0.95. Letter-spacing -0.04em to -0.06em. NON-NEGOTIABLE for premium brands.
-- Modern/Minimal: 60-72px max. Line-height 0.98-1.05. Letter-spacing -0.02em to -0.03em.
-- Playful/Casual: 48-60px max. Line-height 1.05-1.15. Letter-spacing 0em.
+- heroFontSize: use clamp() with max no larger than 4rem. Example: clamp(2rem, 5vw, 3.5rem). Never exceed clamp(2.5rem, 6vw, 4rem).
+- Luxury/Heritage: clamp(2rem, 5vw, 3.8rem). Line-height 0.88-0.95. Letter-spacing -0.04em to -0.06em.
+- Modern/Minimal: clamp(1.8rem, 5vw, 3.5rem). Line-height 0.98-1.05. Letter-spacing -0.02em to -0.03em.
+- Playful/Casual: clamp(1.6rem, 4vw, 3rem). Line-height 1.05-1.15. Letter-spacing 0em.
+- displayFont and bodyFont MUST be different fonts. Never use the same font for both.
+- For fashion, jewellery, and luxury verticals: prefer serif display fonts like Cormorant Garamond, Playfair Display, EB Garamond, Lora. Use sans-serif display fonts only for streetwear, electronics, or modern/minimal brands.
 - Serif display + Sans body = luxury. Sans + Sans = modern. Slab + Rounded = playful.
 
 RHYTHM (vibeWeight array, one per section):
@@ -172,7 +175,7 @@ Return ONLY valid JSON:
     }
   },
   "storeBio": "2-3 sentence store description for Indian buyers.",
-  "heroTagline": "Short punchy headline (4-8 words). SPECIFIC to this brand.",
+  "heroTagline": "2-5 words, evocative not descriptive. Examples: 'Effortless Korean Elegance', 'Woven in Tradition', 'Seoul Meets Mumbai', 'The Art of Everyday Luxury'. Never use generic phrases like 'Shop Now', 'Await You', 'Discover Our Collection'.",
   "heroSubtext": "One line (max 15 words) supporting text."
 }
 

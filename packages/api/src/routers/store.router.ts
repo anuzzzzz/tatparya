@@ -5,6 +5,7 @@ import { CreateStoreInput, UpdateStoreInput, GetStoreInput } from '@tatparya/sha
 import { emitEvent } from '../lib/event-bus.js';
 import { generateStoreDesign } from '../services/store-design-ai.service.js';
 import { processSellerPhotos } from '../services/photo-pipeline-orchestrator.service.js';
+import { generateProductFromImages } from '../services/catalog-ai.service.js';
 
 export const storeRouter = router({
   /**
@@ -627,6 +628,66 @@ export const storeRouter = router({
       }
 
       console.log(`[full-pipeline] ${createdProducts.length} products created from ${productGroups.length} groups`);
+
+      // ── Step 3c: Enrich products with catalog AI (names, descriptions, prices) ──
+      console.log(`[full-pipeline] Enriching ${createdProducts.length} products with catalog AI...`);
+      for (const productId of createdProducts) {
+        try {
+          const { data: prod } = await ctx.serviceDb
+            .from('products')
+            .select('id, name, images')
+            .eq('id', productId)
+            .single();
+          if (!prod) continue;
+
+          const imgs = (prod.images as any[]) || [];
+          const imgUrls = imgs
+            .map((img: any) => img.originalUrl || img.cardUrl || img.heroUrl)
+            .filter(Boolean)
+            .slice(0, 3);
+
+          if (imgUrls.length === 0) continue;
+
+          // Convert local /uploads/ paths to base64 for the AI
+          const aiImageUrls: string[] = [];
+          const { readFileSync } = await import('fs');
+          const { join } = await import('path');
+          for (const url of imgUrls) {
+            if (url.startsWith('/uploads/')) {
+              try {
+                const buffer = readFileSync(join(localUploadDir, url.replace('/uploads/', '')));
+                aiImageUrls.push(`data:image/jpeg;base64,${buffer.toString('base64')}`);
+              } catch { continue; }
+            } else {
+              aiImageUrls.push(url);
+            }
+          }
+
+          if (aiImageUrls.length === 0) continue;
+
+          const { suggestion } = await generateProductFromImages({
+            imageUrls: aiImageUrls,
+            vertical: input.vertical,
+            hints: { name: prod.name },
+          });
+
+          await ctx.serviceDb
+            .from('products')
+            .update({
+              name: suggestion.name || prod.name,
+              description: suggestion.description || null,
+              price: suggestion.suggestedPrice?.min || 0,
+              compare_at_price: suggestion.suggestedPrice?.max || null,
+              tags: suggestion.tags || [],
+              vertical_data: suggestion.verticalAttributes || {},
+            })
+            .eq('id', productId);
+
+          console.log(`[full-pipeline] Enriched: "${suggestion.name}" ₹${suggestion.suggestedPrice?.min}-${suggestion.suggestedPrice?.max}`);
+        } catch (err) {
+          console.warn(`[full-pipeline] Catalog AI failed for product ${productId}:`, err);
+        }
+      }
 
       // ── Step 4: Generate AI store design ──
       // Use the original image URLs for the design AI (it needs viewable images)
