@@ -73,8 +73,10 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   // V2: Track product section count for different slices
   let productSectionCount = 0;
 
+  const firstSectionIsHero = sectionLayout[0]?.type?.startsWith('hero_');
+
   return (
-    <div style={{ marginTop: '-64px' }}>
+    <div style={{ marginTop: firstSectionIsHero ? '-64px' : '0' }}>
       {sectionLayout.map((section: any, index: number) => {
         const isProductSection = ['product_carousel', 'featured_products', 'product_grid'].includes(section.type);
         if (isProductSection) productSectionCount++;

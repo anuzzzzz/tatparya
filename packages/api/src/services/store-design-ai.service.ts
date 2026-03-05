@@ -98,14 +98,17 @@ RHYTHM (vibeWeight array, one per section):
 - CRITICAL: Do NOT make all 1.0. At least 3 values < 0.5 and at least 2 > 1.3.
 
 COLOR MOOD (guides the Stylist pass):
-- "dark-luxury": Dark bg (#1A1714 range), gold/cream. Jewellery, luxury fashion.
+- "dark-luxury": Warm cream/ivory bg (#FAF3E8 range), gold/bronze accents, dark text. Jewellery, luxury fashion. NOT dark backgrounds.
 - "warm-earthy": Cream/beige bg, terracotta/rust. Ethnic fashion, artisanal.
 - "clean-minimal": Near-white bg, single accent. Beauty, skincare, modern.
 - "bold-vibrant": Saturated primary used generously. Youth fashion, FMCG.
 - "neutral-editorial": Gray-tinted bg, high-contrast type. Contemporary, electronics.
+- IMPORTANT: ALL moods use LIGHT backgrounds. Dark backgrounds are never allowed.
 
 SIGNATURE EFFECT:
 - Fashion: "parallax-drape" | Jewellery: "sparkle-overlay" | Beauty: "organic-reveal" | Others: "none"
+
+The section layout MUST start with a hero section (hero_slideshow, hero_full_bleed, hero_split, or hero_minimal). The hero is the first impression and must always be present.
 
 CRITICAL: Return ONLY valid JSON. No markdown, no backticks. Be OPINIONATED — safe = boring.`;
 
@@ -116,7 +119,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no backticks. Be OPINIONATED — 
 function buildStylistSystem(d: DirectorOutput): string {
   const radiusMap: Record<string, string> = { sharp: 'sharp', pill: 'pill', rounded: 'rounded' };
   const moodRules: Record<string, string> = {
-    'dark-luxury': 'Background: #1A1714 to #1E1B16. Surface: slightly lighter. Text: cream/ivory. Primary: gold/champagne. NEVER white backgrounds.',
+    'dark-luxury': 'Background: warm cream/ivory #FAF3E8 to #FFF8F0. Surface: slightly darker cream. Text: deep brown/charcoal #2C2416. Primary: gold/champagne/bronze. Rich luxury feel with LIGHT background.',
     'warm-earthy': 'Background: #FAF6F1 to #FFF8F0. Surface: slightly darker cream. Text: dark brown. Primary: terracotta/deep red. Accent: gold/amber.',
     'clean-minimal': 'Background: #FAFCFA to #F8FAFB (barely tinted). Surface: light gray. Text: deep forest/navy. Primary: one strong accent.',
     'bold-vibrant': 'Background: white-ish. Text: near-black. Primary: SATURATED, bold. Use generously.',
@@ -214,6 +217,7 @@ Return as a single string with newlines (\\n). No markdown backticks inside the 
 PALETTE RULES for "${d.colorMood}":
 - ${moodRules[d.colorMood] || moodRules['warm-earthy']}
 - EXTRACT colors from product photos. Never pure #FFFFFF or #000000. WCAG AA contrast required.
+- CRITICAL: The background color MUST be a light color (luminance > 0.85). Dark themes are not allowed — they require professional product photography on dark backgrounds which sellers don't have. Use dark colors only for text and accents, never for backgrounds.
 
 BESPOKE CSS:
 - overlayGradient: Use ACTUAL palette hex in stops, not generic rgba. Example: "linear-gradient(170deg, #1C191744 0%, transparent 30%, #9B233522 65%, #1C1917DD 100%)"
@@ -374,6 +378,28 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
   // Apply auto-fixed palette from validator
   if (parsed.design?.palette) {
     parsed.design.palette = validation.palette;
+  }
+
+  // Post-validation: enforce light background — swap if dark
+  if (parsed.design?.palette?.background) {
+    const bgLum = relativeLuminance(parsed.design.palette.background);
+    if (bgLum < 0.5) {
+      console.log(`[design-ai] Dark background detected (luminance ${bgLum.toFixed(2)}), swapping to light`);
+      const oldBg = parsed.design.palette.background;
+      const oldText = parsed.design.palette.text;
+      parsed.design.palette.background = oldText;
+      parsed.design.palette.text = oldBg;
+      // Adjust surface to be slightly darker than the new light background
+      const bgR = parseInt(parsed.design.palette.background.slice(1, 3), 16);
+      const bgG = parseInt(parsed.design.palette.background.slice(3, 5), 16);
+      const bgB = parseInt(parsed.design.palette.background.slice(5, 7), 16);
+      const sR = Math.max(0, bgR - 10).toString(16).padStart(2, '0');
+      const sG = Math.max(0, bgG - 10).toString(16).padStart(2, '0');
+      const sB = Math.max(0, bgB - 10).toString(16).padStart(2, '0');
+      parsed.design.palette.surface = `#${sR}${sG}${sB}`;
+      // Re-fix contrast after swap
+      parsed.design.palette = validateAndFixPalette(parsed.design.palette);
+    }
   }
 
   // If validation fails hard and we have budget for a re-run, log the corrective guidance
