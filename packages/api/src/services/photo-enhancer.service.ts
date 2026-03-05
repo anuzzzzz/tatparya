@@ -1,13 +1,8 @@
 import sharp from 'sharp';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import { writeFileSync, readFileSync, unlinkSync, mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { v4 as uuidv4 } from 'uuid';
 import type { PhotoClassification } from './photo-classifier.service.js';
-
-const execFileAsync = promisify(execFile);
 
 // ============================================================
 // Photo Enhancer Service
@@ -200,32 +195,31 @@ export async function generateSizeVariants(
 // If rembg is not installed, throws (caller should catch).
 // ============================================================
 
-async function removeBackground(inputBuffer: Buffer): Promise<Buffer> {
-  const inputPath = join(TMP_DIR, `${uuidv4()}_in.png`);
-  const outputPath = join(TMP_DIR, `${uuidv4()}_out.png`);
+export async function removeBackground(
+  inputBuffer: Buffer,
+  options?: { size?: 'regular' | 'full' },
+): Promise<Buffer> {
+  const apiKey = process.env.REMOVE_BG_API_KEY;
+  if (!apiKey) throw new Error('REMOVE_BG_API_KEY not configured');
 
-  try {
-    // Write input to temp file
-    writeFileSync(inputPath, inputBuffer);
+  const formData = new FormData();
+  formData.append('image_file', new Blob([inputBuffer]), 'image.jpg');
+  formData.append('size', options?.size || 'regular'); // regular = 625x400 max (cheapest)
+  formData.append('type', 'product');
+  formData.append('format', 'png');
 
-    // Run rembg
-    await execFileAsync('python3', [
-      '-m', 'rembg', 'i',
-      inputPath,
-      outputPath,
-    ], {
-      timeout: 30000,  // 30s timeout per image
-      maxBuffer: 50 * 1024 * 1024,  // 50MB output buffer
-    });
+  const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+    method: 'POST',
+    headers: { 'X-Api-Key': apiKey },
+    body: formData,
+  });
 
-    // Read result
-    const result = readFileSync(outputPath);
-    return result;
-  } finally {
-    // Cleanup temp files
-    try { unlinkSync(inputPath); } catch {}
-    try { unlinkSync(outputPath); } catch {}
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`remove.bg ${response.status}: ${errText}`);
   }
+
+  return Buffer.from(await response.arrayBuffer());
 }
 
 
@@ -255,6 +249,120 @@ async function compositeOnWhite(
     .composite([{ input: transparentPng, blend: 'over' }])
     .jpeg({ quality: 92 })
     .toBuffer();
+}
+
+
+// ============================================================
+// Composite on Branded Gradient Background
+//
+// Takes a transparent PNG (bg-removed product), composites it
+// centered on a 600×800 canvas with a gradient background
+// derived from the store palette, plus a subtle drop shadow.
+// ============================================================
+
+export async function compositeOnBrandedBackground(
+  transparentPng: Buffer,
+  palette: { primary: string; background: string; surface: string },
+  options?: { width?: number; height?: number; padding?: number },
+): Promise<Buffer> {
+  const canvasW = options?.width || 600;
+  const canvasH = options?.height || 800;
+  const padding = options?.padding || 0.12; // 12% padding
+
+  // Parse palette colors to RGB
+  const parseHex = (hex: string) => ({
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  });
+
+  const surfaceRgb = parseHex(palette.surface);
+  const bgRgb = parseHex(palette.background);
+
+  // Create gradient background: surface at top → background at bottom (135deg feel)
+  // Sharp doesn't do CSS gradients, so we create two halves and blend
+  const topHalf = await sharp({
+    create: {
+      width: canvasW,
+      height: Math.floor(canvasH / 2),
+      channels: 4 as const,
+      background: { r: surfaceRgb.r, g: surfaceRgb.g, b: surfaceRgb.b, alpha: 255 },
+    },
+  }).png().toBuffer();
+
+  const bottomHalf = await sharp({
+    create: {
+      width: canvasW,
+      height: Math.ceil(canvasH / 2),
+      channels: 4 as const,
+      background: { r: bgRgb.r, g: bgRgb.g, b: bgRgb.b, alpha: 255 },
+    },
+  }).png().toBuffer();
+
+  // Stack top + bottom to create a simple two-tone gradient
+  const gradientBg = await sharp({
+    create: {
+      width: canvasW,
+      height: canvasH,
+      channels: 4 as const,
+      background: { r: bgRgb.r, g: bgRgb.g, b: bgRgb.b, alpha: 255 },
+    },
+  })
+    .composite([
+      { input: topHalf, top: 0, left: 0 },
+      { input: bottomHalf, top: Math.floor(canvasH / 2), left: 0 },
+    ])
+    .png()
+    .toBuffer();
+
+  // Trim transparent pixels to get tight content bounds
+  const trimmed = await sharp(transparentPng)
+    .trim()
+    .png()
+    .toBuffer();
+
+  // Resize trimmed product to fit within padded area
+  const padPx = Math.round(canvasW * padding);
+  const maxProductW = canvasW - padPx * 2;
+  const maxProductH = canvasH - padPx * 2;
+
+  const resizedProduct = await sharp(trimmed)
+    .resize(maxProductW, maxProductH, {
+      fit: 'inside',
+      withoutEnlargement: false,
+    })
+    .png()
+    .toBuffer();
+
+  const productMeta = await sharp(resizedProduct).metadata();
+  const pW = productMeta.width || maxProductW;
+  const pH = productMeta.height || maxProductH;
+
+  // Center product on canvas
+  const left = Math.round((canvasW - pW) / 2);
+  const top = Math.round((canvasH - pH) / 2);
+
+  // Create a subtle drop shadow: slightly offset, blurred version of the product
+  const shadowOffset = 6;
+  const shadowBlur = 12;
+  const shadow = await sharp(resizedProduct)
+    .greyscale()
+    .modulate({ brightness: 0.0 })  // Make black
+    .blur(shadowBlur)
+    .ensureAlpha(0.25)               // 25% opacity
+    .png()
+    .toBuffer();
+
+  // Composite: gradient bg → shadow → product
+  const result = await sharp(gradientBg)
+    .composite([
+      { input: shadow, top: top + shadowOffset, left: left + shadowOffset, blend: 'over' },
+      { input: resizedProduct, top, left, blend: 'over' },
+    ])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+
+  return result;
 }
 
 

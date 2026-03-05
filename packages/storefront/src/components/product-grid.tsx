@@ -16,12 +16,13 @@ interface ProductGridProps {
     tags?: string[];
   }>;
   title?: string;
+  eyebrow?: string;
   /** V2: Display variant — 'grid' | 'carousel' | 'editorial' */
   variant?: string;
   onAddToCart?: (name: string) => void;
 }
 
-export function ProductGrid({ products, title, variant = 'grid', onAddToCart }: ProductGridProps) {
+export function ProductGrid({ products, title, eyebrow, variant = 'grid', onAddToCart }: ProductGridProps) {
   const { design } = useStore();
   const [revealRef, visible] = useReveal();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -50,9 +51,12 @@ export function ProductGrid({ products, title, variant = 'grid', onAddToCart }: 
         ref={revealRef as React.RefObject<HTMLDivElement>}
         className={cn('transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden')}
       >
-        {title && (
+        {(title || eyebrow) && (
           <div className="flex items-center justify-between mb-5">
-            <h2 className="section-title">{title}</h2>
+            <div>
+              {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+              {title && <h2 className="section-title">{title}</h2>}
+            </div>
             <div className="hidden md:flex items-center gap-2">
               <button
                 onClick={() => scrollBy('left')}
@@ -95,7 +99,12 @@ export function ProductGrid({ products, title, variant = 'grid', onAddToCart }: 
         ref={revealRef as React.RefObject<HTMLDivElement>}
         className={cn('transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden')}
       >
-        {title && <h2 className="section-title mb-5">{title}</h2>}
+        {(title || eyebrow) && (
+          <div className="mb-5">
+            {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+            {title && <h2 className="section-title">{title}</h2>}
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5">
           {/* Featured large card */}
           <div className="col-span-2 md:col-span-1 md:row-span-2">
@@ -120,7 +129,12 @@ export function ProductGrid({ products, title, variant = 'grid', onAddToCart }: 
       ref={revealRef as React.RefObject<HTMLDivElement>}
       className={cn('transition-all duration-600', visible ? 'reveal-visible' : 'reveal-hidden', animClass)}
     >
-      {title && <h2 className="section-title mb-5">{title}</h2>}
+      {(title || eyebrow) && (
+        <div className="mb-5">
+          {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+          {title && <h2 className="section-title">{title}</h2>}
+        </div>
+      )}
       <div className={cn('grid', mobileColsClass, desktopColsClass, gapClass)}>
         {products.map((product, i) => (
           <ProductCard key={product.id} product={product} index={i} onAddToCart={onAddToCart} />

@@ -6,7 +6,7 @@ import { AboutBrand } from '@/components/about-brand';
 import { NewsletterSection } from '@/components/newsletter-section';
 import { MarqueeBanner } from '@/components/marquee-banner';
 import { Testimonials } from '@/components/testimonials';
-import { SectionDivider } from '@/components/section-divider';
+
 import { StatsBar } from '@/components/stats-bar';
 import { CategoryTiles } from '@/components/category-tiles';
 import Link from 'next/link';
@@ -51,7 +51,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   // V2: Get decorative settings
   const decorativeTokens = config?.design?.decorativeTokens || {};
   const useBgVariation = decorativeTokens.sectionBgVariation !== false;
-  const dividerStyle = decorativeTokens.dividerStyle || 'gradient-fade';
+  // dividerStyle removed — SectionDividers add visual noise
 
   // V3.2: AI-generated section titles/eyebrows with fallbacks
   const sectionContent = config?.sectionContent || {};
@@ -65,7 +65,6 @@ export default async function StoreHomePage({ params }: HomePageProps) {
         categories={categories}
         productItems={productItems}
         useBgVariation={useBgVariation}
-        dividerStyle={dividerStyle}
       />
     );
   }
@@ -84,10 +83,6 @@ export default async function StoreHomePage({ params }: HomePageProps) {
 
         return (
           <div key={`${section.type}-${index}`}>
-            {/* V2: Divider between sections (skip before first, after hero) */}
-            {index > 0 && !isHeroType(sectionLayout[index - 1]?.type) && (
-              <SectionDivider style={dividerStyle} />
-            )}
             {/* V3: vibeWeight spacing — irregular rhythm */}
             {index > 0 && (
               <div style={{ height: getVibeGap(section.vibeWeight) }} />
@@ -118,11 +113,11 @@ function isHeroType(type?: string): boolean {
 /** V3: Convert vibeWeight (0.2-2.0) to pixel gap for irregular spatial rhythm */
 function getVibeGap(weight?: number): string {
   const w = weight ?? 1.0;
-  if (w <= 0.3) return '6px';    // Compressed
-  if (w <= 0.6) return '16px';   // Tight
-  if (w <= 1.1) return '0px';    // Normal (already handled by section padding)
-  if (w <= 1.6) return '48px';   // Expanded breathing room
-  return '80px';                  // Maximum expansion
+  if (w <= 0.3) return '0px';
+  if (w <= 0.6) return '0px';
+  if (w <= 1.1) return '0px';
+  if (w <= 1.6) return '16px';
+  return '32px';
 }
 
 // ============================================================
@@ -215,11 +210,11 @@ function SectionRenderer({
     case 'product_carousel': {
       const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
-      const { title: carouselTitle } = getSectionTitle('product_carousel', sectionContent);
+      const { title: carouselTitle, eyebrow: carouselEyebrow } = getSectionTitle('product_carousel', sectionContent);
       return (
         <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title={carouselTitle} variant="carousel" />
+            <ProductGrid products={items} title={carouselTitle} eyebrow={carouselEyebrow} variant="carousel" />
           </div>
         </section>
       );
@@ -227,11 +222,11 @@ function SectionRenderer({
     case 'featured_products': {
       const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
-      const { title: featuredTitle } = getSectionTitle('featured_products', sectionContent);
+      const { title: featuredTitle, eyebrow: featuredEyebrow } = getSectionTitle('featured_products', sectionContent);
       return (
         <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title={featuredTitle} variant={items.length >= 5 ? 'editorial' : 'grid'} />
+            <ProductGrid products={items} title={featuredTitle} eyebrow={featuredEyebrow} variant={items.length >= 5 ? 'editorial' : 'grid'} />
           </div>
         </section>
       );
@@ -239,11 +234,11 @@ function SectionRenderer({
     case 'product_grid': {
       const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
-      const { title: gridTitle } = getSectionTitle('product_grid', sectionContent);
+      const { title: gridTitle, eyebrow: gridEyebrow } = getSectionTitle('product_grid', sectionContent);
       return (
         <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title={gridTitle} variant="grid" />
+            <ProductGrid products={items} title={gridTitle} eyebrow={gridEyebrow} variant="grid" />
           </div>
         </section>
       );
@@ -349,22 +344,18 @@ function SectionRenderer({
 // ============================================================
 
 function ClassicLayout({
-  storeUrl, heroImages, categories, productItems, useBgVariation, dividerStyle,
+  storeUrl, heroImages, categories, productItems, useBgVariation,
 }: {
   storeUrl: string; heroImages: string[]; categories: any[]; productItems: any[];
-  useBgVariation: boolean; dividerStyle: string;
+  useBgVariation: boolean;
 }) {
   return (
     <div style={{ marginTop: '-64px' }}>
       <HeroSection imageUrl={heroImages[0]} images={heroImages} variant="full_bleed" />
       <TrustBar />
-      <SectionDivider style={dividerStyle as any} />
 
       {categories.length > 0 && (
-        <>
-          <CategoryTiles categories={categories} variant="tiles" />
-          <SectionDivider style={dividerStyle as any} />
-        </>
+        <CategoryTiles categories={categories} variant="tiles" />
       )}
 
       <section
@@ -383,9 +374,7 @@ function ClassicLayout({
         </div>
       </section>
 
-      <SectionDivider style={dividerStyle as any} />
       <AboutBrand />
-      <SectionDivider style={dividerStyle as any} />
       <NewsletterSection />
     </div>
   );
@@ -416,7 +405,7 @@ function getProductSlice(items: any[], sliceNum: number): any[] {
   const pageSize = 8;
   const start = Math.min((sliceNum - 1) * pageSize, items.length);
   const end = Math.min(start + pageSize, items.length);
-  // If we've exhausted products, wrap around
-  if (start >= items.length) return items.slice(0, pageSize);
+  // If we've exhausted products, return empty (section won't render)
+  if (start >= items.length) return [];
   return items.slice(start, end);
 }
