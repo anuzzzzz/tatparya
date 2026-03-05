@@ -41,8 +41,11 @@ interface TestimonialsProps {
   designVariant?: TestimonialVariant;
 }
 
-export function Testimonials({ testimonials = DEFAULT_TESTIMONIALS, variant = 'carousel', designVariant }: TestimonialsProps) {
+export function Testimonials({ testimonials: propTestimonials, variant = 'carousel', designVariant }: TestimonialsProps) {
   const { store, design, config } = useStore();
+  // V3.2: Use AI-generated testimonials from config, then props, then defaults
+  const storeContent = (config as any)?.content;
+  const testimonials: Testimonial[] = propTestimonials || storeContent?.testimonials || DEFAULT_TESTIMONIALS;
   const p = design.palette;
   const bespoke = design.bespokeStyles as any;
   const [revRef, vis] = useReveal();

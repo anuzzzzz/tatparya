@@ -53,6 +53,9 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   const useBgVariation = decorativeTokens.sectionBgVariation !== false;
   const dividerStyle = decorativeTokens.dividerStyle || 'gradient-fade';
 
+  // V3.2: AI-generated section titles/eyebrows with fallbacks
+  const sectionContent = config?.sectionContent || {};
+
   // If no section config, use classic layout
   if (!sectionLayout || sectionLayout.length === 0) {
     return (
@@ -97,6 +100,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
               sectionIndex={index}
               useBgVariation={useBgVariation}
               productSlice={currentProductSlice}
+              sectionContent={sectionContent}
             />
           </div>
         );
@@ -133,10 +137,37 @@ interface SectionRendererProps {
   sectionIndex: number;
   useBgVariation: boolean;
   productSlice: number;
+  sectionContent: Record<string, { eyebrow?: string; title?: string }>;
+}
+
+/** V3.2: Get AI-generated or fallback section title/eyebrow */
+const FALLBACK_TITLES: Record<string, { eyebrow: string; title: string }> = {
+  product_carousel: { eyebrow: 'Trending', title: 'Trending Now' },
+  featured_products: { eyebrow: 'Featured', title: 'Featured Products' },
+  product_grid: { eyebrow: 'Collection', title: 'Our Collection' },
+  category_grid: { eyebrow: 'Categories', title: 'Shop by Category' },
+  collection_banner: { eyebrow: 'Categories', title: 'Shop by Category' },
+  collection_list: { eyebrow: 'Categories', title: 'Shop by Category' },
+  testimonials: { eyebrow: 'Reviews', title: 'What Our Customers Say' },
+  testimonial_cards: { eyebrow: 'Reviews', title: 'What Our Customers Say' },
+  newsletter: { eyebrow: 'Updates', title: 'Stay in the Loop' },
+  about_brand: { eyebrow: 'Our Story', title: 'About Us' },
+  stats_bar: { eyebrow: 'Impact', title: '' },
+  marquee: { eyebrow: '', title: '' },
+  ugc_gallery: { eyebrow: 'Community', title: 'As Seen On Instagram' },
+};
+
+function getSectionTitle(type: string, content: Record<string, { eyebrow?: string; title?: string }>): { eyebrow: string; title: string } {
+  const ai = content[type];
+  const fb = FALLBACK_TITLES[type] || { eyebrow: '', title: '' };
+  return {
+    eyebrow: ai?.eyebrow || fb.eyebrow,
+    title: ai?.title || fb.title,
+  };
 }
 
 function SectionRenderer({
-  section, storeUrl, storeSlug, heroImages, categories, productItems, sectionIndex, useBgVariation, productSlice,
+  section, storeUrl, storeSlug, heroImages, categories, productItems, sectionIndex, useBgVariation, productSlice, sectionContent,
 }: SectionRendererProps) {
   const type = section.type;
 
@@ -178,14 +209,15 @@ function SectionRenderer({
     case 'trust_bar':
       return <TrustBar />;
 
-    // ── Product sections with V2 variants ──
+    // ── Product sections with V2 variants + V3.2 AI titles ──
     case 'product_carousel': {
       const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
+      const { title: carouselTitle } = getSectionTitle('product_carousel', sectionContent);
       return (
         <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title="Trending Now" variant="carousel" />
+            <ProductGrid products={items} title={carouselTitle} variant="carousel" />
           </div>
         </section>
       );
@@ -193,10 +225,11 @@ function SectionRenderer({
     case 'featured_products': {
       const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
+      const { title: featuredTitle } = getSectionTitle('featured_products', sectionContent);
       return (
         <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title="Featured Products" variant={items.length >= 5 ? 'editorial' : 'grid'} />
+            <ProductGrid products={items} title={featuredTitle} variant={items.length >= 5 ? 'editorial' : 'grid'} />
           </div>
         </section>
       );
@@ -204,10 +237,11 @@ function SectionRenderer({
     case 'product_grid': {
       const items = getProductSlice(productItems, productSlice);
       if (items.length === 0) return null;
+      const { title: gridTitle } = getSectionTitle('product_grid', sectionContent);
       return (
         <section style={{ ...bgStyle, paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
           <div className="container-store">
-            <ProductGrid products={items} title="Our Collection" variant="grid" />
+            <ProductGrid products={items} title={gridTitle} variant="grid" />
           </div>
         </section>
       );

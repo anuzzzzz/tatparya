@@ -41,6 +41,11 @@ export function NewsletterSection({ designVariant }: NewsletterSectionProps) {
   const vertical = (store as any).vertical || 'general';
   const dv = designVariant || inferVariant(vertical, colorMood);
 
+  // V3.2: AI-generated newsletter copy with fallbacks
+  const nlContent = storeConfig?.content?.newsletter;
+  const nlHeading = nlContent?.heading || (dv === 'luxury' ? 'Be the First to Know' : dv === 'organic' ? 'Stay in the Loop' : 'Get Updates on WhatsApp');
+  const nlSubtext = nlContent?.subtext || 'New arrivals, exclusive offers & restocks — delivered to your WhatsApp.';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
@@ -84,10 +89,10 @@ export function NewsletterSection({ designVariant }: NewsletterSectionProps) {
                 className="font-display text-lg md:text-xl font-light tracking-wide mb-2"
                 style={{ color: p.background, letterSpacing: '0.06em' }}
               >
-                Be the First to Know
+                {nlHeading}
               </h3>
               <p className="text-xs md:text-sm mb-6 leading-relaxed" style={{ color: `${p.background}99` }}>
-                New arrivals, exclusive offers &amp; restocks — delivered to your WhatsApp.
+                {nlSubtext}
               </p>
 
               {submitted ? (
@@ -159,10 +164,10 @@ export function NewsletterSection({ designVariant }: NewsletterSectionProps) {
                 className="font-display text-lg md:text-xl font-medium mb-2"
                 style={{ color: p.text }}
               >
-                Stay in the Loop
+                {nlHeading}
               </h3>
               <p className="text-xs md:text-sm mb-5 leading-relaxed" style={{ color: p.textMuted }}>
-                Be the first to know about new arrivals &amp; exclusive offers.
+                {nlSubtext}
               </p>
 
               {submitted ? (
@@ -228,10 +233,10 @@ export function NewsletterSection({ designVariant }: NewsletterSectionProps) {
                 className="font-display text-lg md:text-xl font-bold mb-2"
                 style={{ color: p.text }}
               >
-                Get Updates on WhatsApp
+                {nlHeading}
               </h3>
               <p className="text-xs md:text-sm mb-5 leading-relaxed" style={{ color: p.textMuted }}>
-                Be the first to know about new arrivals, exclusive offers &amp; restocks.
+                {nlSubtext}
               </p>
 
               {submitted ? (

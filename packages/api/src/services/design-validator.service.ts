@@ -125,6 +125,29 @@ export function validateDesignOutput(
       bespoke.letterSpacing = director.typography.heroLetterSpacing;
       autoFixed.push('hero.letterSpacing restored to Director value');
     }
+
+    // V3.2: Cap hero font size — extract max rem from clamp(), auto-fix >4rem to 3.8rem
+    if (bespoke.fontSize && typeof bespoke.fontSize === 'string') {
+      const clampMax = bespoke.fontSize.match(/clamp\([^,]+,[^,]+,\s*([\d.]+)rem\)/);
+      if (clampMax) {
+        const maxRem = parseFloat(clampMax[1]!);
+        if (maxRem > 4) {
+          const fixed = bespoke.fontSize.replace(
+            /clamp\(([^,]+),([^,]+),\s*[\d.]+rem\)/,
+            'clamp($1,$2, 3.8rem)',
+          );
+          corrections.push({
+            field: 'bespokeStyles.hero.fontSize',
+            issue: `Hero font max ${maxRem}rem exceeds 4rem cap`,
+            severity: 'warning',
+            suggestion: `Capped to 3.8rem: ${fixed}`,
+          });
+          bespoke.fontSize = fixed;
+          autoFixed.push(`hero.fontSize capped: ${maxRem}rem → 3.8rem`);
+          score -= 3;
+        }
+      }
+    }
   }
 
   if (design.fonts) {

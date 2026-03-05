@@ -24,6 +24,8 @@ export interface StoreDesignOutput {
   storeBio: string;
   heroTagline: string;
   heroSubtext: string;
+  sectionContent?: Record<string, { eyebrow?: string; title?: string }>;
+  customCSS?: string;
   archetypeId?: string;
   sectionLayout: SectionPattern[];
   representativeStore?: string;
@@ -176,8 +178,38 @@ Return ONLY valid JSON:
   },
   "storeBio": "2-3 sentence store description for Indian buyers.",
   "heroTagline": "2-5 words, evocative not descriptive. Examples: 'Effortless Korean Elegance', 'Woven in Tradition', 'Seoul Meets Mumbai', 'The Art of Everyday Luxury'. Never use generic phrases like 'Shop Now', 'Await You', 'Discover Our Collection'.",
-  "heroSubtext": "One line (max 15 words) supporting text."
+  "heroSubtext": "One line (max 15 words) supporting text.",
+  "sectionContent": {
+    "product_carousel": { "eyebrow": "Trending", "title": "What's Hot Right Now" },
+    "featured_products": { "eyebrow": "Curated", "title": "Editor's Picks" },
+    "product_grid": { "eyebrow": "Collection", "title": "Our Favourites" },
+    "category_grid": { "eyebrow": "Explore", "title": "Shop by Style" },
+    "testimonials": { "eyebrow": "Community", "title": "What They Say" },
+    "newsletter": { "eyebrow": "Stay Close", "title": "Join the Inner Circle" },
+    "about_brand": { "eyebrow": "Our Story", "title": "The Craft Behind the Brand" },
+    "stats_bar": { "eyebrow": "Impact", "title": "" },
+    "marquee": { "eyebrow": "", "title": "" }
+  },
+  "customCSS": "/* 20-40 lines of store-specific CSS — see CUSTOM CSS rules below */"
 }
+
+SECTION CONTENT RULES:
+- Each section type needs a short eyebrow (1-2 words, uppercase) and a title (2-5 words, evocative).
+- Titles must match brand personality. Luxury: "The Curated Edit". Playful: "Fresh Finds". Organic: "Handpicked for You".
+- Never use generic titles like "Our Products", "Shop Now", "Featured Items".
+
+CUSTOM CSS RULES:
+Generate 20-40 lines of CSS custom to THIS specific store. This makes the store look hand-designed, not templated.
+Include:
+- Hero-specific styles (text shadow, letter spacing tweaks, overlay adjustments)
+- Product card hover effects unique to this brand (custom transforms, shadows, border treatments)
+- Section background treatments (subtle gradients, patterns, or color washes)
+- Typography refinements (line-height adjustments, font-feature-settings for the chosen fonts)
+- At least one signature visual element that makes this store memorable (e.g. gold underline on headings, diagonal section divider, custom scrollbar color)
+Use CSS custom properties: var(--color-primary), var(--color-secondary), var(--color-accent), var(--color-background), var(--color-surface), var(--color-text), var(--color-text-muted).
+Target existing class names: .hero-stagger, .product-card, .section-title, .eyebrow, .btn-primary, .btn-secondary, .container-store, .scroll-snap-x, .about-brand, .font-display.
+DO NOT override layout (no display, grid, flex changes). Only visual refinements.
+Return as a single string with newlines (\\n). No markdown backticks inside the string.
 
 PALETTE RULES for "${d.colorMood}":
 - ${moodRules[d.colorMood] || moodRules['warm-earthy']}
@@ -315,6 +347,9 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     };
   }
 
+  // Log customCSS presence
+  console.log(`[design-ai] customCSS from Stylist: ${parsed.customCSS ? `${String(parsed.customCSS).length} chars` : 'NOT RETURNED'}`);
+
   // ── ENFORCE DIRECTOR DECISIONS (Stylist cannot override) ──
   if (parsed.design?.bespokeStyles?.hero) {
     parsed.design.bespokeStyles.hero.fontSize = director.typography.heroFontSize;
@@ -377,6 +412,8 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
     storeBio: parsed.storeBio || `Welcome to ${input.storeName}. Discover our curated collection.`,
     heroTagline: parsed.heroTagline || input.storeName,
     heroSubtext: parsed.heroSubtext || 'Discover our latest collection',
+    sectionContent: parsed.sectionContent || {},
+    customCSS: sanitizeCustomCSS(parsed.customCSS),
     archetypeId: archetype.id,
     sectionLayout: enrichedLayout,
     representativeStore: archetype.representative_source,
@@ -448,7 +485,138 @@ function validateDirector(d: DirectorOutput, n: number): DirectorOutput {
   const valid = ['parallax-drape', 'sparkle-overlay', 'organic-reveal', 'none'];
   if (!valid.includes(d.signatureEffect)) d.signatureEffect = 'none';
 
+  // V3.2: Validate font pairing — must be different + from curated list
+  d.typography = validateFontPairing(d.typography, d.colorMood);
+
+  // V3.2: Cap hero font size at 4rem max
+  if (d.typography.heroFontSize) {
+    const clampMax = d.typography.heroFontSize.match(/clamp\([^,]+,[^,]+,\s*([\d.]+)rem\)/);
+    if (clampMax && parseFloat(clampMax[1]!) > 4) {
+      const capped = d.typography.heroFontSize.replace(
+        /clamp\(([^,]+),([^,]+),\s*[\d.]+rem\)/,
+        'clamp($1,$2, 3.8rem)',
+      );
+      console.log(`[design-ai] Font size cap: ${d.typography.heroFontSize} → ${capped}`);
+      d.typography.heroFontSize = capped;
+    }
+  }
+
   return d;
+}
+
+// ============================================================
+// V3.2: Curated Font Pairs + Validator
+// ============================================================
+
+const CURATED_FONT_PAIRS: Record<string, { display: string; body: string }[]> = {
+  fashion: [
+    { display: 'Cormorant Garamond', body: 'DM Sans' },
+    { display: 'Playfair Display', body: 'Poppins' },
+    { display: 'Lora', body: 'Inter' },
+    { display: 'EB Garamond', body: 'Nunito Sans' },
+    { display: 'Fraunces', body: 'Plus Jakarta Sans' },
+  ],
+  jewellery: [
+    { display: 'Cormorant Garamond', body: 'Nunito Sans' },
+    { display: 'Playfair Display', body: 'DM Sans' },
+    { display: 'EB Garamond', body: 'Inter' },
+    { display: 'Lora', body: 'Plus Jakarta Sans' },
+  ],
+  beauty: [
+    { display: 'Fraunces', body: 'Plus Jakarta Sans' },
+    { display: 'Lora', body: 'DM Sans' },
+    { display: 'Playfair Display', body: 'Inter' },
+    { display: 'Cormorant Garamond', body: 'Poppins' },
+  ],
+  electronics: [
+    { display: 'Inter', body: 'DM Sans' },
+    { display: 'Space Grotesk', body: 'Inter' },
+    { display: 'Plus Jakarta Sans', body: 'DM Sans' },
+    { display: 'Manrope', body: 'Inter' },
+  ],
+  food: [
+    { display: 'Playfair Display', body: 'DM Sans' },
+    { display: 'Lora', body: 'Inter' },
+    { display: 'Plus Jakarta Sans', body: 'DM Sans' },
+    { display: 'Fraunces', body: 'Poppins' },
+  ],
+  home_decor: [
+    { display: 'Cormorant Garamond', body: 'Inter' },
+    { display: 'Playfair Display', body: 'DM Sans' },
+    { display: 'Lora', body: 'Plus Jakarta Sans' },
+  ],
+  general: [
+    { display: 'Playfair Display', body: 'DM Sans' },
+    { display: 'Inter', body: 'DM Sans' },
+    { display: 'Plus Jakarta Sans', body: 'Inter' },
+    { display: 'Lora', body: 'Poppins' },
+  ],
+};
+
+function validateFontPairing(
+  typo: DirectorOutput['typography'],
+  colorMood: string,
+): DirectorOutput['typography'] {
+  // Rule 1: display and body MUST be different
+  if (typo.displayFont === typo.bodyFont) {
+    console.log(`[design-ai] Font fix: display === body ("${typo.displayFont}"), applying fallback pair`);
+    const pairs = CURATED_FONT_PAIRS.general!;
+    typo.displayFont = pairs[0]!.display;
+    typo.bodyFont = pairs[0]!.body;
+    return typo;
+  }
+
+  // Rule 2: Check if the pair exists in ANY curated list — if so, it's good
+  const allPairs = Object.values(CURATED_FONT_PAIRS).flat();
+  const isKnownPair = allPairs.some(
+    p => p.display === typo.displayFont && p.body === typo.bodyFont,
+  );
+  if (isKnownPair) return typo;
+
+  // Rule 3: If display font is known (in any pair's display), keep it, fix body
+  const matchByDisplay = allPairs.find(p => p.display === typo.displayFont);
+  if (matchByDisplay) {
+    console.log(`[design-ai] Font fix: unknown pair, keeping display "${typo.displayFont}", fixing body to "${matchByDisplay.body}"`);
+    typo.bodyFont = matchByDisplay.body;
+    return typo;
+  }
+
+  // Rule 4: Unknown fonts entirely — fall back to first pair for mood
+  const luxuryMoods = ['dark-luxury', 'warm-earthy'];
+  const fallbackPairs = luxuryMoods.includes(colorMood)
+    ? CURATED_FONT_PAIRS.fashion!
+    : CURATED_FONT_PAIRS.general!;
+  console.log(`[design-ai] Font fix: unknown fonts "${typo.displayFont}" + "${typo.bodyFont}", falling back to "${fallbackPairs[0]!.display}" + "${fallbackPairs[0]!.body}"`);
+  typo.displayFont = fallbackPairs[0]!.display;
+  typo.bodyFont = fallbackPairs[0]!.body;
+  return typo;
+}
+
+// ============================================================
+// V3.2: Sanitize Custom CSS — strip dangerous constructs
+// ============================================================
+
+function sanitizeCustomCSS(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== 'string') return undefined;
+
+  let css = raw.trim();
+  if (css.length < 10) return undefined;
+
+  // Strip anything dangerous: @import, url(), expression(), javascript:
+  css = css.replace(/@import\b[^;]*/gi, '/* @import removed */');
+  css = css.replace(/url\s*\([^)]*\)/gi, '/* url() removed */');
+  css = css.replace(/expression\s*\([^)]*\)/gi, '/* expression() removed */');
+  css = css.replace(/javascript\s*:/gi, '/* js removed */');
+  css = css.replace(/<\/?script[^>]*>/gi, '');
+  css = css.replace(/position\s*:\s*fixed/gi, 'position: relative');
+
+  // Strip layout-breaking properties
+  css = css.replace(/display\s*:\s*(none|grid|flex|block|inline)[^;]*/gi, '/* display removed */');
+
+  // Cap at 3000 chars
+  if (css.length > 3000) css = css.slice(0, 3000);
+
+  return css || undefined;
 }
 
 /**

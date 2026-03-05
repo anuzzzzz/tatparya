@@ -6,6 +6,7 @@ import { emitEvent } from '../lib/event-bus.js';
 import { generateStoreDesign } from '../services/store-design-ai.service.js';
 import { processSellerPhotos } from '../services/photo-pipeline-orchestrator.service.js';
 import { generateProductFromImages } from '../services/catalog-ai.service.js';
+import { generateStoreContent } from '../services/content-generator.service.js';
 
 export const storeRouter = router({
   /**
@@ -702,6 +703,30 @@ export const storeRouter = router({
         sellerHints: input.sellerHints,
       });
 
+      // ── Step 4b: Generate store content (testimonials, marquee, newsletter) ──
+      console.log(`[full-pipeline] Generating store content...`);
+      let contentResult;
+      try {
+        // Fetch created product names for context
+        const { data: createdProds } = await ctx.serviceDb
+          .from('products')
+          .select('name')
+          .eq('store_id', storeId)
+          .limit(5);
+        const productNames = (createdProds || []).map((p: any) => p.name).filter(Boolean);
+
+        contentResult = await generateStoreContent({
+          storeName: input.name,
+          vertical: input.vertical,
+          productNames,
+          brandPersonality: (designResult.directorDecisions as any)?.brandPersonality,
+        });
+        console.log(`[full-pipeline] Content generated in ${contentResult.processingTimeMs}ms`);
+      } catch (err) {
+        console.error(`[full-pipeline] Content generation failed, using fallbacks:`, err instanceof Error ? err.message : err);
+        contentResult = null;
+      }
+
       // ── Step 5: Merge into store config ──
       const existingConfig = (store.store_config || {}) as Record<string, any>;
       const finalConfig = {
@@ -710,6 +735,16 @@ export const storeRouter = router({
         heroTagline: designResult.heroTagline,
         heroSubtext: designResult.heroSubtext,
         storeBio: designResult.storeBio,
+        sectionContent: (designResult as any).sectionContent || {},
+        ...(designResult.customCSS ? { customCSS: designResult.customCSS } : {}),
+        ...(contentResult ? {
+          content: {
+            testimonials: contentResult.testimonials,
+            marquee: contentResult.marquee,
+            newsletter: contentResult.newsletter,
+            categories: contentResult.categories,
+          },
+        } : {}),
         sections: {
           homepage: designResult.sectionLayout.map((s: any) => ({
             type: s.type,

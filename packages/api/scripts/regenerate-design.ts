@@ -22,6 +22,7 @@ config({ path: resolve(__dirname, '../.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
 import { generateStoreDesign } from '../src/services/store-design-ai.service.js';
+import { generateStoreContent } from '../src/services/content-generator.service.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -164,13 +165,39 @@ async function main() {
 
   const elapsedMs = Date.now() - startMs;
 
+  // ── Generate store content (testimonials, marquee, newsletter) ──
+  console.log(`\n  Generating store content...`);
+  const productNames = (products || []).map((p: any) => p.name).filter(Boolean).slice(0, 5);
+  let contentData: Record<string, any> = {};
+  try {
+    const contentResult = await generateStoreContent({
+      storeName: store.name,
+      vertical: store.vertical,
+      productNames,
+      brandPersonality: (designResult.directorDecisions as any)?.brandPersonality,
+    });
+    contentData = {
+      testimonials: contentResult.testimonials,
+      marquee: contentResult.marquee,
+      newsletter: contentResult.newsletter,
+      categories: contentResult.categories,
+    };
+    console.log(`  Content generated in ${contentResult.processingTimeMs}ms`);
+  } catch (err) {
+    console.error(`  Content generation failed, skipping:`, err instanceof Error ? err.message : err);
+  }
+
   // ── Update store_config ──
+  console.log(`  customCSS: ${designResult.customCSS ? `${designResult.customCSS.length} chars` : 'none'}`);
   const finalConfig = {
     ...existingConfig,
     design: designResult.design,
     heroTagline: designResult.heroTagline,
     heroSubtext: designResult.heroSubtext,
     storeBio: designResult.storeBio,
+    sectionContent: (designResult as any).sectionContent || {},
+    ...(designResult.customCSS ? { customCSS: designResult.customCSS } : {}),
+    ...(Object.keys(contentData).length > 0 ? { content: contentData } : {}),
     sections: {
       homepage: designResult.sectionLayout.map((s: any) => ({
         type: s.type,
@@ -190,18 +217,25 @@ async function main() {
     integrations: existingConfig.integrations || {},
   };
 
-  const { error: updateErr } = await db
+  console.log(`  finalConfig keys: ${Object.keys(finalConfig).join(', ')}`);
+  console.log(`  storeId: ${storeId}`);
+
+  const { error: updateErr, data: updateData, count } = await db
     .from('stores')
     .update({
       store_config: finalConfig,
       description: designResult.storeBio,
     })
-    .eq('id', storeId);
+    .eq('id', storeId)
+    .select('id')
+    .single();
 
   if (updateErr) {
     console.error('Failed to update store:', updateErr.message);
     process.exit(1);
   }
+
+  console.log(`  Update result: ${updateData ? 'OK' : 'NO DATA'}, id=${updateData?.id}`);
 
   // ── Results ──
   const palette = (designResult.design as any)?.palette || {};

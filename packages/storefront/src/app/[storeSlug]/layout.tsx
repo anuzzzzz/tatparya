@@ -47,6 +47,11 @@ export default async function StoreLayout({ children, params }: StoreLayoutProps
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link rel="stylesheet" href={fontsUrl} />
 
+      {/* V3.2: Per-store custom CSS from Stylist AI */}
+      {(config as any)?.customCSS && (
+        <style dangerouslySetInnerHTML={{ __html: (config as any).customCSS }} />
+      )}
+
       <div style={cssVarsToStyle(cssVars)} className="min-h-screen flex flex-col">
         <StoreProvider store={store as any}>
           <Navbar />

@@ -66,10 +66,10 @@ function HeroFullBleed({ heading, sub, link, imageUrl }: { heading: string; sub:
   const height = design.hero.height === 'full' ? 'min-h-[65vh] md:min-h-[85vh]' : design.hero.height === 'half' ? 'min-h-[45vh] md:min-h-[50vh]' : 'min-h-[35vh]';
   const provenanceBadge = (design as any).heroProvenanceBadge || ((design as any).bespokeStyles?.provenanceBadge);
 
-  // Dark overlay — always use hardcoded gradient (bespoke ones are often too light)
+  // V3.2: Deterministic hero overlay — LLM chooses gradient TYPE, opacity is fixed
   const overlayGradient = heroTokens?.overlayGradient === 'center-vignette'
-    ? `radial-gradient(ellipse at center, transparent 30%, ${p.text}CC 100%)`
-    : `linear-gradient(180deg, ${p.text}77 0%, ${p.text}44 25%, ${p.text}99 65%, ${p.text}EE 100%)`;
+    ? 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%)'
+    : 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 25%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.85) 100%)';
 
   // V3: Bespoke hero typography — cap at 4rem max to prevent oversized text
   const rawFontSize = bespoke.fontSize || '';
@@ -158,8 +158,8 @@ function HeroSlideshow({ heading, sub, link, imageUrl, images }: { heading: stri
     return <HeroMinimal heading={heading} sub={sub} link={link} />;
   }
 
-  // Dark overlay — always use hardcoded gradient (bespoke ones are often too light)
-  const overlayGradient = `linear-gradient(180deg, ${p.text}77 0%, ${p.text}44 25%, ${p.text}99 65%, ${p.text}EE 100%)`;
+  // V3.2: Deterministic hero overlay — fixed RGBA opacity stops
+  const overlayGradient = 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 25%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.85) 100%)';
   const rawSlideshowFontSize = bespoke.fontSize || '';
   const heroFontSize = (rawSlideshowFontSize && /\d+(\.\d+)?rem/.test(rawSlideshowFontSize) && parseFloat(rawSlideshowFontSize.match(/(\d+(\.\d+)?)rem[^,]*\)$/)?.[1] || '0') > 4.5)
     ? 'clamp(1.8rem, 5vw, 3.5rem)'

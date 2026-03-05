@@ -9,8 +9,10 @@ interface MarqueeBannerProps {
   items?: string[];
 }
 
-export function MarqueeBanner({ items = DEFAULT_ITEMS }: MarqueeBannerProps) {
-  const { design } = useStore();
+export function MarqueeBanner({ items: propItems }: MarqueeBannerProps) {
+  const { design, config } = useStore();
+  // V3.2: Use AI-generated marquee from config, then props, then defaults
+  const items: string[] = propItems || (config as any)?.content?.marquee || DEFAULT_ITEMS;
   // Double the items for seamless infinite scroll
   const doubled = [...items, ...items];
 

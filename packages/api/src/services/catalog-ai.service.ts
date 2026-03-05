@@ -81,7 +81,7 @@ You analyze product photos and generate complete, SEO-optimized product listings
 
 Your output must be valid JSON matching this exact structure:
 {
-  "name": "Product name (max 300 chars, title case, include key attributes)",
+  "name": "Short brand-style product name, 2-4 words max, title case. Examples: 'Cloud Tote Bag', 'Silk Wrap Dress', 'Jade Hoop Earrings'. Never repeat the store/brand name. No filler words like 'A', 'An', 'The', 'Beautiful', 'Premium'.",
   "description": "Detailed product description (3-5 paragraphs, max 5000 chars). Mention materials, use cases, care instructions. Write for Indian buyers.",
   "shortDescription": "One-line summary (max 200 chars) for product cards",
   "tags": ["tag1", "tag2", ...],
@@ -102,7 +102,7 @@ Your output must be valid JSON matching this exact structure:
 }
 
 Rules:
-- Product names should be descriptive and include key attributes (color, material, style)
+- Product names should be short, brand-style (2-4 words). Think Zara/H&M naming: 'Quilted Crossbody', 'Leather Bucket Bag'
 - Descriptions should be written for Indian buyers, mentioning relevant occasions and use cases
 - Price suggestions should reflect Indian market pricing (not US/EU pricing)
 - Tags should include both English and common Hindi/regional terms buyers might search
@@ -216,6 +216,41 @@ async function generateWithAnthropic(params: {
 }
 
 // ============================================================
+// Deterministic Validator: Product Name
+// ============================================================
+
+function validateProductName(name: string | undefined, hint?: string): string {
+  if (!name) return hint || 'Untitled Product';
+
+  let clean = name.trim();
+
+  // Strip leading articles
+  clean = clean.replace(/^(A|An|The)\s+/i, '');
+
+  // Strip filler adjectives at the start
+  clean = clean.replace(/^(Beautiful|Premium|Amazing|Gorgeous|Stunning|Elegant|Luxurious|Exquisite)\s+/i, '');
+
+  // Cap at 6 words → take first 4
+  const words = clean.split(/\s+/);
+  if (words.length > 6) {
+    clean = words.slice(0, 4).join(' ');
+  }
+
+  // Title case
+  clean = clean
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
+  // If name is empty after cleaning, use hint
+  if (!clean || clean.length < 2) {
+    return hint || 'Untitled Product';
+  }
+
+  return clean;
+}
+
+// ============================================================
 // Main: Generate product data from images
 // ============================================================
 
@@ -256,6 +291,9 @@ export async function generateProductFromImages(params: {
     console.error('Failed to parse AI response:', cleanJson.substring(0, 500));
     throw new Error(`Failed to parse AI response as JSON: ${(e as Error).message}`);
   }
+
+  // Validate and fix product name
+  parsed.name = validateProductName(parsed.name, params.hints?.name);
 
   // Calculate confidence
   let confidence = 0.7;
