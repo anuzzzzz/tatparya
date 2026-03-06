@@ -9,6 +9,7 @@ import { Testimonials } from '@/components/testimonials';
 
 import { StatsBar } from '@/components/stats-bar';
 import { CategoryTiles } from '@/components/category-tiles';
+import { RunwayBlueprint } from '@/components/blueprints/runway/RunwayBlueprint';
 import Link from 'next/link';
 
 // ============================================================
@@ -46,6 +47,17 @@ export default async function StoreHomePage({ params }: HomePageProps) {
 
   const heroImages = pickHeroImages(productItems);
   const config = (store.storeConfig || store.config) as any;
+
+  // ── Blueprint check: fashion vertical gets the Runway blueprint ──
+  const vertical = config?.vertical || (store as any).vertical;
+  if (vertical === 'fashion' || config?.blueprint === 'runway') {
+    return (
+      <div style={{ marginTop: '-64px' }}>
+        <RunwayBlueprint products={productItems} heroImages={heroImages} storeUrl={storeUrl} />
+      </div>
+    );
+  }
+
   const sectionLayout = config?.sections?.homepage || [];
 
   // V2: Get decorative settings
