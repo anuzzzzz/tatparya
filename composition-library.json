@@ -1,27 +1,28 @@
 {
   "version": "3.0.0",
-  "generated_at": "2026-03-03T04:14:05.540Z",
+  "generated_at": "2026-03-07T22:07:19.200Z",
   "stats": {
-    "total_stores_crawled": 119,
-    "total_compositions": 119,
-    "compositions_after_dedup": 106,
-    "compositions_after_quality_filter": 119,
+    "total_stores_crawled": 142,
+    "total_compositions": 129,
+    "compositions_after_dedup": 129,
+    "compositions_after_quality_filter": 129,
     "total_archetypes": 75,
     "by_vertical": {
-      "fashion": 30,
+      "fashion": 39,
       "pets": 5,
-      "home_decor": 13,
-      "food": 10,
-      "jewellery": 8,
+      "home_decor": 16,
+      "food": 13,
+      "jewellery": 10,
       "electronics": 7,
-      "beauty": 16,
+      "beauty": 22,
       "general": 16,
       "homedecor": 1
     },
     "by_source": {
       "curated_d2c": 45,
       "top_shopify": 43,
-      "shopify_theme_demo": 18
+      "shopify_theme_demo": 18,
+      "structural_crawl": 23
     }
   },
   "archetypes": {
@@ -1881,7 +1882,7 @@
         ],
         "palette_centroid": {
           "avg_gold_proportion": 0.022486476938453896,
-          "avg_maroon_proportion": 1.5500155195725988e-05,
+          "avg_maroon_proportion": 0.000015500155195725988,
           "dark_theme_ratio": 0
         },
         "tags": [
@@ -2026,7 +2027,7 @@
           }
         ],
         "palette_centroid": {
-          "avg_gold_proportion": 8.639448887070301e-06,
+          "avg_gold_proportion": 0.000008639448887070301,
           "avg_maroon_proportion": 0,
           "dark_theme_ratio": 0.2
         },
@@ -4842,7 +4843,7 @@
           }
         ],
         "palette_centroid": {
-          "avg_gold_proportion": 5.7271008642875126e-05,
+          "avg_gold_proportion": 0.000057271008642875126,
           "avg_maroon_proportion": 0,
           "dark_theme_ratio": 0
         },
@@ -4896,7 +4897,7 @@
           1,
           0.25,
           0,
-          5.7271008642875126e-05,
+          0.000057271008642875126,
           0,
           0.8418972332015809
         ],
@@ -4981,7 +4982,7 @@
           }
         ],
         "palette_centroid": {
-          "avg_gold_proportion": 2.8387164656964286e-05,
+          "avg_gold_proportion": 0.000028387164656964286,
           "avg_maroon_proportion": 0.0027103374216797113,
           "dark_theme_ratio": 0.25
         },
@@ -12198,7 +12199,7 @@
           },
           {
             "hex": "#339933",
-            "proportion": 8.242258942246371e-05,
+            "proportion": 0.00008242258942246371,
             "role": "dark_element"
           }
         ],
@@ -13991,7 +13992,7 @@
           },
           {
             "hex": "#111111",
-            "proportion": 6.439097678479484e-05,
+            "proportion": 0.00006439097678479484,
             "role": "accent"
           }
         ],
@@ -14146,12 +14147,12 @@
           },
           {
             "hex": "#f2f2f2",
-            "proportion": 6.957066322344829e-05,
+            "proportion": 0.00006957066322344829,
             "role": "surface"
           },
           {
             "hex": "#222222",
-            "proportion": 1.2795060054760881e-05,
+            "proportion": 0.000012795060054760881,
             "role": "dark_element"
           }
         ],
@@ -14322,7 +14323,7 @@
           },
           {
             "hex": "#ffe5e8",
-            "proportion": 2.5819670665804337e-05,
+            "proportion": 0.000025819670665804337,
             "role": "decorative"
           }
         ],
@@ -15712,12 +15713,12 @@
           },
           {
             "hex": "#e9d590",
-            "proportion": 2.750600259895068e-05,
+            "proportion": 0.00002750600259895068,
             "role": "decorative"
           },
           {
             "hex": "#f1dfa2",
-            "proportion": 2.089155397709378e-05,
+            "proportion": 0.00002089155397709378,
             "role": "decorative"
           }
         ],
@@ -16368,13 +16369,13 @@
           },
           {
             "hex": "#484843",
-            "proportion": 7.116064887949747e-05,
+            "proportion": 0.00007116064887949747,
             "role": "dark_element"
           }
         ],
         "indian_signals": {
           "has_gold": false,
-          "gold_proportion": 4.31972444353515e-05,
+          "gold_proportion": 0.0000431972444353515,
           "has_maroon": false,
           "maroon_proportion": 0,
           "has_saffron": false,
@@ -17032,7 +17033,7 @@
           },
           {
             "hex": "#585857",
-            "proportion": 2.7539244328902683e-05,
+            "proportion": 0.000027539244328902683,
             "role": "dark_element"
           }
         ],
@@ -17490,12 +17491,12 @@
           },
           {
             "hex": "#4f6a46",
-            "proportion": 6.603437516556822e-05,
+            "proportion": 0.00006603437516556822,
             "role": "dark_sections"
           },
           {
             "hex": "#e5f18b",
-            "proportion": 2.4735599010395633e-05,
+            "proportion": 0.000024735599010395633,
             "role": "accent"
           }
         ],
@@ -17885,7 +17886,7 @@
           },
           {
             "hex": "#9f813a",
-            "proportion": 7.870329770682405e-05,
+            "proportion": 0.00007870329770682405,
             "role": "decorative"
           }
         ],
@@ -18491,7 +18492,7 @@
         ],
         "indian_signals": {
           "has_gold": false,
-          "gold_proportion": 5.7271008642875126e-05,
+          "gold_proportion": 0.000057271008642875126,
           "has_maroon": false,
           "maroon_proportion": 0,
           "has_saffron": false,
@@ -20267,12 +20268,12 @@
           },
           {
             "hex": "#fedee0",
-            "proportion": 7.975890830910937e-05,
+            "proportion": 0.00007975890830910937,
             "role": "decorative"
           },
           {
             "hex": "#231f20",
-            "proportion": 5.9800289524929534e-05,
+            "proportion": 0.000059800289524929534,
             "role": "dark_element"
           }
         ],
@@ -25904,6 +25905,2337 @@
         "heading_font": "Montserrat",
         "body_font": "Instrument Sans"
       }
+    },
+    {
+      "id": "comp_1cf83bdd",
+      "name": "minimal fashion #3bdd",
+      "source_url": "https://www.everlane.com",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "basics",
+      "tags": [],
+      "quality_score": 95,
+      "effective_score": 94.82864530161766,
+      "crawled_at": "2026-03-07T22:07:19.197Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "right"
+        }
+      ]
+    },
+    {
+      "id": "comp_e7c610ed",
+      "name": "minimal beauty #10ed",
+      "source_url": "https://www.kyliebaby.com",
+      "source_type": "structural_crawl",
+      "vertical": "beauty",
+      "sub_vertical": "baby_care",
+      "tags": [],
+      "quality_score": 95,
+      "effective_score": 94.56880656461684,
+      "crawled_at": "2026-03-07T22:07:19.197Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1
+        }
+      ]
+    },
+    {
+      "id": "comp_2167a19f",
+      "name": "full-bleed beauty #a19f",
+      "source_url": "https://www.kyliecosmetics.com",
+      "source_type": "structural_crawl",
+      "vertical": "beauty",
+      "sub_vertical": "cosmetics",
+      "tags": [
+        "full-bleed-hero",
+        "video",
+        "content-rich",
+        "tall-hero"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.5607326972301,
+      "crawled_at": "2026-03-07T22:07:19.197Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "right"
+        },
+        {
+          "type": "featured_products",
+          "required": true,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "grid_large"
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "tall"
+        },
+        {
+          "type": "featured_products",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "grid_minimal"
+        },
+        {
+          "type": "featured_products",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "grid_large"
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "tall"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "left"
+        }
+      ]
+    },
+    {
+      "id": "comp_2c550743",
+      "name": "minimal carousel marquee fashion #0743",
+      "source_url": "https://www.suta.in",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "ethnic_wear",
+      "tags": [
+        "marquee",
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.53060842760277,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "marquee",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "3col"
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "2col"
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "2col"
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "2col"
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "2col"
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "2col"
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "2col"
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "2col"
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "light",
+          "position": 12,
+          "variant": "2col"
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 14,
+          "variant": "full_width"
+        },
+        {
+          "type": "category_grid",
+          "required": false,
+          "background_hint": "dark",
+          "position": 15,
+          "variant": "2col"
+        }
+      ]
+    },
+    {
+      "id": "comp_5f9abc2b",
+      "name": "minimal carousel fashion #bc2b",
+      "source_url": "https://www.karagiri.com",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "ethnic_wear",
+      "tags": [
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.72723015511676,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 0,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "right"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 12,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 14,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 15
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 16,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 17
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 18,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 19
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 20,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 21
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 22
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 23
+        }
+      ]
+    },
+    {
+      "id": "comp_0084eec9",
+      "name": "minimal carousel fashion #eec9",
+      "source_url": "https://www.w-store.in",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "ethnic_wear",
+      "tags": [
+        "carousel",
+        "content-rich"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.79581826472092,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "left"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        }
+      ]
+    },
+    {
+      "id": "comp_a1f7bae4",
+      "name": "slideshow carousel fashion #bae4",
+      "source_url": "https://www.fullyfilmy.in",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "streetwear",
+      "tags": [
+        "slideshow",
+        "carousel"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.6269367718772,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "light",
+          "position": 0,
+          "variant": "slide"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        }
+      ]
+    },
+    {
+      "id": "comp_0fb4cb4b",
+      "name": "slideshow carousel fashion #cb4b",
+      "source_url": "https://www.urbanmonkey.com",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "streetwear",
+      "tags": [
+        "slideshow",
+        "carousel",
+        "ugc",
+        "content-rich"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.56964385233059,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "slide"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "ugc_gallery",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        }
+      ]
+    },
+    {
+      "id": "comp_990ff918",
+      "name": "minimal carousel marquee fashion #f918",
+      "source_url": "https://www.bombaytrooper.com",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "streetwear",
+      "tags": [
+        "marquee",
+        "carousel",
+        "social-proof",
+        "newsletter",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.62927801194478,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "newsletter",
+          "required": true,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "featured_products",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "grid_minimal"
+        },
+        {
+          "type": "marquee",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5
+        },
+        {
+          "type": "featured_products",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "grid_minimal"
+        },
+        {
+          "type": "marquee",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "featured_products",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "grid_minimal"
+        },
+        {
+          "type": "featured_products",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "grid_large"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11,
+          "variant": "right"
+        },
+        {
+          "type": "testimonial_cards",
+          "required": false,
+          "background_hint": "light",
+          "position": 12,
+          "variant": "carousel"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13,
+          "variant": "right"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 14
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 15
+        }
+      ]
+    },
+    {
+      "id": "comp_7d3f446b",
+      "name": "slideshow carousel marquee fashion #446b",
+      "source_url": "https://www.mokobara.com",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "bags_luggage",
+      "tags": [
+        "slideshow",
+        "marquee",
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.63610667833481,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "slide"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "marquee",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11,
+          "variant": "right"
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 12
+        }
+      ]
+    },
+    {
+      "id": "comp_1db01d54",
+      "name": "full-bleed carousel fashion #1d54",
+      "source_url": "https://www.bacca-bucci.com",
+      "source_type": "structural_crawl",
+      "vertical": "fashion",
+      "sub_vertical": "footwear",
+      "tags": [
+        "full-bleed-hero",
+        "carousel",
+        "newsletter",
+        "content-rich"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.62431855318738,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "full_width"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "right"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "featured_products",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "grid_large"
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "medium"
+        },
+        {
+          "type": "newsletter",
+          "required": true,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        }
+      ]
+    },
+    {
+      "id": "comp_c94fcc82",
+      "name": "slideshow carousel beauty #cc82",
+      "source_url": "https://www.themancompany.com",
+      "source_type": "structural_crawl",
+      "vertical": "beauty",
+      "sub_vertical": "mens_grooming",
+      "tags": [
+        "slideshow",
+        "carousel",
+        "video",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.5673201886226,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "slide"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        }
+      ]
+    },
+    {
+      "id": "comp_061c1c22",
+      "name": "slideshow carousel beauty #1c22",
+      "source_url": "https://www.pilgrimofficial.com",
+      "source_type": "structural_crawl",
+      "vertical": "beauty",
+      "sub_vertical": "skincare",
+      "tags": [
+        "slideshow",
+        "full-bleed-hero",
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.81556956382997,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "light",
+          "position": 0,
+          "variant": "slide"
+        },
+        {
+          "type": "countdown_timer",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": false,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "medium"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11,
+          "variant": "full_width"
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 12
+        },
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 14
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 15
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 16
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 17
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 18,
+          "variant": "full_width"
+        }
+      ]
+    },
+    {
+      "id": "comp_a5a5fded",
+      "name": "minimal carousel beauty #fded",
+      "source_url": "https://www.lakme.com",
+      "source_type": "structural_crawl",
+      "vertical": "beauty",
+      "sub_vertical": "cosmetics",
+      "tags": [
+        "carousel",
+        "content-rich"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.96642830529385,
+      "crawled_at": "2026-03-07T22:07:19.198Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "left"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "left"
+        }
+      ]
+    },
+    {
+      "id": "comp_123ff1ca",
+      "name": "minimal carousel beauty #f1ca",
+      "source_url": "https://www.arata.in",
+      "source_type": "structural_crawl",
+      "vertical": "beauty",
+      "sub_vertical": "personal_care",
+      "tags": [
+        "carousel",
+        "ugc",
+        "video",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.69030882003237,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "full_width"
+        },
+        {
+          "type": "ugc_gallery",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5
+        },
+        {
+          "type": "ugc_gallery",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 12
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 14
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 15
+        }
+      ]
+    },
+    {
+      "id": "comp_5665da1f",
+      "name": "minimal carousel jewellery #da1f",
+      "source_url": "https://www.totapari.com",
+      "source_type": "structural_crawl",
+      "vertical": "jewellery",
+      "sub_vertical": "fashion_jewellery",
+      "tags": [
+        "carousel",
+        "ugc",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.89953275099134,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "full_width"
+        },
+        {
+          "type": "logo_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "full_width"
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "full_width"
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 12
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 14,
+          "variant": "full_width"
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "dark",
+          "position": 15
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 16,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 17
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 18,
+          "variant": "full_width"
+        },
+        {
+          "type": "ugc_gallery",
+          "required": false,
+          "background_hint": "dark",
+          "position": 19
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 20,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 21,
+          "variant": "right"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 22,
+          "variant": "left"
+        },
+        {
+          "type": "about_brand",
+          "required": false,
+          "background_hint": "dark",
+          "position": 23
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 24
+        }
+      ]
+    },
+    {
+      "id": "comp_7f492823",
+      "name": "minimal carousel jewellery #2823",
+      "source_url": "https://www.chandranipearls.in",
+      "source_type": "structural_crawl",
+      "vertical": "jewellery",
+      "sub_vertical": "pearl_jewellery",
+      "tags": [
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.63471793593482,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "full_width"
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "right"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "right"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "right"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "right"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "left"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11,
+          "variant": "right"
+        },
+        {
+          "type": "trust_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 12
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 14,
+          "variant": "left"
+        }
+      ]
+    },
+    {
+      "id": "comp_dec8e242",
+      "name": "slideshow carousel food #e242",
+      "source_url": "https://www.happilo.com",
+      "source_type": "structural_crawl",
+      "vertical": "food",
+      "sub_vertical": "healthy_snacks",
+      "tags": [
+        "slideshow",
+        "carousel",
+        "video",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.51348314028402,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "slide"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "full_width"
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "right"
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "left"
+        },
+        {
+          "type": "about_brand",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "left"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11,
+          "variant": "right"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 12
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 14
+        }
+      ]
+    },
+    {
+      "id": "comp_f71faf67",
+      "name": "full-bleed food #af67",
+      "source_url": "https://www.twobrothersorganicfarm.com",
+      "source_type": "structural_crawl",
+      "vertical": "food",
+      "sub_vertical": "organic",
+      "tags": [
+        "full-bleed-hero",
+        "video",
+        "social-proof",
+        "content-rich",
+        "tall-hero"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.74971951492432,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "tall"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "left"
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "left"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "right"
+        },
+        {
+          "type": "featured_products",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "grid_minimal"
+        },
+        {
+          "type": "testimonial_cards",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "carousel"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        }
+      ]
+    },
+    {
+      "id": "comp_f696e032",
+      "name": "minimal food #e032",
+      "source_url": "https://www.yogabarsofficial.com",
+      "source_type": "structural_crawl",
+      "vertical": "food",
+      "sub_vertical": "health_bars",
+      "tags": [
+        "video",
+        "content-rich"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.65324051475343,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "featured_products",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "grid_large"
+        },
+        {
+          "type": "collection_banner",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "featured_products",
+          "required": true,
+          "background_hint": "dark",
+          "position": 3,
+          "variant": "grid_large"
+        },
+        {
+          "type": "video_section",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "right"
+        },
+        {
+          "type": "about_brand",
+          "required": false,
+          "background_hint": "light",
+          "position": 6
+        },
+        {
+          "type": "featured_products",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "grid_large"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        }
+      ]
+    },
+    {
+      "id": "comp_4a22351a",
+      "name": "full-bleed home_decor #351a",
+      "source_url": "https://www.orangetreeindia.com",
+      "source_type": "structural_crawl",
+      "vertical": "home_decor",
+      "sub_vertical": "home_furnishing",
+      "tags": [
+        "full-bleed-hero",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.93000995682534,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "announcement_bar",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "right"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 4
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "compact"
+        },
+        {
+          "type": "hero_full_bleed",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "compact"
+        },
+        {
+          "type": "featured_product",
+          "required": false,
+          "background_hint": "light",
+          "position": 8
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 12,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13
+        }
+      ]
+    },
+    {
+      "id": "comp_00f2e118",
+      "name": "slideshow carousel home_decor #e118",
+      "source_url": "https://www.freedomtreeindia.com",
+      "source_type": "structural_crawl",
+      "vertical": "home_decor",
+      "sub_vertical": "home_furnishing",
+      "tags": [
+        "slideshow",
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.5367262066741,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "hero_slideshow",
+          "required": true,
+          "background_hint": "light",
+          "position": 0,
+          "variant": "slide"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "right"
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 2,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5,
+          "variant": "right"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "left"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9,
+          "variant": "right"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 10,
+          "variant": "full_width"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11,
+          "variant": "full_width"
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 12,
+          "variant": "left"
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "dark",
+          "position": 13,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 14
+        }
+      ]
+    },
+    {
+      "id": "comp_aadbec27",
+      "name": "minimal carousel home_decor #ec27",
+      "source_url": "https://www.casa-decor.in",
+      "source_type": "structural_crawl",
+      "vertical": "home_decor",
+      "sub_vertical": "home_furnishing",
+      "tags": [
+        "carousel",
+        "content-rich",
+        "editorial"
+      ],
+      "quality_score": 95,
+      "effective_score": 94.79476817512133,
+      "crawled_at": "2026-03-07T22:07:19.199Z",
+      "sections": [
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 0
+        },
+        {
+          "type": "product_carousel",
+          "required": true,
+          "background_hint": "dark",
+          "position": 1,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 2
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 3
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 4,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 5
+        },
+        {
+          "type": "image_with_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 6,
+          "variant": "left"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 7
+        },
+        {
+          "type": "product_carousel",
+          "required": false,
+          "background_hint": "light",
+          "position": 8,
+          "variant": "full_width"
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 9
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "light",
+          "position": 10
+        },
+        {
+          "type": "rich_text",
+          "required": false,
+          "background_hint": "dark",
+          "position": 11
+        }
+      ]
     }
   ]
 }

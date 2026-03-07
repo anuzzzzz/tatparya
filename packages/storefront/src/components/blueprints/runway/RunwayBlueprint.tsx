@@ -73,7 +73,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         rel="stylesheet"
       />
 
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes runwayFadeUp {
           from { opacity: 0; transform: translateY(24px); }
           to { opacity: 1; transform: translateY(0); }
@@ -99,7 +99,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         .runway-stagger > *:nth-child(6) { animation-delay: 400ms; }
         .runway-stagger > *:nth-child(7) { animation-delay: 480ms; }
         .runway-stagger > *:nth-child(8) { animation-delay: 560ms; }
-      `}</style>
+      `}} />
 
       {/* ── 1. NAVBAR — always transparent, always minimal ── */}
       <RunwayNavbar storeName={store.name} storeUrl={storeUrl} primary={p.primary} />
