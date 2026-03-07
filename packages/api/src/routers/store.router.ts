@@ -743,6 +743,7 @@ export const storeRouter = router({
             marquee: contentResult.marquee,
             newsletter: contentResult.newsletter,
             categories: contentResult.categories,
+            aboutPage: contentResult.aboutPage,
           },
         } : {}),
         sections: {

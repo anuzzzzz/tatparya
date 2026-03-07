@@ -181,6 +181,7 @@ async function main() {
       marquee: contentResult.marquee,
       newsletter: contentResult.newsletter,
       categories: contentResult.categories,
+      aboutPage: contentResult.aboutPage,
     };
     console.log(`  Content generated in ${contentResult.processingTimeMs}ms`);
   } catch (err) {

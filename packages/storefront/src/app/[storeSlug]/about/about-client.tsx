@@ -82,10 +82,10 @@ export function AboutPageClient({ store, heroImage, storeSlug }: AboutPageClient
       <StorySection story={founderStory} palette={p} />
 
       {/* Values Grid */}
-      <ValuesGrid vertical={vertical} palette={p} />
+      <ValuesGrid vertical={vertical} palette={p} configValues={(config as any)?.content?.aboutPage?.values} />
 
       {/* Stats Section */}
-      <StatsSection palette={p} />
+      <StatsSection palette={p} configStats={(config as any)?.content?.aboutPage?.stats} />
 
       {/* CTA Section */}
       <section className="py-16 md:py-20 text-center" style={{ backgroundColor: p.surface }}>
@@ -128,28 +128,40 @@ function StorySection({ story, palette }: { story: string; palette: any }) {
   );
 }
 
-function ValuesGrid({ vertical, palette }: { vertical: string; palette: any }) {
+const ICON_MAP: Record<string, React.ElementType> = {
+  heart: Heart, shield: Shield, truck: Truck, star: Star, sparkles: Sparkles, package: Package,
+};
+
+function ValuesGrid({ vertical, palette, configValues }: { vertical: string; palette: any; configValues?: any[] }) {
   const isFashionJewellery = ['fashion', 'jewellery'].includes(vertical);
   const isFood = vertical === 'food';
 
-  const values = [
-    {
-      icon: isFood ? Shield : Heart,
-      title: isFood ? 'Pure & Natural' : 'Quality Assured',
-      desc: isFood ? 'Only the finest natural ingredients in every product.' : 'Every product passes rigorous quality checks before reaching you.',
-    },
-    { icon: Truck, title: 'Fast Delivery', desc: 'Quick and reliable shipping across India with real-time tracking.' },
-    { icon: Star, title: 'Customer First', desc: 'Your satisfaction is our priority. Easy returns and responsive support.' },
-    {
-      icon: isFood ? Package : isFashionJewellery ? Sparkles : Shield,
-      title: isFood ? 'Fresh Packaging' : isFashionJewellery ? 'Crafted with Care' : 'Curated Selection',
-      desc: isFood
-        ? 'Sealed fresh to preserve taste and quality until delivery.'
-        : isFashionJewellery
-        ? 'Each piece is thoughtfully designed and carefully crafted.'
-        : 'A handpicked collection of the best products in our category.',
-    },
-  ];
+  const useConfig = Array.isArray(configValues) && configValues.length >= 3;
+
+  const values = useConfig
+    ? configValues!.slice(0, 4).map(v => ({
+        icon: ICON_MAP[v.icon] || Heart,
+        title: v.title || '',
+        desc: v.desc || '',
+      }))
+    : [
+        {
+          icon: isFood ? Shield : Heart,
+          title: isFood ? 'Pure & Natural' : 'Quality Assured',
+          desc: isFood ? 'Only the finest natural ingredients in every product.' : 'Every product passes rigorous quality checks before reaching you.',
+        },
+        { icon: Truck, title: 'Fast Delivery', desc: 'Quick and reliable shipping across India with real-time tracking.' },
+        { icon: Star, title: 'Customer First', desc: 'Your satisfaction is our priority. Easy returns and responsive support.' },
+        {
+          icon: isFood ? Package : isFashionJewellery ? Sparkles : Shield,
+          title: isFood ? 'Fresh Packaging' : isFashionJewellery ? 'Crafted with Care' : 'Curated Selection',
+          desc: isFood
+            ? 'Sealed fresh to preserve taste and quality until delivery.'
+            : isFashionJewellery
+            ? 'Each piece is thoughtfully designed and carefully crafted.'
+            : 'A handpicked collection of the best products in our category.',
+        },
+      ];
 
   return (
     <section className="py-16 md:py-20" style={{ backgroundColor: palette.surface }}>
@@ -176,13 +188,17 @@ function ValuesGrid({ vertical, palette }: { vertical: string; palette: any }) {
   );
 }
 
-function StatsSection({ palette }: { palette: any }) {
-  const stats = [
-    { value: '1,000+', label: 'Happy Customers' },
-    { value: '100%', label: 'Authentic' },
-    { value: '4.8\u2605', label: 'Rating' },
-    { value: '24hr', label: 'Dispatch' },
-  ];
+function StatsSection({ palette, configStats }: { palette: any; configStats?: any[] }) {
+  const useConfig = Array.isArray(configStats) && configStats.length >= 3;
+
+  const stats = useConfig
+    ? configStats!.slice(0, 4).map(s => ({ value: s.value || '', label: s.label || '' }))
+    : [
+        { value: '1,000+', label: 'Happy Customers' },
+        { value: '100%', label: 'Authentic' },
+        { value: '4.8\u2605', label: 'Rating' },
+        { value: '24hr', label: 'Dispatch' },
+      ];
 
   return (
     <section className="py-14 md:py-16" style={{ backgroundColor: palette.primary }}>
