@@ -101,10 +101,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         .runway-stagger > *:nth-child(8) { animation-delay: 560ms; }
       `}} />
 
-      {/* ── 1. NAVBAR — always transparent, always minimal ── */}
-      <RunwayNavbar storeName={store.name} storeUrl={storeUrl} primary={p.primary} />
-
-      {/* ── 2. HERO — full-bleed slideshow, 85vh, cinematic overlay ── */}
+      {/* ── HERO — full-bleed slideshow, 85vh, cinematic overlay ── */}
       <RunwayHero
         images={heroImages}
         tagline={tagline}
@@ -152,16 +149,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         surface={p.surface || '#f5f0eb'}
       />
 
-      {/* ── 8. FOOTER ── */}
-      <RunwayFooter
-        storeName={store.name}
-        bio={bio}
-        storeUrl={storeUrl}
-        textColor={p.text}
-        mutedColor={p.textMuted || '#8a8a8a'}
-        primary={p.primary}
-        bg={p.background}
-      />
+      {/* Footer rendered by global layout */}
     </div>
   );
 }
