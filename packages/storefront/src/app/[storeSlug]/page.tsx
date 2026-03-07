@@ -403,7 +403,7 @@ function pickHeroImages(products: any[]): string[] {
     for (const img of product.images) {
       const url = typeof img === 'object'
         ? (img.heroUrl || img.originalUrl)
-        : typeof img === 'string' && img.startsWith('http') ? img : null;
+        : typeof img === 'string' ? img : null;
       if (url && !images.includes(url)) {
         images.push(url);
         if (images.length >= 5) return images;

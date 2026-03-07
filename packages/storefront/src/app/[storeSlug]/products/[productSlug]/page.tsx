@@ -33,7 +33,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   if (!product) notFound();
 
-  const images = (product as any).images || [];
+  const rawImages = (product as any).images || [];
+  const images = rawImages.map((img: any) =>
+    typeof img === 'string' ? { originalUrl: img, cardUrl: img, thumbnailUrl: img } : img
+  );
   const variants = (product as any).variants || [];
   const discount = product.compareAtPrice ? discountPercent(product.price, product.compareAtPrice) : 0;
 

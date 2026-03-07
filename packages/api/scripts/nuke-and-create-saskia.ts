@@ -33,46 +33,39 @@ const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 // ── Mock product data for Saskia (fashion vertical) ──
 const MOCK_PRODUCTS = [
   {
-    name: 'Embroidered Anarkali Kurta Set',
-    description: 'Elegant hand-embroidered Anarkali kurta with matching dupatta. Crafted in pure cotton with intricate threadwork.',
-    price: 2499,
-    compare_at_price: 3999,
+    name: 'Monogram Crossbody — White',
+    description: 'Signature Saskia monogram print crossbody in white with black trim. Gold chain strap, structured flap closure. Perfect everyday bag.',
+    price: 3499,
+    compare_at_price: 4999,
     images: ['/uploads/saskia/product-1.jpg'],
   },
   {
-    name: 'Block Print Palazzo Set',
-    description: 'Traditional Rajasthani block print palazzo set in soft mulmul fabric. Perfect for everyday elegance.',
-    price: 1899,
-    compare_at_price: 2799,
+    name: 'Quilted Camera Bag — Tan',
+    description: 'Quilted pebble-grain camera bag in warm tan with embossed SK monogram. Chunky gold chain strap. Compact yet spacious.',
+    price: 2999,
+    compare_at_price: null,
     images: ['/uploads/saskia/product-2.jpg'],
   },
   {
-    name: 'Chanderi Silk Dupatta',
-    description: 'Handwoven Chanderi silk dupatta with gold zari border. A timeless accessory for any outfit.',
-    price: 1299,
-    compare_at_price: null,
+    name: 'Denim Flap Bag — Grey',
+    description: 'Washed denim flap bag with grey leather trim and silver chain detail. The perfect casual-to-dressy crossover piece.',
+    price: 3999,
+    compare_at_price: 5499,
     images: ['/uploads/saskia/product-3.jpg'],
   },
   {
-    name: 'Indigo Dyed Shirt Dress',
-    description: 'Contemporary shirt dress in natural indigo dye. Relaxed fit with wooden buttons and side pockets.',
-    price: 2199,
-    compare_at_price: 2999,
+    name: 'Logo Bucket Bag — Tan',
+    description: 'Structured bucket bag in rich tan leather with laser-cut Saskia logo and drawstring lining. A statement piece for any outfit.',
+    price: 4499,
+    compare_at_price: 5999,
     images: ['/uploads/saskia/product-4.jpg'],
   },
   {
-    name: 'Khadi Cotton Wrap Skirt',
-    description: 'Versatile wrap skirt in handspun khadi cotton. Adjustable waist, one size fits most.',
-    price: 1599,
+    name: 'Monogram Crossbody — Black',
+    description: 'Signature Saskia monogram crossbody in classic black. Gold hardware, adjustable chain strap. Day-to-night essential.',
+    price: 3499,
     compare_at_price: null,
     images: ['/uploads/saskia/product-5.jpg'],
-  },
-  {
-    name: 'Chikankari White Kurta',
-    description: 'Classic Lucknowi chikankari kurta in breathable white cotton. Delicate hand-embroidery all over.',
-    price: 2899,
-    compare_at_price: 4499,
-    images: ['/uploads/saskia/product-6.jpg'],
   },
 ];
 
@@ -131,7 +124,7 @@ async function main() {
       name: 'Saskia',
       slug,
       vertical: 'fashion',
-      description: 'Contemporary Indian fashion rooted in traditional craft',
+      description: 'Premium handbags with signature monogram detailing. Designed for the modern Indian woman.',
       owner_id: ownerId,
       store_config: {},
       whatsapp_config: { businessPhone: '919876543210' },
@@ -198,10 +191,12 @@ async function main() {
     const uploadsDir = join(__dirname, '../../storefront/public/uploads/saskia');
     const { mkdirSync, copyFileSync } = await import('fs');
     mkdirSync(uploadsDir, { recursive: true });
+    const { chmodSync } = await import('fs');
     rootFiles.slice(0, 6).forEach((file, i) => {
       const src = join(repoRoot, file);
       const dest = join(uploadsDir, `product-${i + 1}.jpg`);
       copyFileSync(src, dest);
+      chmodSync(dest, 0o644);
       console.log(`  Copied: ${file} → uploads/saskia/product-${i + 1}.jpg`);
     });
   }
@@ -218,7 +213,7 @@ async function main() {
     storeName: 'Saskia',
     vertical: 'fashion',
     productImages: designImages.length > 0 ? designImages : [],
-    sellerHints: 'Contemporary Indian fashion rooted in traditional craft. Ethnic wear with modern silhouettes.',
+    sellerHints: 'Premium handbag brand. Signature monogram prints, quilted leather, bucket bags. Gold and silver hardware. Luxury feel at accessible prices.',
   });
 
   const designMs = Date.now() - startMs;

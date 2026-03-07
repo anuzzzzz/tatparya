@@ -34,9 +34,13 @@ export function ProductCard({ product, index = 0, variant: explicitVariant, onAd
 
   const firstImage = product.images?.[0];
   const secondImage = product.images?.[1];
-  const imgSrc = resolveImage(firstImage?.cardUrl || firstImage?.thumbnailUrl || firstImage?.originalUrl);
-  const imgAlt = firstImage?.alt || product.name;
-  const secondImgSrc = secondImage ? resolveImage(secondImage.cardUrl || secondImage.thumbnailUrl || secondImage.originalUrl) : null;
+  const imgSrc = resolveImage(
+    typeof firstImage === 'string' ? firstImage : (firstImage?.cardUrl || firstImage?.thumbnailUrl || firstImage?.originalUrl)
+  );
+  const imgAlt = (typeof firstImage === 'object' ? firstImage?.alt : undefined) || product.name;
+  const secondImgSrc = secondImage
+    ? resolveImage(typeof secondImage === 'string' ? secondImage : (secondImage.cardUrl || secondImage.thumbnailUrl || secondImage.originalUrl))
+    : null;
 
   const discount = product.compareAtPrice ? discountPercent(product.price, product.compareAtPrice) : 0;
 
