@@ -59,20 +59,21 @@ export function Footer({ variant: explicitVariant }: FooterProps) {
           <FooterLinks storeUrl={storeUrl} title="Shop" links={[
             { label: 'All Products', href: `${storeUrl}/collections/all` },
             { label: 'New Arrivals', href: `${storeUrl}/collections/all` },
-            { label: 'Best Sellers', href: `${storeUrl}/collections/all` },
+            { label: 'About Us', href: `${storeUrl}/about` },
           ]} />
 
           <FooterLinks storeUrl={storeUrl} title="Help" links={[
-            { label: 'Shipping', href: '#' },
-            { label: 'Returns', href: '#' },
-            { label: 'Contact Us', href: '#' },
+            { label: 'Shipping', href: `${storeUrl}/pages/shipping` },
+            { label: 'Returns', href: `${storeUrl}/pages/returns` },
+            { label: 'Contact Us', href: `${storeUrl}/pages/contact` },
+            { label: 'FAQs', href: `${storeUrl}/pages/faq` },
             ...(whatsappPhone ? [{ label: 'WhatsApp Support', href: `https://wa.me/${whatsappPhone}`, external: true }] : []),
           ]} />
 
           <FooterLinks storeUrl={storeUrl} title="Legal" links={[
-            { label: 'Privacy Policy', href: '#' },
-            { label: 'Terms of Service', href: '#' },
-            { label: 'Refund Policy', href: '#' },
+            { label: 'Privacy Policy', href: `${storeUrl}/pages/privacy` },
+            { label: 'Terms of Service', href: `${storeUrl}/pages/terms` },
+            { label: 'Refund Policy', href: `${storeUrl}/pages/returns` },
           ]} />
         </div>
 
@@ -109,17 +110,17 @@ function DarkFooter({ storeUrl, whatsappPhone, storeBio, textureHint }: { storeU
           <FooterLinks storeUrl={storeUrl} title="Shop" dark links={[
             { label: 'All Products', href: `${storeUrl}/collections/all` },
             { label: 'New Arrivals', href: `${storeUrl}/collections/all` },
-            { label: 'Best Sellers', href: `${storeUrl}/collections/all` },
+            { label: 'About Us', href: `${storeUrl}/about` },
           ]} />
           <FooterLinks storeUrl={storeUrl} title="Help" dark links={[
-            { label: 'Shipping', href: '#' },
-            { label: 'Returns', href: '#' },
-            { label: 'Contact', href: '#' },
+            { label: 'Shipping', href: `${storeUrl}/pages/shipping` },
+            { label: 'Returns', href: `${storeUrl}/pages/returns` },
+            { label: 'Contact', href: `${storeUrl}/pages/contact` },
           ]} />
           <FooterLinks storeUrl={storeUrl} title="Legal" dark links={[
-            { label: 'Privacy', href: '#' },
-            { label: 'Terms', href: '#' },
-            { label: 'Refunds', href: '#' },
+            { label: 'Privacy', href: `${storeUrl}/pages/privacy` },
+            { label: 'Terms', href: `${storeUrl}/pages/terms` },
+            { label: 'Refunds', href: `${storeUrl}/pages/returns` },
           ]} />
         </div>
 
@@ -152,12 +153,12 @@ function MinimalFooter({ storeUrl, whatsappPhone, storeBio }: { storeUrl: string
           <div className="flex gap-8 md:gap-12">
             <nav className="flex flex-col gap-1.5">
               <Link href={`${storeUrl}/collections/all`} className="text-xs hover:opacity-80 transition-opacity">Shop</Link>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Shipping</a>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Returns</a>
+              <Link href={`${storeUrl}/pages/shipping`} className="text-xs hover:opacity-80 transition-opacity">Shipping</Link>
+              <Link href={`${storeUrl}/pages/returns`} className="text-xs hover:opacity-80 transition-opacity">Returns</Link>
             </nav>
             <nav className="flex flex-col gap-1.5">
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Privacy</a>
-              <a href="#" className="text-xs hover:opacity-80 transition-opacity">Terms</a>
+              <Link href={`${storeUrl}/pages/privacy`} className="text-xs hover:opacity-80 transition-opacity">Privacy</Link>
+              <Link href={`${storeUrl}/pages/terms`} className="text-xs hover:opacity-80 transition-opacity">Terms</Link>
               {whatsappPhone && (
                 <a href={`https://wa.me/${whatsappPhone}`} className="text-xs hover:opacity-80 transition-opacity" target="_blank" rel="noopener noreferrer">WhatsApp</a>
               )}

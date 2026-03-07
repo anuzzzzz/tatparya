@@ -188,6 +188,8 @@ export function Navbar() {
         >
           <Link href={storeUrl} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Home</Link>
           <Link href={`${storeUrl}/collections/all`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Shop All</Link>
+          <Link href={`${storeUrl}/about`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Our Story</Link>
+          <Link href={`${storeUrl}/pages/contact`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Contact</Link>
           {nav.showWhatsapp && (
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-medium py-1" style={{ color: '#25D366' }}>
               <MessageCircle size={16} /> Chat with us
