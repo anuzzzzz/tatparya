@@ -33,7 +33,7 @@ export function AboutPageClient({ store, heroImage, storeSlug }: AboutPageClient
   const p = design.palette;
   const storeUrl = `/${storeSlug}`;
   const bio = (config as any)?.storeBio || store.description || '';
-  const founderStory = (config as any)?.aboutPage?.founderStory || bio;
+  const founderStory = (config as any)?.content?.aboutPage?.founderStory || bio;
   const vertical = store.vertical as string;
 
   return (

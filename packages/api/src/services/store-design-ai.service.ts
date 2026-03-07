@@ -740,7 +740,8 @@ async function callOpenAI(input: StoreDesignInput, user: string, sys: string): P
   const k = env.OPENAI_API_KEY;
   if (!k) throw new Error('OPENAI_API_KEY not configured');
 
-  const content: any[] = input.productImages.slice(0, 3).map(img => ({
+  const images = (input.productImages || []).slice(0, 3);
+  const content: any[] = images.map(img => ({
     type: 'image_url', image_url: { url: img, detail: 'low' },
   }));
   content.push({ type: 'text', text: user });
