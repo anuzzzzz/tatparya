@@ -289,7 +289,7 @@ export function ProductDetailClient({
       {/* Sticky mobile add-to-cart bar */}
       {showStickyBar && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex items-center gap-3 px-4 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]"
+          className="fixed bottom-14 left-0 right-0 z-40 md:hidden flex items-center gap-3 px-4 py-3 border-t shadow-sm"
           style={{ backgroundColor: design.palette.background }}
         >
           <div className="flex-1 min-w-0">

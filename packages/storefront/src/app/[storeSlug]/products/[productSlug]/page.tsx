@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { api } from '@/lib/trpc';
 import { ImageGallery } from '@/components/image-gallery';
 import { ProductTabs } from '@/components/product-tabs';
-import { ProductCard } from '@/components/product-card';
+import { ProductGrid } from '@/components/product-grid';
 import { ProductDetailClient } from './product-detail-client';
 import { formatPrice, discountPercent } from '@/lib/utils';
 import type { Metadata } from 'next';
@@ -50,7 +50,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       status: 'active',
       pagination: { page: 1, limit: 5 },
     });
-    relatedProducts = (allProducts.products || []).filter((p: any) => p.id !== product.id).slice(0, 4);
+    relatedProducts = ((allProducts as any).items || (allProducts as any).products || []).filter((p: any) => p.id !== product.id).slice(0, 4);
   } catch {}
 
   return (
@@ -74,15 +74,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
       {/* You May Also Like */}
       {relatedProducts.length > 0 && (
-        <section className="mt-16">
-          <h2 className="font-display text-xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>
-            You May Also Like
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {relatedProducts.map((p: any, i: number) => (
-              <ProductCard key={p.id} product={p} index={i} />
-            ))}
-          </div>
+        <section
+          className="mt-16 pt-12 border-t"
+          style={{ borderColor: 'color-mix(in srgb, var(--color-text) 8%, transparent)' }}
+        >
+          <ProductGrid products={relatedProducts} title="You May Also Like" />
         </section>
       )}
     </div>
