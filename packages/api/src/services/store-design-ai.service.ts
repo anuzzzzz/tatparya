@@ -183,6 +183,7 @@ COLOR MOOD (guides the Stylist pass):
 - "dusty-rose": Blush/pink-tinted bg (#FFF5F3 range), muted rose/mauve primary (#B07B7B range), deep plum text. Beauty, wellness, feminine brands.
 - IMPORTANT: ALL moods use LIGHT backgrounds. Dark backgrounds are never allowed.
 - CRITICAL: Each mood MUST produce a visually DISTINCT palette. Two stores with different moods must look obviously different.
+- Choose the colorMood that best matches these SPECIFIC products, not just the vertical default. A candle brand might be sage-organic, clean-minimal, or warm-earthy depending on the product aesthetic. A leather goods brand might be dark-luxury or neutral-editorial. Let the product names and images guide your choice.
 
 SIGNATURE EFFECT:
 - Fashion: "parallax-drape" | Jewellery: "sparkle-overlay" | Beauty/Home decor: "organic-reveal" | Others: "none"
@@ -351,6 +352,7 @@ function buildStylistPrompt(
   input: StoreDesignInput,
   archetype: { id: string; name: string; design: any; tags: string[] },
   director: DirectorOutput,
+  representative?: Composition | null,
 ): string {
   let p = `Generate complete design for "${input.storeName}" in "${input.vertical}".`;
   if (input.sellerContext?.audience) p += `\nAudience: ${input.sellerContext.audience}`;
@@ -362,6 +364,17 @@ function buildStylistPrompt(
   p += `\n\nArchetype starting point:\n${JSON.stringify(archetype.design, null, 2)}`;
   p += `\n\nDirector personality: "${director.brandPersonality}", mood: ${director.colorMood}`;
   p += `\nEXTRACT colors from product photos to match "${director.colorMood}" mood.`;
+
+  // Inject real palette data from scraped stores as reference
+  if (representative?.palette_hint) {
+    const ph = representative.palette_hint;
+    p += `\n\nReference palette from a successful store in this vertical: background=${ph.background}, accent=${ph.accent}`;
+    if (ph.proportions?.length) {
+      const top3 = ph.proportions.slice(0, 3).map(c => `${c.hex} (${c.role}, ${Math.round(c.proportion * 100)}%)`).join(', ');
+      p += `, dominant colors: ${top3}`;
+    }
+    p += `. Use as inspiration, not exact copy.`;
+  }
 
   return p;
 }
@@ -409,7 +422,7 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
 
   // ── PASS 2: STYLIST (with product images) ──
   const stylistSystem = buildStylistSystem(director);
-  const stylistPrompt = buildStylistPrompt(input, archetype, director);
+  const stylistPrompt = buildStylistPrompt(input, archetype, director, representative);
   console.log('[design-ai] Pass 2: Stylist starting...');
   const t2 = Date.now();
 
@@ -554,6 +567,22 @@ function getDefaultDirector(vertical: string, sectionCount: number): DirectorOut
     beauty: {
       typography: { heroFontSize: 'clamp(2.2rem, 7vw, 4.5rem)', heroLineHeight: '1.0', heroLetterSpacing: '-0.03em', displayFont: 'Fraunces', bodyFont: 'Plus Jakarta Sans' },
       colorMood: 'clean-minimal', signatureEffect: 'organic-reveal', brandPersonality: 'clean natural', ctaShape: 'pill', textureHint: 'none',
+    },
+    home_decor: {
+      typography: { heroFontSize: 'clamp(2rem, 5vw, 3.5rem)', heroLineHeight: '0.95', heroLetterSpacing: '-0.03em', displayFont: 'Cormorant Garamond', bodyFont: 'Inter' },
+      colorMood: 'sage-organic', signatureEffect: 'organic-reveal', brandPersonality: 'warm mindful', ctaShape: 'rounded', textureHint: 'linen',
+    },
+    electronics: {
+      typography: { heroFontSize: 'clamp(2rem, 5vw, 3.5rem)', heroLineHeight: '1.0', heroLetterSpacing: '-0.02em', displayFont: 'Space Grotesk', bodyFont: 'Inter' },
+      colorMood: 'neutral-editorial', signatureEffect: 'none', brandPersonality: 'precise modern', ctaShape: 'sharp', textureHint: 'none',
+    },
+    food: {
+      typography: { heroFontSize: 'clamp(2.2rem, 6vw, 3.8rem)', heroLineHeight: '0.95', heroLetterSpacing: '-0.03em', displayFont: 'Playfair Display', bodyFont: 'DM Sans' },
+      colorMood: 'warm-earthy', signatureEffect: 'none', brandPersonality: 'wholesome artisanal', ctaShape: 'rounded', textureHint: 'none',
+    },
+    pets: {
+      typography: { heroFontSize: 'clamp(2rem, 5vw, 3.5rem)', heroLineHeight: '1.05', heroLetterSpacing: '0em', displayFont: 'Plus Jakarta Sans', bodyFont: 'DM Sans' },
+      colorMood: 'bold-vibrant', signatureEffect: 'none', brandPersonality: 'playful energetic', ctaShape: 'pill', textureHint: 'none',
     },
   };
   const d = defs[vertical] || defs.fashion!;
