@@ -145,7 +145,7 @@ Return ONLY valid JSON:
     "bodyFont": "Google Font name for body"
   },
   "rhythm": [0.2, 1.0, 0.5, 1.5, ...],
-  "colorMood": "dark-luxury|warm-earthy|clean-minimal|bold-vibrant|neutral-editorial",
+  "colorMood": "dark-luxury|warm-earthy|clean-minimal|bold-vibrant|neutral-editorial|sage-organic|dusty-rose",
   "signatureEffect": "parallax-drape|sparkle-overlay|organic-reveal|none",
   "accentSectionType": "stats_bar|newsletter|testimonials|collection_banner",
   "heroOverlayDirection": "170deg diagonal|radial-center-offset|horizontal-left|none",
@@ -175,14 +175,17 @@ RHYTHM (vibeWeight array, one per section):
 
 COLOR MOOD (guides the Stylist pass):
 - "dark-luxury": Warm cream/ivory bg (#FAF3E8 range), gold/bronze accents, dark text. Jewellery, luxury fashion. NOT dark backgrounds.
-- "warm-earthy": Cream/beige bg, terracotta/rust. Ethnic fashion, artisanal.
-- "clean-minimal": Near-white bg, single accent. Beauty, skincare, modern.
-- "bold-vibrant": Saturated primary used generously. Youth fashion, FMCG.
-- "neutral-editorial": Gray-tinted bg, high-contrast type. Contemporary, electronics.
+- "warm-earthy": Warm sand/clay bg (#F5EDE3 range), terracotta/rust/burnt-sienna primary (#C75B39 range). Ethnic fashion, artisanal. NOT gold/bronze/champagne — those belong to dark-luxury.
+- "clean-minimal": Near-white bg (#FAFCFA range), single strong accent. Beauty, skincare, modern.
+- "bold-vibrant": White bg, saturated primary used generously. Youth fashion, FMCG.
+- "neutral-editorial": Cool gray bg (#F5F5F7 range), high-contrast type. Contemporary, electronics.
+- "sage-organic": Soft sage/green-tinted bg (#F5F7F2 range), muted green/olive primary (#6B7B5E range), warm brown text. Home decor, candles, natural products, plants.
+- "dusty-rose": Blush/pink-tinted bg (#FFF5F3 range), muted rose/mauve primary (#B07B7B range), deep plum text. Beauty, wellness, feminine brands.
 - IMPORTANT: ALL moods use LIGHT backgrounds. Dark backgrounds are never allowed.
+- CRITICAL: Each mood MUST produce a visually DISTINCT palette. Two stores with different moods must look obviously different.
 
 SIGNATURE EFFECT:
-- Fashion: "parallax-drape" | Jewellery: "sparkle-overlay" | Beauty: "organic-reveal" | Others: "none"
+- Fashion: "parallax-drape" | Jewellery: "sparkle-overlay" | Beauty/Home decor: "organic-reveal" | Others: "none"
 
 The section layout MUST start with a hero section (hero_slideshow, hero_full_bleed, hero_split, or hero_minimal). The hero is the first impression and must always be present.
 
@@ -195,11 +198,13 @@ CRITICAL: Return ONLY valid JSON. No markdown, no backticks. Be OPINIONATED — 
 function buildStylistSystem(d: DirectorOutput): string {
   const radiusMap: Record<string, string> = { sharp: 'sharp', pill: 'pill', rounded: 'rounded' };
   const moodRules: Record<string, string> = {
-    'dark-luxury': 'Background: warm cream/ivory #FAF3E8 to #FFF8F0. Surface: slightly darker cream. Text: deep brown/charcoal #2C2416. Primary: gold/champagne/bronze. Rich luxury feel with LIGHT background.',
-    'warm-earthy': 'Background: #FAF6F1 to #FFF8F0. Surface: slightly darker cream. Text: dark brown. Primary: terracotta/deep red. Accent: gold/amber.',
-    'clean-minimal': 'Background: #FAFCFA to #F8FAFB (barely tinted). Surface: light gray. Text: deep forest/navy. Primary: one strong accent.',
-    'bold-vibrant': 'Background: white-ish. Text: near-black. Primary: SATURATED, bold. Use generously.',
-    'neutral-editorial': 'Background: cool gray #F5F5F7. Surface: warmer. Text: near-black. Primary: muted, sophisticated.',
+    'dark-luxury': 'Background: warm cream/ivory #FAF3E8 to #FFF8F0. Surface: slightly darker cream #F0EAE0. Text: deep brown/charcoal #2C2416. Primary: gold/champagne/bronze (#B8860B range). Rich luxury feel with LIGHT background.',
+    'warm-earthy': 'Background: warm sand/clay #F5EDE3 to #EDE4D8. Surface: darker clay #E8DFD2. Text: deep brown #3B2F22. Primary: terracotta/rust/burnt-sienna (#C75B39 range). NEVER gold/bronze/champagne. Accent: warm red #A0522D or deep orange.',
+    'clean-minimal': 'Background: barely tinted white #FAFCFA to #F8FAFB. Surface: light gray #F0F2F0. Text: deep forest/navy #1A2E1A. Primary: one strong saturated accent.',
+    'bold-vibrant': 'Background: white #FFFFFF to #FAFAFA. Text: near-black #1A1A1A. Primary: SATURATED and bold. Use generously in cards, buttons, accents.',
+    'neutral-editorial': 'Background: cool gray #F5F5F7 to #EBEBED. Surface: slightly warmer #F0F0F2. Text: near-black #1A1A1A. Primary: muted, sophisticated tone.',
+    'sage-organic': 'Background: sage-tinted white #F5F7F2 to #EFF2EB. Surface: soft sage #E8EDE3. Text: warm dark brown #2C3024. Primary: muted olive/sage green #6B7B5E to #7A8B6A. Accent: warm amber #C9956B. Natural, grounded feel.',
+    'dusty-rose': 'Background: blush/pink-tinted #FFF5F3 to #FFF0ED. Surface: soft pink #F5E8E5. Text: deep plum/burgundy #3D2B2F. Primary: muted rose/mauve #B07B7B to #C08B8B. Accent: warm gold #C9A84C. Soft, feminine feel.',
   };
 
   return `You are a UI Stylist for Indian e-commerce stores.
@@ -883,8 +888,8 @@ async function callAnthropicText(sys: string, user: string): Promise<string> {
 
   const c = new Anthropic({ apiKey: k });
   const r = await c.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 800,
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1200,
     system: sys,
     messages: [{ role: 'user', content: user }],
   });
@@ -910,8 +915,8 @@ async function callAnthropic(input: StoreDesignInput, user: string, sys: string)
   });
 
   const r = await c.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1500,
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4000,
     system: sys,
     messages: [{ role: 'user', content: [...imgs, { type: 'text' as const, text: user }] }],
   });

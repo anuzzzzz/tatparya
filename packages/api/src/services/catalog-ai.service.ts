@@ -187,10 +187,24 @@ async function generateWithAnthropic(params: {
   const client = new Anthropic({ apiKey });
   const systemPrompt = buildSystemPrompt(params.vertical, params.hints);
 
-  const imageContent = params.imageUrls.map((url) => ({
-    type: 'image' as const,
-    source: { type: 'url' as const, url },
-  }));
+  const imageContent = params.imageUrls.map((url) => {
+    // Base64 data URIs need base64 source type, not URL
+    const dataMatch = url.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (dataMatch) {
+      return {
+        type: 'image' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: dataMatch[1] as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+          data: dataMatch[2]!,
+        },
+      };
+    }
+    return {
+      type: 'image' as const,
+      source: { type: 'url' as const, url },
+    };
+  });
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
