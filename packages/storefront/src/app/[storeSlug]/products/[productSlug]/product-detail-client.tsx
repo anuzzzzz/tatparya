@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ShoppingBag, Share2, MessageCircle, Minus, Plus, Check, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ShoppingBag, Share2, MessageCircle, Minus, Plus, Check, Loader2, Truck } from 'lucide-react';
 import { useStore } from '@/components/store-provider';
+import { useToast } from '@/components/toast';
 import { VariantSelector } from '@/components/variant-selector';
 import { ProductTrustBadges } from '@/components/product-trust-badges';
 import { formatPrice, getCartId, cn } from '@/lib/utils';
@@ -40,12 +41,26 @@ export function ProductDetailClient({
   discount,
 }: ProductDetailClientProps) {
   const { store, design, trpc, setCartCount } = useStore();
+  const { toast } = useToast();
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
     variants.length > 0 ? variants[0]?.id ?? null : null
   );
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const addToCartRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const el = addToCartRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry!.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const activeVariant = variants.find((v) => v.id === selectedVariant);
   const displayPrice = activeVariant?.price ?? product.price;
@@ -64,6 +79,7 @@ export function ProductDetailClient({
         quantity,
       });
       setCartCount((result as any).items?.length || 0);
+      toast('Added to cart!', 'cart');
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
@@ -194,6 +210,7 @@ export function ProductDetailClient({
 
         {/* Add to cart button */}
         <button
+          ref={addToCartRef}
           onClick={handleAddToCart}
           disabled={adding || outOfStock}
           className={cn(
@@ -221,6 +238,12 @@ export function ProductDetailClient({
             </>
           )}
         </button>
+
+        {/* Delivery estimate */}
+        <div className="flex items-center gap-2 text-xs" style={{ color: design.palette.textMuted }}>
+          <Truck size={14} />
+          <span>Estimated delivery: 3–7 business days</span>
+        </div>
 
         {/* WhatsApp Inquiry + Share */}
         <div className="flex gap-2">
@@ -262,6 +285,33 @@ export function ProductDetailClient({
 
       {/* Trust Badges */}
       <ProductTrustBadges />
+
+      {/* Sticky mobile add-to-cart bar */}
+      {showStickyBar && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 md:hidden flex items-center gap-3 px-4 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]"
+          style={{ backgroundColor: design.palette.background }}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate" style={{ color: design.palette.text }}>
+              {product.name}
+            </p>
+            <p className="text-sm font-bold" style={{ color: design.palette.primary }}>
+              {formatPrice(displayPrice)}
+            </p>
+          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={adding || outOfStock}
+            className={cn(
+              'btn-primary text-sm whitespace-nowrap !py-2.5 !px-5',
+              outOfStock && 'opacity-50 cursor-not-allowed',
+            )}
+          >
+            {adding ? 'Adding...' : outOfStock ? 'Out of Stock' : 'Add to Cart'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/trpc';
 import { ImageGallery } from '@/components/image-gallery';
+import { ProductTabs } from '@/components/product-tabs';
+import { ProductCard } from '@/components/product-card';
 import { ProductDetailClient } from './product-detail-client';
 import { formatPrice, discountPercent } from '@/lib/utils';
 import type { Metadata } from 'next';
@@ -40,6 +42,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const variants = (product as any).variants || [];
   const discount = product.compareAtPrice ? discountPercent(product.price, product.compareAtPrice) : 0;
 
+  // Fetch related products (same store, excluding current)
+  let relatedProducts: any[] = [];
+  try {
+    const allProducts = await api.product.list.query({
+      storeId: store.id,
+      status: 'active',
+      pagination: { page: 1, limit: 5 },
+    });
+    relatedProducts = (allProducts.products || []).filter((p: any) => p.id !== product.id).slice(0, 4);
+  } catch {}
+
   return (
     <div className="container-store" style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}>
       <div className="grid md:grid-cols-2 gap-8 md:gap-12">
@@ -56,19 +69,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
         />
       </div>
 
-      {/* Full description */}
-      {product.description && (
-        <section
-          className="mt-12 pt-8 border-t max-w-3xl"
-          style={{ borderColor: 'color-mix(in srgb, var(--color-text) 8%, transparent)' }}
-        >
-          <h2 className="font-display text-lg font-bold mb-4">Description</h2>
-          <div
-            className="prose prose-sm max-w-none leading-relaxed"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {product.description.split('\n').map((p: string, i: number) => (
-              <p key={i}>{p}</p>
+      {/* Description / Shipping / Returns tabs */}
+      <ProductTabs description={product.description || undefined} />
+
+      {/* You May Also Like */}
+      {relatedProducts.length > 0 && (
+        <section className="mt-16">
+          <h2 className="font-display text-xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>
+            You May Also Like
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {relatedProducts.map((p: any, i: number) => (
+              <ProductCard key={p.id} product={p} index={i} />
             ))}
           </div>
         </section>

@@ -107,6 +107,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         tagline={tagline}
         subtext={subtext}
         link={`${storeUrl}/collections/all`}
+        storeUrl={storeUrl}
       />
 
       {/* ── 3. MARQUEE — only if content exists ── */}
@@ -233,7 +234,7 @@ function RunwayNavbar({ storeName, storeUrl, primary }: { storeName: string; sto
 // ============================================================
 // HERO — 85vh, slideshow, cinematic 4-stop gradient
 // ============================================================
-function RunwayHero({ images, tagline, subtext, link }: { images: string[]; tagline: string; subtext: string; link: string }) {
+function RunwayHero({ images, tagline, subtext, link, storeUrl }: { images: string[]; tagline: string; subtext: string; link: string; storeUrl: string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -315,7 +316,7 @@ function RunwayHero({ images, tagline, subtext, link }: { images: string[]; tagl
             Shop Collection
           </Link>
           <Link
-            href={`${link}/../about`}
+            href={`${storeUrl}/about`}
             style={{
               display: 'inline-flex', alignItems: 'center',
               padding: '14px 32px', fontSize: 13, fontWeight: 500,

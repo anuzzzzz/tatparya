@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useStore } from '@/components/store-provider';
 import { CartView } from '@/components/cart-drawer';
@@ -20,15 +19,20 @@ export default function CartPage() {
       className="container-store"
       style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}
     >
-      {/* Back nav */}
-      <Link
-        href={showCheckout ? `${storeUrl}/cart` : `${storeUrl}/collections/all`}
-        className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 hover:opacity-70 transition-opacity"
-        style={{ color: design.palette.textMuted }}
-      >
-        <ArrowLeft size={14} />
-        {showCheckout ? 'Back to Cart' : 'Continue Shopping'}
-      </Link>
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-1.5 text-[11px] mb-6" style={{ color: design.palette.textMuted }}>
+        <Link href={storeUrl} className="hover:opacity-70 transition-opacity">Home</Link>
+        <span>/</span>
+        {showCheckout ? (
+          <>
+            <Link href={`${storeUrl}/cart`} className="hover:opacity-70 transition-opacity">Cart</Link>
+            <span>/</span>
+            <span style={{ color: design.palette.text }}>Checkout</span>
+          </>
+        ) : (
+          <span style={{ color: design.palette.text }}>Cart</span>
+        )}
+      </nav>
 
       <h1
         className="font-display text-2xl md:text-3xl font-bold mb-8"

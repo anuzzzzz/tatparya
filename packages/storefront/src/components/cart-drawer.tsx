@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Minus, Plus, Trash2, Tag, Loader2 } from 'lucide-react';
+import { Minus, Plus, Trash2, Tag, Loader2, ShoppingBag } from 'lucide-react';
 import { useStore } from './store-provider';
 import { formatPrice, imageUrl as resolveImage, getCartId, cn } from '@/lib/utils';
 
@@ -107,12 +107,21 @@ export function CartView() {
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="text-center py-20">
-        <p className="text-base mb-4" style={{ color: design.palette.textMuted }}>
+      <div className="text-center py-20 max-w-sm mx-auto">
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+          style={{ backgroundColor: design.palette.surface }}
+        >
+          <ShoppingBag size={24} style={{ color: design.palette.textMuted }} />
+        </div>
+        <h2 className="font-display text-lg font-bold mb-2" style={{ color: design.palette.text }}>
           Your cart is empty
+        </h2>
+        <p className="text-sm mb-6" style={{ color: design.palette.textMuted }}>
+          Looks like you haven't added anything yet. Browse our collection to find something you love.
         </p>
         <Link href={`${storeUrl}/collections/all`} className="btn-primary text-sm">
-          Continue Shopping
+          Start Shopping
         </Link>
       </div>
     );

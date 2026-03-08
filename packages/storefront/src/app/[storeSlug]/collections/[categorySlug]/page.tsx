@@ -82,9 +82,21 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   }
 
   const result = await api.product.list.query(productQuery);
-  const products = (result as any).items || [];
+  let products = (result as any).items || [];
   const total = (result as any).total || 0;
   const hasMore = (result as any).hasMore || false;
+
+  // Client-side sorting (API doesn't support sort param)
+  if (searchParams.sort) {
+    const sorted = [...products];
+    switch (searchParams.sort) {
+      case 'price-asc': sorted.sort((a: any, b: any) => a.price - b.price); break;
+      case 'price-desc': sorted.sort((a: any, b: any) => b.price - a.price); break;
+      case 'name-asc': sorted.sort((a: any, b: any) => a.name.localeCompare(b.name)); break;
+      case 'name-desc': sorted.sort((a: any, b: any) => b.name.localeCompare(a.name)); break;
+    }
+    products = sorted;
+  }
 
   const title = isAll ? 'All Products' : category?.name || 'Collection';
 

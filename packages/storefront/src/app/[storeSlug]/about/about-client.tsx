@@ -58,6 +58,11 @@ export function AboutPageClient({ store, heroImage, storeSlug }: AboutPageClient
           }}
         />
         <div className="relative z-10 container-store pb-12 pt-32">
+          <nav className="flex items-center gap-1.5 text-[11px] mb-6" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            <Link href={storeUrl} className="hover:opacity-70 transition-opacity">Home</Link>
+            <span>/</span>
+            <span style={{ color: 'rgba(255,255,255,0.8)' }}>About</span>
+          </nav>
           <p
             className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-3"
             style={{ color: p.primary }}

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CollectionFiltersProps {
@@ -40,8 +40,45 @@ export function CollectionFilters({ categories, currentSlug, storeUrl, searchPar
 
   const hasFilters = !!searchParams.minPrice || !!searchParams.maxPrice;
 
+  const handleSort = (value: string) => {
+    const params = new URLSearchParams();
+    if (searchParams.search) params.set('search', searchParams.search);
+    if (searchParams.minPrice) params.set('minPrice', searchParams.minPrice);
+    if (searchParams.maxPrice) params.set('maxPrice', searchParams.maxPrice);
+    if (value) params.set('sort', value);
+    const qs = params.toString();
+    router.push(`${storeUrl}/collections/${currentSlug}${qs ? `?${qs}` : ''}`);
+  };
+
   return (
-    <div className="relative">
+    <div className="flex items-center gap-2">
+      {/* Sort dropdown */}
+      <div className="relative">
+        <select
+          value={searchParams.sort || ''}
+          onChange={(e) => handleSort(e.target.value)}
+          className="appearance-none pl-3 pr-8 py-2 text-xs font-medium border bg-transparent cursor-pointer"
+          style={{
+            borderRadius: 'var(--radius)',
+            borderColor: 'color-mix(in srgb, var(--color-text) 15%, transparent)',
+            color: 'var(--color-text)',
+          }}
+        >
+          <option value="">Sort by</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="name-asc">Name: A–Z</option>
+          <option value="name-desc">Name: Z–A</option>
+        </select>
+        <ChevronDown
+          size={12}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'var(--color-text-muted)' }}
+        />
+      </div>
+
+      {/* Filters button */}
+      <div className="relative">
       <button
         onClick={() => setOpen(!open)}
         className={cn(
@@ -122,6 +159,7 @@ export function CollectionFilters({ categories, currentSlug, storeUrl, searchPar
           </div>
         </>
       )}
+    </div>
     </div>
   );
 }
