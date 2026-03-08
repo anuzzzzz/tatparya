@@ -1,7 +1,83 @@
 import { env } from '../env.js';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { selectArchetype, getRepresentativeComposition } from '../lib/archetypes.js';
 import type { SectionPattern, Composition } from '../lib/archetypes.js';
 import { validateDesignOutput, buildCorrectiveGuidance } from './design-validator.service.js';
+
+// ============================================================
+// Section Frequency Matrix — real data from 162 Indian D2C stores
+// ============================================================
+
+interface FrequencyMatrix {
+  total_compositions: number;
+  store_counts: Record<string, number>;
+  matrix: Record<string, Record<string, number>>;
+}
+
+let _freqMatrix: FrequencyMatrix | null = null;
+
+function loadFrequencyMatrix(): FrequencyMatrix | null {
+  if (_freqMatrix) return _freqMatrix;
+  try {
+    const __dirname2 = dirname(fileURLToPath(import.meta.url));
+    const p = join(__dirname2, '../lib/section-frequency-matrix.json');
+    _freqMatrix = JSON.parse(readFileSync(p, 'utf-8'));
+    return _freqMatrix;
+  } catch {
+    return null;
+  }
+}
+
+/** Map broad vertical → sub-vertical key(s) in the frequency matrix */
+const VERTICAL_TO_SUBVERTICALS: Record<string, string[]> = {
+  fashion: ['fashion_general', 'sarees_ethnic', 'western_casual', 'streetwear', 'activewear', 'footwear', 'fabrics_textiles'],
+  jewellery: ['jewellery_general', 'fine_jewellery', 'fashion_jewellery', 'pearls_bridal', 'watches'],
+  beauty: ['beauty_general', 'skincare', 'skincare_ayurveda', 'skincare_targeted', 'haircare', 'makeup', 'mens_grooming', 'fragrance'],
+  electronics: ['electronics_general', 'audio', 'wearables', 'home_appliances'],
+  food: ['food_general', 'health_snacks', 'dry_fruits_snacks', 'organic_farm', 'organic_spices', 'sauces_condiments', 'sauces_dips', 'kids_food', 'kids_snacks', 'premium_tea', 'specialty_coffee', 'coffee_beverages', 'tea_beverages'],
+  home_decor: ['home_decor_general', 'homedecor_general', 'home_decor', 'design_decor', 'interiors', 'quirky_decor', 'sustainable_home', 'kitchen_cookware', 'kitchen_glassware'],
+  pets: ['pets_general', 'pet_supplies', 'pet_tech'],
+  general: ['general_general'],
+};
+
+/**
+ * Get section frequencies for a vertical as percentages, sorted descending.
+ * Aggregates across all matching sub-verticals, weighted by store count.
+ * Returns only sections appearing in >thresholdPct% of stores.
+ */
+function getSectionFrequencies(
+  vertical: string,
+  thresholdPct = 30,
+): { section: string; pct: number }[] | null {
+  const fm = loadFrequencyMatrix();
+  if (!fm) return null;
+
+  const subKeys = VERTICAL_TO_SUBVERTICALS[vertical] || [`${vertical}_general`];
+  const matchedKeys = subKeys.filter(k => fm.matrix[k]);
+  if (matchedKeys.length === 0) return null;
+
+  // Aggregate: sum section counts and total stores across matched sub-verticals
+  const totals: Record<string, number> = {};
+  let totalStores = 0;
+
+  for (const key of matchedKeys) {
+    const storeCount = fm.store_counts[key] || 1;
+    totalStores += storeCount;
+    const row = fm.matrix[key]!;
+    for (const [section, count] of Object.entries(row)) {
+      totals[section] = (totals[section] || 0) + count;
+    }
+  }
+
+  if (totalStores === 0) return null;
+
+  return Object.entries(totals)
+    .map(([section, count]) => ({ section, pct: Math.round((count / totalStores) * 100) }))
+    .filter(({ pct }) => pct >= thresholdPct)
+    .sort((a, b) => b.pct - a.pct);
+}
 
 // ============================================================
 // Store Design AI Service v3 — Two-Pass Director → Stylist
@@ -255,6 +331,14 @@ function buildDirectorPrompt(
     p += `\nReference fonts: ${representative.typography_hint.heading_font} + ${representative.typography_hint.body_font}. Use or improve.`;
   }
 
+  // Add real section frequency data from 162 Indian D2C stores
+  const freqs = getSectionFrequencies(input.vertical);
+  if (freqs && freqs.length > 0) {
+    const freqList = freqs.map(f => `${f.section} (${Math.min(f.pct, 100)}%)`).join(', ');
+    p += `\n\nSection frequency data from real Indian D2C stores in this vertical: ${freqList}.`;
+    p += `\nSections >80% are expected by shoppers and should get prominent rhythm. Sections <50% are differentiators — give them contrast weight to stand out.`;
+  }
+
   return p;
 }
 
@@ -290,7 +374,7 @@ export async function generateStoreDesign(input: StoreDesignInput): Promise<Stor
   console.log(`[design-ai] Archetype: ${archetype.id} (${archetype.name}) | Provider: ${provider} | Pipeline: Director>Stylist`);
 
   const rawSectionPattern = archetype.section_pattern || [];
-  const sectionPattern = sanitizeSectionPattern(rawSectionPattern);
+  const sectionPattern = sanitizeSectionPattern(rawSectionPattern, input.vertical);
   console.log(`[design-ai] Sections: ${rawSectionPattern.length} raw → ${sectionPattern.length} sanitized`);
   const representative = getRepresentativeComposition(archetype.id);
 
@@ -652,7 +736,7 @@ function sanitizeCustomCSS(raw: unknown): string | undefined {
  * 3. Cap at 12 sections max
  * 4. Ensure sensible ordering (hero → content → social proof → footer-adjacent)
  */
-function sanitizeSectionPattern(sections: SectionPattern[]): SectionPattern[] {
+function sanitizeSectionPattern(sections: SectionPattern[], vertical?: string): SectionPattern[] {
   if (!sections.length) return sections;
 
   // Separate hero and non-hero sections
@@ -671,6 +755,30 @@ function sanitizeSectionPattern(sections: SectionPattern[]): SectionPattern[] {
     if (!repeatAllowed.has(s.type) && seen.has(s.type)) continue;
     seen.add(s.type);
     deduped.push(s);
+  }
+
+  // Inject high-frequency sections missing from archetype (>50% in real stores)
+  if (vertical) {
+    const freqs = getSectionFrequencies(vertical, 50);
+    if (freqs) {
+      const existingTypes = new Set([
+        ...(bestHero ? [bestHero.type] : []),
+        ...deduped.map(s => s.type),
+      ]);
+      // Hero types are handled separately — skip them
+      const heroTypes = new Set(['hero_full_bleed', 'hero_split', 'hero_slideshow', 'hero_bento', 'hero_minimal']);
+      for (const { section } of freqs) {
+        if (heroTypes.has(section) || existingTypes.has(section)) continue;
+        if (section === 'announcement_bar') continue;
+        deduped.push({
+          type: section,
+          position: 0,
+          required: false,
+          background_hint: 'light',
+        });
+        existingTypes.add(section);
+      }
+    }
   }
 
   // Prioritize section ordering

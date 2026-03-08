@@ -64,7 +64,7 @@ async function main() {
   // ── Get products and collect image URLs ──
   const { data: products, error: prodErr } = await db
     .from('products')
-    .select('id, name, images')
+    .select('id, name, images, price')
     .eq('store_id', storeId)
     .order('created_at', { ascending: true });
 
@@ -151,6 +151,16 @@ async function main() {
   const existingConfig = (store.store_config || {}) as Record<string, any>;
   const sellerContext = existingConfig.sellerContext || {};
 
+  // ── Build product info for Director context ──
+  const productNames = (products || []).map((p: any) => p.name).filter(Boolean).slice(0, 5);
+  const prices = (products || []).map((p: any) => p.price).filter((p: number) => p > 0);
+  const productInfo = {
+    names: productNames,
+    ...(prices.length > 0 && {
+      priceRange: { min: Math.min(...prices), max: Math.max(...prices) },
+    }),
+  };
+
   // ── Run Director-Stylist pipeline ──
   console.log(`\n  Running Director-Stylist pipeline...`);
   const startMs = Date.now();
@@ -161,13 +171,13 @@ async function main() {
     productImages: designImages,
     sellerContext,
     sellerHints: store.description || undefined,
+    productInfo,
   });
 
   const elapsedMs = Date.now() - startMs;
 
   // ── Generate store content (testimonials, marquee, newsletter) ──
   console.log(`\n  Generating store content...`);
-  const productNames = (products || []).map((p: any) => p.name).filter(Boolean).slice(0, 5);
   let contentData: Record<string, any> = {};
   try {
     const contentResult = await generateStoreContent({
