@@ -79,10 +79,16 @@ export function SellerAuthProvider({ children }: { children: React.ReactNode }) 
   }, [supabase]);
 
   // Persist active store in localStorage
+  const DEV_STORE_ID = '1532a530-2d4a-4b14-92db-79da88b27ebc';
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('tatparya_active_store');
-    if (saved) setStoreId(saved);
+    if (process.env.NODE_ENV === 'development') {
+      setStoreId(DEV_STORE_ID);
+    } else {
+      const saved = localStorage.getItem('tatparya_active_store');
+      if (saved) setStoreId(saved);
+    }
   }, []);
 
   const handleSetStoreId = useCallback((id: string) => {

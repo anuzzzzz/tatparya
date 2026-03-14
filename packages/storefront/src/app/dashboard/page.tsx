@@ -24,7 +24,7 @@ function DashboardContent() {
     );
   }
 
-  if (!user) {
+  if (!user && process.env.NODE_ENV !== 'development') {
     return <LoginScreen onLogin={() => window.location.reload()} />;
   }
 

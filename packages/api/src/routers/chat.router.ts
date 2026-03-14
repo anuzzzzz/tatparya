@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { router, publicProcedure } from '../trpc/trpc.js';
-import {
-  type TatparyaAction,
-  DESTRUCTIVE_ACTIONS,
-} from '@tatparya/shared';
+import type { TatparyaAction } from '@tatparya/shared';
 import { buildStoreSnapshot } from '../services/store-snapshot.service.js';
 import { classifyAndAct } from '../services/chat-llm.service.js';
 import { validateAction } from '../services/action-validators.js';
@@ -41,14 +38,13 @@ export const chatRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
-
       // 1. Build store snapshot (if store exists)
       let snapshot = null;
       if (input.storeId) {
         try {
           snapshot = await buildStoreSnapshot(ctx.serviceDb, input.storeId);
         } catch (err: any) {
-          console.error('[chat.process] Failed to build snapshot:', err.message);
+          console.error('[chat.process] Failed to build snapshot for storeId', input.storeId, ':', err.message);
           // Continue without snapshot — LLM can still handle basic requests
         }
       }
