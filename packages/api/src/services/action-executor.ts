@@ -71,8 +71,11 @@ async function executeSingle(
       return updateStoreConfig(db, storeId, { storeBio: action.payload.storeBio });
 
     // ── Store Design ────────────────────────────────────
-    case 'store.update_palette':
-      return updateStoreDesign(db, storeId, { palette: action.payload.palette });
+    case 'store.update_palette': {
+      // Haiku sometimes wraps in { palette: {...} }, sometimes puts fields directly in payload
+      const palette = action.payload.palette ?? action.payload;
+      return updateStoreDesign(db, storeId, { palette });
+    }
 
     case 'store.update_fonts':
       return updateStoreDesign(db, storeId, { fonts: action.payload.fonts });
