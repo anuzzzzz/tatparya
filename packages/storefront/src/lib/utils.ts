@@ -70,3 +70,8 @@ export function getCartId(): string {
   }
   return cartId;
 }
+
+export function clearCartId(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('tatparya_cart_id');
+}
