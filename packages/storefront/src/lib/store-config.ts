@@ -8,19 +8,22 @@ import type { DesignTokens } from '@tatparya/shared';
 export function designTokensToCssVars(tokens: DesignTokens): Record<string, string> {
   const vars: Record<string, string> = {};
 
+  const palette = tokens?.palette || {} as any;
+  const fonts = tokens?.fonts || { display: 'Inter', body: 'Inter', scale: 1.0 };
+
   // Palette
-  vars['--color-primary'] = tokens.palette.primary;
-  vars['--color-secondary'] = tokens.palette.secondary;
-  vars['--color-accent'] = tokens.palette.accent;
-  vars['--color-background'] = tokens.palette.background;
-  vars['--color-surface'] = tokens.palette.surface;
-  vars['--color-text'] = tokens.palette.text;
-  vars['--color-text-muted'] = tokens.palette.textMuted;
+  vars['--color-primary'] = palette.primary || '#1a1a2e';
+  vars['--color-secondary'] = palette.secondary || '#16213e';
+  vars['--color-accent'] = palette.accent || '#e94560';
+  vars['--color-background'] = palette.background || '#faf3e8';
+  vars['--color-surface'] = palette.surface || '#f0ead6';
+  vars['--color-text'] = palette.text || '#1a1a2e';
+  vars['--color-text-muted'] = palette.textMuted || '#6b6b80';
 
   // Fonts
-  vars['--font-display'] = tokens.fonts.display;
-  vars['--font-body'] = tokens.fonts.body;
-  vars['--font-scale'] = String(tokens.fonts.scale);
+  vars['--font-display'] = fonts.display || 'Inter';
+  vars['--font-body'] = fonts.body || 'Inter';
+  vars['--font-scale'] = String(fonts.scale ?? 1.0);
 
   // Radius
   const radiusMap: Record<string, string> = {
@@ -79,7 +82,7 @@ export function cssVarsToStyle(vars: Record<string, string>): React.CSSPropertie
  * Build Google Fonts URL from design tokens.
  */
 export function buildGoogleFontsUrl(tokens: DesignTokens): string {
-  const families = new Set([tokens.fonts.display, tokens.fonts.body]);
+  const families = new Set([tokens?.fonts?.display || 'Inter', tokens?.fonts?.body || 'Inter']);
   const params = Array.from(families)
     .map((f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800`)
     .join('&');

@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { api } from '@/lib/trpc';
 import { HeroSection } from '@/components/hero-section';
 import { ProductGrid } from '@/components/product-grid';
