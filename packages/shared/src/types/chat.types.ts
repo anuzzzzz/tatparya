@@ -122,6 +122,7 @@ export const DESIGN_ACTIONS = new Set([
   'store.update_image_style',
   'store.update_animation',
   'store.update_design_bulk',
+  'store.regenerate_design',
 ]);
 
 /** Destructive actions that require seller confirmation */
@@ -164,6 +165,20 @@ store.update_radius      { radius: string }
 store.update_image_style { imageStyle: string }
 store.update_animation   { animation: string }
 store.update_design_bulk { design: { partial DesignTokens object } }
+
+── Store Design (Full Pipeline) ──
+store.regenerate_design   { sellerHints?: string, brandVibe?: string, colorMood?: string }
+  → Runs the full Director→Stylist AI pipeline (~10-30s). Regenerates entire store design.
+  USE FOR: "redesign my store", "make it more modern", "completely change the look",
+  "I want a minimal vibe", "the colors don't feel right — redo it", any request that
+  implies wholesale design change rather than a single token tweak.
+  DO NOT USE FOR: "change the font to Inter" (use store.update_fonts), "make the hero taller"
+  (use store.update_hero_style), "change primary color to blue" (use store.update_palette).
+
+store.regenerate_catalog  { sellerHints?: string }
+  → Re-runs Vision AI on all product photos (~15-45s). Regenerates product names, descriptions, prices.
+  USE FOR: "re-analyze my photos", "update product descriptions", "rename my products",
+  "the product names aren't good".
 
 ── Sections ──
 section.toggle         { sectionType: string, visible: boolean }

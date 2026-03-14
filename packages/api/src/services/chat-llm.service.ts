@@ -94,7 +94,11 @@ RULES:
 - When the seller mentions a product by name, find its ID in the recent products list.
 - For query actions (query.*), include them in the actions array — the executor will fetch the data and format the response.
 - If no store exists yet and the seller wants to create one, guide them: ask for the store name first, then what they sell.
-- NEVER invent product IDs, order IDs, or category IDs. Use only IDs from the store snapshot.`;
+- NEVER invent product IDs, order IDs, or category IDs. Use only IDs from the store snapshot.
+- For requests that imply a WHOLESALE design change ("redesign my store", "make it more modern", "completely change the look", "I don't like how it looks"), use store.regenerate_design with appropriate sellerHints/brandVibe. This runs the full AI pipeline and takes ~10-30 seconds. Tell the seller "Redesigning your store now — this will take about 30 seconds."
+- For SMALL design tweaks ("change the font", "make the hero bigger", "update the primary color"), use the granular store.update_* actions — they're instant.
+- For product-related regeneration ("re-analyze my photos", "update descriptions"), use store.regenerate_catalog.
+- NEVER use store.regenerate_design for small tweaks. NEVER use store.update_palette for "redesign everything".`;
 }
 
 // ============================================================

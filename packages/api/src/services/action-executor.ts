@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TatparyaAction } from '@tatparya/shared';
+import { generateStoreDesign } from './store-design-ai.service.js';
+import { generateBulkProducts } from './catalog-ai.service.js';
 
 // ============================================================
 // Action Executor
@@ -107,6 +109,12 @@ async function executeSingle(
 
     case 'store.update_design_bulk':
       return updateStoreDesign(db, storeId, action.payload.design);
+
+    case 'store.regenerate_design':
+      return regenerateDesign(db, storeId, action.payload);
+
+    case 'store.regenerate_catalog':
+      return regenerateCatalog(db, storeId, action.payload);
 
     // ── Sections ────────────────────────────────────────
     case 'section.toggle':
@@ -295,6 +303,161 @@ async function updateStoreDesign(db: SupabaseClient, storeId: string, designUpda
   const currentDesign = config.design || {};
   const mergedDesign = deepMerge(currentDesign, stripUndefined(designUpdates));
   return updateStore(db, storeId, { store_config: { ...config, design: mergedDesign } });
+}
+
+// ============================================================
+// Full-pipeline handlers
+// ============================================================
+
+async function regenerateDesign(db: SupabaseClient, storeId: string, payload: any) {
+  const { data: store, error: storeErr } = await db.from('stores')
+    .select('name, vertical, store_config')
+    .eq('id', storeId)
+    .single();
+  if (storeErr || !store) throw new Error(`Failed to fetch store: ${storeErr?.message}`);
+
+  const { data: mediaAssets } = await db.from('media_assets')
+    .select('original_url')
+    .eq('store_id', storeId)
+    .not('original_url', 'is', null)
+    .limit(5);
+  const productImages = (mediaAssets || []).map((a: any) => a.original_url).filter(Boolean);
+
+  const { data: products } = await db.from('products')
+    .select('name, price, tags')
+    .eq('store_id', storeId)
+    .eq('status', 'active')
+    .limit(10);
+  const names = (products || []).map((p: any) => p.name);
+  const prices = (products || []).map((p: any) => p.price).filter(Boolean);
+  const tags = [...new Set((products || []).flatMap((p: any) => p.tags || []))] as string[];
+  const priceRange = prices.length > 0
+    ? { min: Math.min(...prices), max: Math.max(...prices) }
+    : undefined;
+
+  let sellerHints = payload.sellerHints || '';
+  if (payload.colorMood) {
+    sellerHints = `${sellerHints} Color mood: ${payload.colorMood}`.trim();
+  }
+
+  const output = await generateStoreDesign({
+    storeName: store.name,
+    vertical: store.vertical,
+    productImages,
+    productInfo: { names, priceRange, tags },
+    sellerHints: sellerHints || undefined,
+    sellerContext: payload.brandVibe ? { brandVibe: payload.brandVibe } : undefined,
+  });
+
+  const config = (store.store_config || {}) as Record<string, any>;
+  const updatedConfig: Record<string, any> = {
+    ...config,
+    design: output.design,
+    heroTagline: output.heroTagline,
+    heroSubtext: output.heroSubtext,
+    storeBio: output.storeBio,
+  };
+
+  if (output.sectionContent) {
+    updatedConfig.content = { ...(config.content || {}), sectionContent: output.sectionContent };
+  }
+  if (output.customCSS) {
+    updatedConfig.customCSS = output.customCSS;
+  }
+  if (output.sectionLayout?.length > 0) {
+    updatedConfig.sections = {
+      ...(config.sections || {}),
+      homepage: output.sectionLayout.map((s) => ({
+        type: s.type,
+        variant: s.variant,
+        config: { visible: true },
+        background_hint: s.background_hint,
+      })),
+    };
+  }
+
+  const { error } = await db.from('stores')
+    .update({ store_config: updatedConfig })
+    .eq('id', storeId);
+  if (error) throw new Error(`Failed to update store config: ${error.message}`);
+
+  return { success: true, archetypeId: output.archetypeId, processingTimeMs: output.processingTimeMs };
+}
+
+async function regenerateCatalog(db: SupabaseClient, storeId: string, _payload: any) {
+  const { data: store, error: storeErr } = await db.from('stores')
+    .select('vertical')
+    .eq('id', storeId)
+    .single();
+  if (storeErr || !store) throw new Error(`Failed to fetch store: ${storeErr?.message}`);
+
+  const { data: assets } = await db.from('media_assets')
+    .select('id, original_url, product_id')
+    .eq('store_id', storeId)
+    .not('original_url', 'is', null);
+  if (!assets?.length) return { success: true, productsUpdated: 0 };
+
+  // Group assets by product_id (or by asset id if unassigned)
+  const groups: Record<string, any[]> = {};
+  for (const a of assets) {
+    const key = a.product_id || a.id;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  }
+
+  const groupEntries = Object.entries(groups);
+  const imageGroups = groupEntries
+    .map(([, groupAssets]) => ({ urls: groupAssets.map((a) => a.original_url).filter(Boolean) }))
+    .filter((g) => g.urls.length > 0);
+
+  if (!imageGroups.length) return { success: true, productsUpdated: 0 };
+
+  const { suggestions } = await generateBulkProducts({ imageGroups, vertical: store.vertical });
+
+  let updated = 0;
+  for (const suggestion of suggestions) {
+    const groupAssets = Object.values(groups)[suggestion.groupIndex] as any[];
+    const productId = groupAssets?.[0]?.product_id;
+    const price = suggestion.suggestedPrice
+      ? Math.round((suggestion.suggestedPrice.min + suggestion.suggestedPrice.max) / 2)
+      : undefined;
+
+    if (productId) {
+      const { error } = await db.from('products')
+        .update({
+          name: suggestion.name,
+          description: suggestion.description,
+          ...(price ? { price } : {}),
+          tags: suggestion.tags || [],
+          hsn_code: suggestion.hsnCodeSuggestion || null,
+          vertical_data: suggestion.verticalAttributes || {},
+          seo_meta: suggestion.seoMeta || {},
+        })
+        .eq('id', productId)
+        .eq('store_id', storeId);
+      if (!error) updated++;
+    } else {
+      const slug = suggestion.name.toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+        + '-' + Date.now().toString(36);
+      const { error } = await db.from('products').insert({
+        store_id: storeId,
+        name: suggestion.name,
+        slug,
+        description: suggestion.description,
+        price: price || 0,
+        tags: suggestion.tags || [],
+        images: [],
+        vertical_data: suggestion.verticalAttributes || {},
+        seo_meta: suggestion.seoMeta || {},
+        hsn_code: suggestion.hsnCodeSuggestion || null,
+        status: 'draft',
+      });
+      if (!error) updated++;
+    }
+  }
+
+  return { success: true, productsUpdated: updated };
 }
 
 // ============================================================
