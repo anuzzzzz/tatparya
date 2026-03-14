@@ -140,6 +140,17 @@ export const chatRouter = router({
         finalResponse += '\n' + validationErrors.join('\n');
       }
 
+      // Append store URL hint after design changes
+      const designActionResults = executionResults.filter(
+        (r) => r.type.startsWith('store.update_') || r.type === 'store.regenerate_design' || r.type === 'store.undo_design'
+      );
+      const successfulDesign = designActionResults.find((r) => r.success && (r.data as any)?.storeSlug);
+      if (successfulDesign) {
+        if (!finalResponse.toLowerCase().includes('refresh')) {
+          finalResponse += ` Refresh your store to see the changes.`;
+        }
+      }
+
       return {
         response: finalResponse,
         followUp: null,

@@ -123,6 +123,7 @@ export const DESIGN_ACTIONS = new Set([
   'store.update_animation',
   'store.update_design_bulk',
   'store.regenerate_design',
+  'store.undo_design',
 ]);
 
 /** Destructive actions that require seller confirmation */
@@ -179,6 +180,11 @@ store.regenerate_catalog  { sellerHints?: string }
   → Re-runs Vision AI on all product photos (~15-45s). Regenerates product names, descriptions, prices.
   USE FOR: "re-analyze my photos", "update product descriptions", "rename my products",
   "the product names aren't good".
+
+store.undo_design         {}
+  → Reverts the store design to what it was before the last design change.
+  USE FOR: "undo", "go back", "revert", "I don't like this, change it back",
+  "restore the old design", "undo that change".
 
 ── Sections ──
 section.toggle         { sectionType: string, visible: boolean }

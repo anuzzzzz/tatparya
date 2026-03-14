@@ -116,6 +116,9 @@ async function executeSingle(
     case 'store.regenerate_catalog':
       return regenerateCatalog(db, storeId, action.payload);
 
+    case 'store.undo_design':
+      return undoDesign(db, storeId);
+
     // ── Sections ────────────────────────────────────────
     case 'section.toggle':
       return toggleSection(db, storeId, action.payload.sectionType, action.payload.visible);
@@ -302,7 +305,20 @@ async function updateStoreDesign(db: SupabaseClient, storeId: string, designUpda
   const config = await getStoreConfig(db, storeId);
   const currentDesign = config.design || {};
   const mergedDesign = deepMerge(currentDesign, stripUndefined(designUpdates));
-  return updateStore(db, storeId, { store_config: { ...config, design: mergedDesign } });
+
+  // Save undo snapshot before any design change
+  const previousDesign = {
+    design: config.design,
+    heroTagline: config.heroTagline,
+    heroSubtext: config.heroSubtext,
+    storeBio: config.storeBio,
+    sections: config.sections,
+    customCSS: config.customCSS,
+  };
+
+  return updateStore(db, storeId, {
+    store_config: { ...config, design: mergedDesign, _previousDesign: previousDesign },
+  });
 }
 
 // ============================================================
@@ -350,12 +366,24 @@ async function regenerateDesign(db: SupabaseClient, storeId: string, payload: an
   });
 
   const config = (store.store_config || {}) as Record<string, any>;
+
+  // Save current design as undo snapshot
+  const previousDesign = {
+    design: config.design,
+    heroTagline: config.heroTagline,
+    heroSubtext: config.heroSubtext,
+    storeBio: config.storeBio,
+    sections: config.sections,
+    customCSS: config.customCSS,
+  };
+
   const updatedConfig: Record<string, any> = {
     ...config,
     design: output.design,
     heroTagline: output.heroTagline,
     heroSubtext: output.heroSubtext,
     storeBio: output.storeBio,
+    _previousDesign: previousDesign,
   };
 
   if (output.sectionContent) {
@@ -381,7 +409,18 @@ async function regenerateDesign(db: SupabaseClient, storeId: string, payload: an
     .eq('id', storeId);
   if (error) throw new Error(`Failed to update store config: ${error.message}`);
 
-  return { success: true, archetypeId: output.archetypeId, processingTimeMs: output.processingTimeMs };
+  // Get store slug for the response
+  const { data: storeInfo } = await db.from('stores')
+    .select('slug')
+    .eq('id', storeId)
+    .single();
+
+  return {
+    success: true,
+    archetypeId: output.archetypeId,
+    processingTimeMs: output.processingTimeMs,
+    storeSlug: storeInfo?.slug,
+  };
 }
 
 async function regenerateCatalog(db: SupabaseClient, storeId: string, _payload: any) {
@@ -458,6 +497,38 @@ async function regenerateCatalog(db: SupabaseClient, storeId: string, _payload: 
   }
 
   return { success: true, productsUpdated: updated };
+}
+
+async function undoDesign(db: SupabaseClient, storeId: string) {
+  const { data: store, error } = await db.from('stores')
+    .select('store_config')
+    .eq('id', storeId)
+    .single();
+  if (error || !store) throw new Error('Store not found');
+
+  const config = (store.store_config || {}) as Record<string, any>;
+  const previousDesign = config._previousDesign;
+
+  if (!previousDesign) {
+    throw new Error('No previous design to restore — undo is only available after a design change.');
+  }
+
+  const updatedConfig = {
+    ...config,
+    design: previousDesign.design,
+    heroTagline: previousDesign.heroTagline || config.heroTagline,
+    heroSubtext: previousDesign.heroSubtext || config.heroSubtext,
+    storeBio: previousDesign.storeBio || config.storeBio,
+    sections: previousDesign.sections || config.sections,
+    customCSS: previousDesign.customCSS || config.customCSS,
+    _previousDesign: null,
+  };
+
+  await db.from('stores')
+    .update({ store_config: updatedConfig })
+    .eq('id', storeId);
+
+  return { success: true, message: 'Design reverted to previous state' };
 }
 
 // ============================================================
