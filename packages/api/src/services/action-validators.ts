@@ -1,10 +1,7 @@
 import type { TatparyaAction, StoreSnapshot } from '@tatparya/shared';
-import { DESIGN_ACTIONS } from '@tatparya/shared';
+import { DESIGN_ACTIONS, VALID_ACTION_TYPES } from '@tatparya/shared';
 import { ORDER_TRANSITIONS } from '@tatparya/shared';
-import {
-  validateAndFixPalette,
-  contrastRatio,
-} from './store-design-ai.service.js';
+import { validateAndFixPalette } from './store-design-ai.service.js';
 
 // ============================================================
 // Action Validators
@@ -31,6 +28,12 @@ export function validateAction(
   action: TatparyaAction,
   snapshot: StoreSnapshot | null,
 ): ValidationResult {
+  // Whitelist check — reject hallucinated action types immediately
+  if (!VALID_ACTION_TYPES.has(action.type)) {
+    console.warn(`[validator] Rejected unknown action type: ${action.type}`);
+    return { valid: false, error: `Unknown action type "${action.type}". No changes were made.` };
+  }
+
   // Design actions — WCAG validation
   if (DESIGN_ACTIONS.has(action.type)) {
     return validateDesignAction(action);

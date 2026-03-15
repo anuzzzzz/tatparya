@@ -138,6 +138,86 @@ export const DESTRUCTIVE_ACTIONS = new Set([
   'product.bulk_update_price',
 ]);
 
+/** Complete whitelist of valid action types — used in validator to reject hallucinated types */
+export const VALID_ACTION_TYPES = new Set([
+  // Store identity
+  'store.update_name',
+  'store.update_description',
+  'store.update_status',
+  'store.update_hero_text',
+  'store.update_bio',
+  'store.update_hero_cta',
+  'store.update_announcement',
+  'store.update_social_links',
+  // Store design
+  'store.update_palette',
+  'store.update_fonts',
+  'store.update_hero_style',
+  'store.update_product_card_style',
+  'store.update_nav_style',
+  'store.update_collection_style',
+  'store.update_checkout_style',
+  'store.update_layout',
+  'store.update_spacing',
+  'store.update_radius',
+  'store.update_image_style',
+  'store.update_animation',
+  'store.update_design_bulk',
+  'store.regenerate_design',
+  'store.regenerate_catalog',
+  'store.undo_design',
+  // Sections
+  'section.toggle',
+  'section.reorder',
+  'section.update_config',
+  // Products
+  'product.create',
+  'product.update',
+  'product.delete',
+  'product.publish',
+  'product.archive',
+  'product.bulk_publish',
+  'product.bulk_update_price',
+  // Variants
+  'variant.create',
+  'variant.update',
+  'variant.delete',
+  // Stock
+  'stock.update',
+  // Categories
+  'category.create',
+  'category.update',
+  'category.delete',
+  'category.assign_product',
+  // Collections
+  'collection.create',
+  'collection.update',
+  'collection.delete',
+  'collection.add_products',
+  'collection.remove_products',
+  // Orders
+  'order.update_status',
+  'order.ship',
+  'order.cancel',
+  // Discounts
+  'discount.create',
+  'discount.deactivate',
+  // Media
+  'media.set_hero_banner',
+  'media.set_product_images',
+  'media.set_category_image',
+  'media.set_collection_banner',
+  // Queries
+  'query.products',
+  'query.orders',
+  'query.revenue',
+  'query.categories',
+  'query.collections',
+  'query.store_info',
+  'query.store_link',
+  'query.discounts',
+]);
+
 // ============================================================
 // Action Schema Reference — injected into system prompt
 // ============================================================
