@@ -22,9 +22,40 @@ interface StoreLayoutProps {
 export async function generateMetadata({ params }: StoreLayoutProps): Promise<Metadata> {
   try {
     const store = await api.store.get.query({ slug: params.storeSlug });
+    const { storeBaseUrl, pickOgImage, truncate } = await import('@/lib/seo');
+    const url = storeBaseUrl(params.storeSlug);
+    const description = truncate(store.description, 160) || `Shop at ${store.name}`;
+
+    // Try to find a hero image from products
+    let ogImage: string | null = null;
+    try {
+      const products = await api.product.list.query({ storeId: store.id, status: 'active', pagination: { page: 1, limit: 4 } });
+      const items = (products as any).items || [];
+      for (const p of items) {
+        ogImage = pickOgImage(p.images || []);
+        if (ogImage) break;
+      }
+    } catch { /* no hero image */ }
+
     return {
-      title: store.name,
-      description: store.description || `Shop at ${store.name}`,
+      title: { default: store.name, template: `%s | ${store.name}` },
+      description,
+      alternates: { canonical: url },
+      openGraph: {
+        type: 'website',
+        title: store.name,
+        description,
+        siteName: store.name,
+        url,
+        ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630, alt: store.name }] } : {}),
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: store.name,
+        description,
+        ...(ogImage ? { images: [ogImage] } : {}),
+      },
+      robots: { index: true, follow: true },
     };
   } catch {
     return { title: 'Store Not Found' };

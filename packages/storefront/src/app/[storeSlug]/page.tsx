@@ -14,6 +14,7 @@ import { StatsBar } from '@/components/stats-bar';
 import { CategoryTiles } from '@/components/category-tiles';
 import { RunwayBlueprint } from '@/components/blueprints/runway/RunwayBlueprint';
 import Link from 'next/link';
+import { storeBaseUrl, pickOgImage } from '@/lib/seo';
 
 // ============================================================
 // Store Homepage v2 — Polymorphic Section Registry
@@ -51,10 +52,44 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   const heroImages = pickHeroImages(productItems);
   const config = (store.storeConfig || store.config) as any;
 
+  // ── JSON-LD: Organization + WebSite structured data ──────
+  const base = storeBaseUrl(params.storeSlug);
+  const ogHeroImage = pickOgImage((productItems[0] as any)?.images || []);
+  const socialLinks = config?.social_links ?? config?.content?.socialLinks ?? {};
+  const sameAs = [socialLinks.instagram, socialLinks.facebook, socialLinks.twitter]
+    .filter(Boolean) as string[];
+
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: store.name,
+    url: base,
+    ...(store.description ? { description: store.description } : {}),
+    ...(ogHeroImage ? { logo: ogHeroImage } : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+  };
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: store.name,
+    url: base,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: { '@type': 'EntryPoint', urlTemplate: `${base}/collections/all?search={search_term_string}` },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+  const jsonLdScripts = (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+    </>
+  );
+
   // ── Blueprint check: fashion vertical gets the Runway blueprint ──
   const vertical = config?.vertical || (store as any).vertical;
   if (vertical === 'fashion' || config?.blueprint === 'runway') {
-    return <RunwayBlueprint products={productItems} heroImages={heroImages} storeUrl={storeUrl} />;
+    return <>{jsonLdScripts}<RunwayBlueprint products={productItems} heroImages={heroImages} storeUrl={storeUrl} /></>;
   }
 
   const sectionLayout = config?.sections?.homepage || [];
@@ -70,13 +105,16 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   // If no section config, use classic layout
   if (!sectionLayout || sectionLayout.length === 0) {
     return (
-      <ClassicLayout
-        storeUrl={storeUrl}
-        heroImages={heroImages}
-        categories={categories}
-        productItems={productItems}
-        useBgVariation={useBgVariation}
-      />
+      <>
+        {jsonLdScripts}
+        <ClassicLayout
+          storeUrl={storeUrl}
+          heroImages={heroImages}
+          categories={categories}
+          productItems={productItems}
+          useBgVariation={useBgVariation}
+        />
+      </>
     );
   }
 
@@ -87,6 +125,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
 
   return (
     <div>
+      {jsonLdScripts}
       {sectionLayout.map((section: any, index: number) => {
         const isProductSection = ['product_carousel', 'featured_products', 'product_grid'].includes(section.type);
         if (isProductSection) productSectionCount++;

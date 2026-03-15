@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/trpc';
 import { AboutPageClient } from './about-client';
+import { storeBaseUrl, truncate } from '@/lib/seo';
 
 interface AboutPageProps {
   params: { storeSlug: string };
@@ -10,9 +11,15 @@ interface AboutPageProps {
 export async function generateMetadata({ params }: AboutPageProps): Promise<Metadata> {
   try {
     const store = await api.store.get.query({ slug: params.storeSlug });
+    const url = `${storeBaseUrl(params.storeSlug)}/about`;
+    const title = `${store.name} — About Us`;
+    const description = truncate(store.description, 160) || `Learn about ${store.name} — our story, mission, and values.`;
     return {
-      title: `About | ${store.name}`,
-      description: `Learn about ${store.name} - our story, mission, and values.`,
+      title,
+      description,
+      alternates: { canonical: url },
+      openGraph: { type: 'website', title, description, url, siteName: store.name },
+      twitter: { card: 'summary_large_image', title, description },
     };
   } catch {
     return { title: 'About' };

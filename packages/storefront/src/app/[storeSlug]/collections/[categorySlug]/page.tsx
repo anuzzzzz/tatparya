@@ -4,6 +4,7 @@ import { ProductGrid } from '@/components/product-grid';
 import { CollectionFilters } from './collection-filters';
 import Link from 'next/link';
 import { SearchX } from 'lucide-react';
+import { storeBaseUrl } from '@/lib/seo';
 import type { Metadata } from 'next';
 
 interface CollectionPageProps {
@@ -14,15 +15,30 @@ interface CollectionPageProps {
 export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
   try {
     const store = await api.store.get.query({ slug: params.storeSlug });
+    const base = storeBaseUrl(params.storeSlug);
+    const collectionUrl = `${base}/collections/${params.categorySlug}`;
+
     if (params.categorySlug === 'all') {
-      return { title: `All Products | ${store.name}` };
+      const title = `All Products | ${store.name}`;
+      const description = `Browse all products at ${store.name}`;
+      return {
+        title,
+        description,
+        alternates: { canonical: collectionUrl },
+        openGraph: { type: 'website', title, description, url: collectionUrl, siteName: store.name },
+        twitter: { card: 'summary_large_image', title, description },
+      };
     }
-    // Try to find category name from tree
     const categories = await api.category.getTree.query({ storeId: store.id });
     const cat = findCategory(categories, params.categorySlug);
+    const title = `${cat?.name || 'Collection'} | ${store.name}`;
+    const description = `Shop ${cat?.name || 'products'} at ${store.name}`;
     return {
-      title: `${cat?.name || 'Collection'} | ${store.name}`,
-      description: `Shop ${cat?.name || 'products'} at ${store.name}`,
+      title,
+      description,
+      alternates: { canonical: collectionUrl },
+      openGraph: { type: 'website', title, description, url: collectionUrl, siteName: store.name },
+      twitter: { card: 'summary_large_image', title, description },
     };
   } catch {
     return { title: 'Collection' };
@@ -92,11 +108,24 @@ export default async function CollectionPage({ params, searchParams }: Collectio
 
   const title = isAll ? 'All Products' : category?.name || 'Collection';
 
+  // ── JSON-LD: BreadcrumbList ────────────────────────────────
+  const base = storeBaseUrl(params.storeSlug);
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: base },
+      { '@type': 'ListItem', position: 2, name: title, item: `${base}/collections/${params.categorySlug}` },
+    ],
+  };
+
   return (
     <div
       className="container-store"
       style={{ paddingTop: 'var(--spacing-section)', paddingBottom: 'var(--spacing-section)' }}
     >
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-1.5 text-xs mb-6" style={{ color: 'var(--color-text-muted)' }}>
         <Link href={storeUrl} className="hover:opacity-70 transition-opacity">
