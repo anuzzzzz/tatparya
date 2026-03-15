@@ -5,12 +5,14 @@ import { MessageCircle } from 'lucide-react';
 import { useStore } from './store-provider';
 
 export function WhatsAppButton() {
-  const { store, design } = useStore();
+  const { store, design, config } = useStore();
   const whatsappConfig = store.whatsappConfig as any;
+  const socialWhatsapp = (config as any)?.socialLinks?.whatsapp;
 
-  if (!whatsappConfig?.enabled || !whatsappConfig?.businessPhone) return null;
+  const rawPhone = whatsappConfig?.businessPhone || socialWhatsapp;
+  if (!rawPhone) return null;
 
-  const phone = whatsappConfig.businessPhone.replace(/^\+/, '');
+  const phone = rawPhone.replace(/^\+/, '').replace(/\D/g, '');
   const message = encodeURIComponent(`Hi! I'm browsing your store ${store.name}`);
   const url = `https://wa.me/${phone}?text=${message}`;
 

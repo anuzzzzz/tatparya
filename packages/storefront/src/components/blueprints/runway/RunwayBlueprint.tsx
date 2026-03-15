@@ -63,6 +63,13 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
   const heroCtaText = (config as any)?.heroCtaText || 'Shop Collection';
   const heroCtaSecondary = (config as any)?.heroCtaSecondaryText || 'Our Story';
 
+  const homepageSections: any[] = (config as any)?.sections?.homepage || [];
+  function isSectionVisible(type: string): boolean {
+    const section = homepageSections.find((s: any) => s.type === type);
+    if (!section) return true; // default visible if no config entry
+    return section.config?.visible !== false;
+  }
+
   return (
     <div
       style={{
@@ -123,12 +130,12 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
       />
 
       {/* ── 3. MARQUEE — only if content exists ── */}
-      {content.marquee?.length > 0 && (
+      {isSectionVisible('marquee') && content.marquee?.length > 0 && (
         <RunwayMarquee phrases={content.marquee} primary={p.primary} bg={p.text} />
       )}
 
       {/* ── 4. PRODUCTS — single grid, no duplication ── */}
-      {products.length > 0 && (
+      {isSectionVisible('product_carousel') && products.length > 0 && (
         <RunwayProductSection
           products={products.slice(0, 8)}
           eyebrow={productContent.eyebrow || 'The Collection'}
@@ -140,7 +147,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
       )}
 
       {/* ── 5. ABOUT — image + text split ── */}
-      {bio && (
+      {isSectionVisible('about_brand') && bio && (
         <RunwayAbout
           storeName={store.name}
           bio={bio}
@@ -152,7 +159,7 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
       )}
 
       {/* ── 6. TESTIMONIALS — only if content exists ── */}
-      {content.testimonials?.length >= 3 && (
+      {isSectionVisible('testimonials') && content.testimonials?.length >= 3 && (
         <RunwayTestimonials
           testimonials={content.testimonials}
           primary={p.primary}
@@ -163,12 +170,14 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
       )}
 
       {/* ── 7. NEWSLETTER ── */}
-      <RunwayNewsletter
-        headline={newsletterContent.title || content.newsletter?.heading || `Join the ${store.name} Club`}
-        subtext={newsletterContent.subtext || content.newsletter?.subtext || 'New drops, exclusive offers & styling tips.'}
-        primary={p.primary}
-        surface={p.surface || '#f5f0eb'}
-      />
+      {isSectionVisible('newsletter') && (
+        <RunwayNewsletter
+          headline={newsletterContent.title || content.newsletter?.heading || `Join the ${store.name} Club`}
+          subtext={newsletterContent.subtext || content.newsletter?.subtext || 'New drops, exclusive offers & styling tips.'}
+          primary={p.primary}
+          surface={p.surface || '#f5f0eb'}
+        />
+      )}
 
       {/* Footer rendered by global layout */}
     </div>
@@ -695,16 +704,16 @@ function RunwayFooter({ storeName, bio, storeUrl, textColor, mutedColor, primary
         <div>
           <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16 }}>Help</h4>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontSize: 13, color: mutedColor }}>Shipping</span>
-            <span style={{ fontSize: 13, color: mutedColor }}>Returns</span>
-            <span style={{ fontSize: 13, color: mutedColor }}>Contact</span>
+            <Link href={`${storeUrl}/pages/shipping`} style={{ fontSize: 13, color: mutedColor, textDecoration: 'none' }}>Shipping</Link>
+            <Link href={`${storeUrl}/pages/returns`} style={{ fontSize: 13, color: mutedColor, textDecoration: 'none' }}>Returns</Link>
+            <Link href={`${storeUrl}/pages/contact`} style={{ fontSize: 13, color: mutedColor, textDecoration: 'none' }}>Contact</Link>
           </nav>
         </div>
         <div>
           <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16 }}>Legal</h4>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontSize: 13, color: mutedColor }}>Privacy Policy</span>
-            <span style={{ fontSize: 13, color: mutedColor }}>Terms of Service</span>
+            <Link href={`${storeUrl}/pages/privacy`} style={{ fontSize: 13, color: mutedColor, textDecoration: 'none' }}>Privacy Policy</Link>
+            <Link href={`${storeUrl}/pages/terms`} style={{ fontSize: 13, color: mutedColor, textDecoration: 'none' }}>Terms of Service</Link>
           </nav>
         </div>
       </div>

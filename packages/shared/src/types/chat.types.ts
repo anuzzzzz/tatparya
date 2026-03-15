@@ -195,6 +195,14 @@ store.update_announcement { messages?: string[], bgColor?: string, textColor?: s
   USE FOR: "change the announcement", "update the banner text", "hide/show the announcement bar",
   "add a sale announcement", "change announcement bar color".
 
+store.update_social_links { instagram?: string, whatsapp?: string, facebook?: string, twitter?: string, youtube?: string, email?: string }
+  → Updates the store's social media links shown in the footer and floating button.
+  USE FOR: "add my Instagram", "set my WhatsApp number", "link my Facebook", "add email contact",
+  "update social media links", "add my YouTube channel".
+  For instagram/facebook/twitter/youtube: accept full URL or handle (e.g. "@mystore" or "mystore").
+  For whatsapp: accept phone number with or without country code (e.g. "9876543210" or "+919876543210").
+  For email: accept email address.
+
 ── Sections ──
 section.toggle         { sectionType: string, visible: boolean }
 section.reorder        { order: string[] }

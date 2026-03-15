@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useStore } from './store-provider';
-import { MessageCircle, Instagram, Mail, MapPin, Phone } from 'lucide-react';
+import { MessageCircle, Instagram, Mail, Facebook, Twitter, Youtube } from 'lucide-react';
 import { TextureOverlay } from './texture-overlay';
 
 interface FooterProps {
@@ -14,7 +14,7 @@ interface FooterProps {
 export function Footer({ variant: explicitVariant }: FooterProps) {
   const { store, design, config } = useStore();
   const storeUrl = `/${store.slug}`;
-  const whatsappPhone = (store.whatsappConfig as any)?.businessPhone;
+  const whatsappPhone = (store.whatsappConfig as any)?.businessPhone || (config as any)?.socialLinks?.whatsapp;
   const textureHint = (design.decorativeTokens as any)?.textureOverlay || 'none';
   const storeBio = (config as any)?.storeBio || store.description;
 
@@ -56,13 +56,13 @@ export function Footer({ variant: explicitVariant }: FooterProps) {
             <SocialLinks whatsappPhone={whatsappPhone} />
           </div>
 
-          <FooterLinks storeUrl={storeUrl} title="Shop" links={[
+          <FooterLinks title="Shop" links={[
             { label: 'All Products', href: `${storeUrl}/collections/all` },
             { label: 'New Arrivals', href: `${storeUrl}/collections/all` },
             { label: 'About Us', href: `${storeUrl}/about` },
           ]} />
 
-          <FooterLinks storeUrl={storeUrl} title="Help" links={[
+          <FooterLinks title="Help" links={[
             { label: 'Shipping', href: `${storeUrl}/pages/shipping` },
             { label: 'Returns', href: `${storeUrl}/pages/returns` },
             { label: 'Contact Us', href: `${storeUrl}/pages/contact` },
@@ -70,7 +70,7 @@ export function Footer({ variant: explicitVariant }: FooterProps) {
             ...(whatsappPhone ? [{ label: 'WhatsApp Support', href: `https://wa.me/${whatsappPhone}`, external: true }] : []),
           ]} />
 
-          <FooterLinks storeUrl={storeUrl} title="Legal" links={[
+          <FooterLinks title="Legal" links={[
             { label: 'Privacy Policy', href: `${storeUrl}/pages/privacy` },
             { label: 'Terms of Service', href: `${storeUrl}/pages/terms` },
             { label: 'Refund Policy', href: `${storeUrl}/pages/returns` },
@@ -107,17 +107,17 @@ function DarkFooter({ storeUrl, whatsappPhone, storeBio, textureHint }: { storeU
           <div className="col-span-2 md:col-span-1">
             <SocialLinks whatsappPhone={whatsappPhone} dark />
           </div>
-          <FooterLinks storeUrl={storeUrl} title="Shop" dark links={[
+          <FooterLinks title="Shop" dark links={[
             { label: 'All Products', href: `${storeUrl}/collections/all` },
             { label: 'New Arrivals', href: `${storeUrl}/collections/all` },
             { label: 'About Us', href: `${storeUrl}/about` },
           ]} />
-          <FooterLinks storeUrl={storeUrl} title="Help" dark links={[
+          <FooterLinks title="Help" dark links={[
             { label: 'Shipping', href: `${storeUrl}/pages/shipping` },
             { label: 'Returns', href: `${storeUrl}/pages/returns` },
             { label: 'Contact', href: `${storeUrl}/pages/contact` },
           ]} />
-          <FooterLinks storeUrl={storeUrl} title="Legal" dark links={[
+          <FooterLinks title="Legal" dark links={[
             { label: 'Privacy', href: `${storeUrl}/pages/privacy` },
             { label: 'Terms', href: `${storeUrl}/pages/terms` },
             { label: 'Refunds', href: `${storeUrl}/pages/returns` },
@@ -179,36 +179,73 @@ function MinimalFooter({ storeUrl, whatsappPhone, storeBio }: { storeUrl: string
 // Shared sub-components
 // ============================================================
 
+function socialUrl(platform: string, value: string): string {
+  if (platform === 'whatsapp') {
+    const digits = value.replace(/\D/g, '');
+    return `https://wa.me/${digits}`;
+  }
+  if (platform === 'email') return `mailto:${value}`;
+  if (platform === 'instagram') {
+    if (value.startsWith('http')) return value;
+    return `https://instagram.com/${value.replace(/^@/, '')}`;
+  }
+  if (platform === 'facebook') {
+    if (value.startsWith('http')) return value;
+    return `https://facebook.com/${value.replace(/^@/, '')}`;
+  }
+  if (platform === 'twitter') {
+    if (value.startsWith('http')) return value;
+    return `https://twitter.com/${value.replace(/^@/, '')}`;
+  }
+  if (platform === 'youtube') {
+    if (value.startsWith('http')) return value;
+    return `https://youtube.com/@${value.replace(/^@/, '')}`;
+  }
+  return value;
+}
+
 function SocialLinks({ whatsappPhone, dark }: { whatsappPhone?: string; dark?: boolean }) {
-  const { design } = useStore();
+  const { design, config } = useStore();
+  const socialLinks = (config as any)?.socialLinks || {};
   const bg = dark
     ? 'rgba(255,255,255,0.08)'
     : `color-mix(in srgb, ${design.palette.primary} 10%, transparent)`;
   const color = dark ? 'rgba(255,255,255,0.7)' : design.palette.primary;
 
+  const waPhone = whatsappPhone || socialLinks.whatsapp;
+
+  const icons: Array<{ platform: string; icon: React.ElementType; value?: string }> = [
+    { platform: 'whatsapp', icon: MessageCircle, value: waPhone },
+    { platform: 'instagram', icon: Instagram, value: socialLinks.instagram },
+    { platform: 'facebook', icon: Facebook, value: socialLinks.facebook },
+    { platform: 'twitter', icon: Twitter, value: socialLinks.twitter },
+    { platform: 'youtube', icon: Youtube, value: socialLinks.youtube },
+    { platform: 'email', icon: Mail, value: socialLinks.email },
+  ];
+
+  const visible = icons.filter(i => i.value);
+  if (visible.length === 0) return null;
+
   return (
-    <div className="flex gap-2">
-      {whatsappPhone && (
-        <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer"
+    <div className="flex flex-wrap gap-2">
+      {visible.map(({ platform, icon: Icon, value }) => (
+        <a
+          key={platform}
+          href={socialUrl(platform, value!)}
+          target={platform === 'email' ? undefined : '_blank'}
+          rel={platform === 'email' ? undefined : 'noopener noreferrer'}
           className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
-          style={{ backgroundColor: bg, color }}>
-          <MessageCircle size={15} />
+          style={{ backgroundColor: bg, color }}
+          aria-label={platform}
+        >
+          <Icon size={15} />
         </a>
-      )}
-      <a href="#" className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
-        style={{ backgroundColor: bg, color }}>
-        <Instagram size={15} />
-      </a>
-      <a href="#" className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:opacity-80"
-        style={{ backgroundColor: bg, color }}>
-        <Mail size={15} />
-      </a>
+      ))}
     </div>
   );
 }
 
-function FooterLinks({ storeUrl, title, links, dark }: {
-  storeUrl: string;
+function FooterLinks({ title, links, dark }: {
   title: string;
   links: Array<{ label: string; href: string; external?: boolean }>;
   dark?: boolean;

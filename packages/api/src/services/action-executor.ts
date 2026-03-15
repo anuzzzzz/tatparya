@@ -79,6 +79,9 @@ async function executeSingle(
     case 'store.update_announcement':
       return updateStoreConfig(db, storeId, { announcementBar: action.payload });
 
+    case 'store.update_social_links':
+      return updateStoreConfig(db, storeId, { socialLinks: action.payload });
+
     // ── Store Design ────────────────────────────────────
     case 'store.update_palette': {
       // Haiku sometimes wraps in { palette: {...} }, sometimes puts fields directly in payload

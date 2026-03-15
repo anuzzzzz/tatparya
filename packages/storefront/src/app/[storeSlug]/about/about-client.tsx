@@ -147,7 +147,7 @@ function ValuesGrid({ vertical, palette, configValues }: { vertical: string; pal
     ? configValues!.slice(0, 4).map(v => ({
         icon: ICON_MAP[v.icon] || Heart,
         title: v.title || '',
-        desc: v.desc || '',
+        desc: v.description || v.desc || '',
       }))
     : [
         {
