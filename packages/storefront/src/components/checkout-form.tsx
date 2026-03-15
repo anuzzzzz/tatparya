@@ -2,9 +2,15 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, CreditCard, Banknote } from 'lucide-react';
 import { useStore } from './store-provider';
 import { getCartId, clearCartId, cn } from '@/lib/utils';
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 // Indian states for dropdown
 const INDIAN_STATES = [
@@ -29,11 +35,30 @@ const INDIAN_STATES = [
   { code: '37', name: 'Andhra Pradesh (new)' }, { code: '38', name: 'Ladakh' },
 ];
 
+let razorpayScriptPromise: Promise<void> | null = null;
+
+function loadRazorpayScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (window.Razorpay) return Promise.resolve();
+  if (razorpayScriptPromise) return razorpayScriptPromise;
+
+  razorpayScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+    document.body.appendChild(script);
+  });
+
+  return razorpayScriptPromise;
+}
+
 export function CheckoutForm() {
   const { store, design, trpc, setCartCount } = useStore();
   const router = useRouter();
   const storeUrl = `/${store.slug}`;
 
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cod'>('cod');
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -73,6 +98,19 @@ export function CheckoutForm() {
     return Object.keys(e).length === 0;
   };
 
+  const buildShippingAddress = () => ({
+    name: form.name.trim(),
+    phone: form.phone,
+    line1: form.line1.trim(),
+    line2: form.line2.trim() || undefined,
+    city: form.city.trim(),
+    state: form.state,
+    stateCode: form.stateCode,
+    pincode: form.pincode,
+    country: 'IN' as const,
+    landmark: form.landmark.trim() || undefined,
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -80,7 +118,6 @@ export function CheckoutForm() {
     setSubmitting(true);
     try {
       const cartId = getCartId();
-      // Get cart data first to build line items
       const cart = await trpc.cart.get.query({ storeId: store.id, cartId });
       if (!cart || !cart.items || cart.items.length === 0) {
         setErrors({ form: 'Your cart is empty' });
@@ -99,36 +136,89 @@ export function CheckoutForm() {
         attributes: item.attributes,
       }));
 
-      const order = await trpc.order.publicCheckout.mutate({
-        storeId: store.id,
-        buyerName: form.name.trim(),
-        buyerPhone: form.phone,
-        buyerEmail: form.email || undefined,
-        shippingAddress: {
-          name: form.name.trim(),
-          phone: form.phone,
-          line1: form.line1.trim(),
-          line2: form.line2.trim() || undefined,
-          city: form.city.trim(),
-          state: form.state,
-          stateCode: form.stateCode,
-          pincode: form.pincode,
-          country: 'IN' as const,
-          landmark: form.landmark.trim() || undefined,
-        },
-        lineItems,
-        paymentMethod: 'cod',
-        discountCode: (cart as any).discountCode || undefined,
-        notes: form.notes.trim() || undefined,
-      });
+      if (paymentMethod === 'cod') {
+        // ── COD flow (unchanged) ──
+        const order = await trpc.order.publicCheckout.mutate({
+          storeId: store.id,
+          buyerName: form.name.trim(),
+          buyerPhone: form.phone,
+          buyerEmail: form.email || undefined,
+          shippingAddress: buildShippingAddress(),
+          lineItems,
+          paymentMethod: 'cod',
+          discountCode: (cart as any).discountCode || undefined,
+          notes: form.notes.trim() || undefined,
+        });
 
-      // Clear cart
-      await trpc.cart.clear.mutate({ storeId: store.id, cartId });
-      clearCartId();
-      setCartCount(0);
+        await trpc.cart.clear.mutate({ storeId: store.id, cartId });
+        clearCartId();
+        setCartCount(0);
+        router.push(`${storeUrl}/order/${(order as any).id}`);
+      } else {
+        // ── Online payment flow ──
+        const initiated = await trpc.order.initiatePayment.mutate({
+          storeId: store.id,
+          buyerName: form.name.trim(),
+          buyerPhone: form.phone,
+          buyerEmail: form.email || undefined,
+          shippingAddress: buildShippingAddress(),
+          lineItems,
+          discountCode: (cart as any).discountCode || undefined,
+          notes: form.notes.trim() || undefined,
+        });
 
-      // Redirect to order confirmation
-      router.push(`${storeUrl}/order/${(order as any).id}`);
+        await loadRazorpayScript();
+
+        const modal = new window.Razorpay({
+          key: initiated.razorpayKeyId,
+          amount: initiated.amount,
+          currency: initiated.currency,
+          order_id: initiated.razorpayOrderId,
+          name: store.name,
+          description: `Order ${initiated.orderNumber}`,
+          prefill: {
+            name: form.name.trim(),
+            email: form.email || undefined,
+            contact: form.phone,
+          },
+          theme: { color: design.palette.primary },
+          handler: async (response: {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              await trpc.order.verifyPayment.mutate({
+                storeId: store.id,
+                orderId: initiated.orderId,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+              await trpc.cart.clear.mutate({ storeId: store.id, cartId });
+              clearCartId();
+              setCartCount(0);
+              router.push(`${storeUrl}/order/${initiated.orderId}`);
+            } catch {
+              setErrors({
+                form: 'Payment received but verification failed. Your order will be confirmed shortly.',
+              });
+              setSubmitting(false);
+              // Navigate anyway — webhook will confirm the order
+              router.push(`${storeUrl}/order/${initiated.orderId}`);
+            }
+          },
+        });
+
+        modal.on('payment.failed', () => {
+          setErrors({ form: 'Payment failed. Please try again or choose Cash on Delivery.' });
+          setSubmitting(false);
+        });
+
+        modal.open();
+        // Keep submitting=true until handler callback resolves
+        return;
+      }
     } catch (err: any) {
       setErrors({ form: err?.message || 'Failed to place order. Please try again.' });
     } finally {
@@ -249,24 +339,75 @@ export function CheckoutForm() {
         rows={3}
       />
 
-      {/* Payment method — COD only for MVP */}
-      <div
-        className="flex items-center gap-3 p-4 border"
-        style={{
-          borderRadius: 'var(--radius)',
-          borderColor: design.palette.primary,
-          backgroundColor: `color-mix(in srgb, ${design.palette.primary} 5%, transparent)`,
-        }}
-      >
-        <CheckCircle size={18} style={{ color: design.palette.primary }} />
-        <div>
-          <p className="text-sm font-medium" style={{ color: design.palette.text }}>
-            Cash on Delivery (COD)
-          </p>
-          <p className="text-xs" style={{ color: design.palette.textMuted }}>
-            Pay when your order arrives
-          </p>
-        </div>
+      {/* Payment method selector */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold" style={{ color: design.palette.text }}>
+          Payment Method
+        </p>
+
+        {/* Online payment card */}
+        <button
+          type="button"
+          onClick={() => setPaymentMethod('online')}
+          className="w-full flex items-center gap-3 p-4 border text-left transition-all"
+          style={{
+            borderRadius: 'var(--radius)',
+            borderColor: paymentMethod === 'online' ? design.palette.primary : `${design.palette.text}18`,
+            backgroundColor: paymentMethod === 'online'
+              ? `color-mix(in srgb, ${design.palette.primary} 6%, transparent)`
+              : 'transparent',
+          }}
+        >
+          <div
+            className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+            style={{ borderColor: paymentMethod === 'online' ? design.palette.primary : `${design.palette.text}40` }}
+          >
+            {paymentMethod === 'online' && (
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: design.palette.primary }} />
+            )}
+          </div>
+          <CreditCard size={16} style={{ color: paymentMethod === 'online' ? design.palette.primary : design.palette.textMuted }} />
+          <div>
+            <p className="text-sm font-medium" style={{ color: design.palette.text }}>
+              Online Payment
+            </p>
+            <p className="text-xs" style={{ color: design.palette.textMuted }}>
+              UPI, Credit/Debit Card, Net Banking, Wallets
+            </p>
+          </div>
+        </button>
+
+        {/* COD card */}
+        <button
+          type="button"
+          onClick={() => setPaymentMethod('cod')}
+          className="w-full flex items-center gap-3 p-4 border text-left transition-all"
+          style={{
+            borderRadius: 'var(--radius)',
+            borderColor: paymentMethod === 'cod' ? design.palette.primary : `${design.palette.text}18`,
+            backgroundColor: paymentMethod === 'cod'
+              ? `color-mix(in srgb, ${design.palette.primary} 6%, transparent)`
+              : 'transparent',
+          }}
+        >
+          <div
+            className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+            style={{ borderColor: paymentMethod === 'cod' ? design.palette.primary : `${design.palette.text}40` }}
+          >
+            {paymentMethod === 'cod' && (
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: design.palette.primary }} />
+            )}
+          </div>
+          <Banknote size={16} style={{ color: paymentMethod === 'cod' ? design.palette.primary : design.palette.textMuted }} />
+          <div>
+            <p className="text-sm font-medium" style={{ color: design.palette.text }}>
+              Cash on Delivery (COD)
+            </p>
+            <p className="text-xs" style={{ color: design.palette.textMuted }}>
+              Pay when your order arrives
+            </p>
+          </div>
+        </button>
       </div>
 
       <button
@@ -277,10 +418,18 @@ export function CheckoutForm() {
         {submitting ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            Placing Order...
+            {paymentMethod === 'online' ? 'Opening Payment...' : 'Placing Order...'}
+          </>
+        ) : paymentMethod === 'online' ? (
+          <>
+            <CreditCard size={16} />
+            Pay Now
           </>
         ) : (
-          'Place Order (COD)'
+          <>
+            <CheckCircle size={16} />
+            Place Order (COD)
+          </>
         )}
       </button>
     </form>

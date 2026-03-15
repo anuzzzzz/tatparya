@@ -43,9 +43,10 @@ const EnvSchema = z.object({
   R2_BUCKET_NAME: z.string().default('tatparya-media'),
   R2_PUBLIC_URL: z.string().url().optional(),
 
-  // Payments (for later phases)
+  // Payments
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
   // WhatsApp (for later phases)
   GUPSHUP_API_KEY: z.string().optional(),

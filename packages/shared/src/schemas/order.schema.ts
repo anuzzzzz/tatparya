@@ -90,6 +90,32 @@ export const CreateOrderInput = z.object({
   notes: z.string().max(500).optional(),
 });
 
+// InitiatePaymentInput — used by Razorpay online payment flow.
+// Same shape as CreateOrderInput but without paymentMethod (server sets it).
+export const InitiatePaymentInput = z.object({
+  storeId: StoreId,
+  buyerPhone: IndianPhone,
+  buyerName: z.string().min(1).max(200),
+  buyerEmail: z.string().email().optional(),
+  shippingAddress: Address,
+  billingAddress: Address.optional(),
+  lineItems: z.array(LineItem).min(1),
+  discountCode: z.string().optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export type InitiatePaymentInput = z.infer<typeof InitiatePaymentInput>;
+
+export const VerifyPaymentInput = z.object({
+  storeId: StoreId,
+  orderId: EntityId,
+  razorpayOrderId: z.string().min(1),
+  razorpayPaymentId: z.string().min(1),
+  razorpaySignature: z.string().min(1),
+});
+
+export type VerifyPaymentInput = z.infer<typeof VerifyPaymentInput>;
+
 export const UpdateOrderStatusInput = z.object({
   storeId: StoreId,
   orderId: EntityId,

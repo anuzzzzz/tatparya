@@ -6,6 +6,7 @@ import {
 } from '@trpc/server/adapters/fastify';
 import { appRouter, type AppRouter } from './trpc/router.js';
 import { createContext } from './trpc/context.js';
+import { registerRazorpayWebhook } from './routes/razorpay-webhook.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -29,6 +30,10 @@ export async function buildApp() {
   app.get('/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
+
+  // Razorpay webhook — must be registered before tRPC so the scoped
+  // content-type parser (raw body) doesn't interfere with tRPC JSON parsing
+  await registerRazorpayWebhook(app);
 
   // tRPC plugin
   await app.register(fastifyTRPCPlugin, {

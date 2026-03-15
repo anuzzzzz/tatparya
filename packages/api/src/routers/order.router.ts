@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, storeProcedure, publicProcedure } from '../trpc/trpc.js';
-import { CreateOrderInput, UpdateOrderStatusInput, ListOrdersInput } from '@tatparya/shared';
+import { CreateOrderInput, UpdateOrderStatusInput, ListOrdersInput, InitiatePaymentInput, VerifyPaymentInput } from '@tatparya/shared';
 import { OrderRepository } from '../repositories/order.repository.js';
 import { VariantRepository } from '../repositories/product.repository.js';
 import { DiscountRepository } from '../repositories/discount.repository.js';
 import { OrderService } from '../services/order.service.js';
+import { RazorpayService } from '../services/razorpay.service.js';
+import { env } from '../env.js';
 
 export const orderRouter = router({
   create: storeProcedure
@@ -46,6 +48,102 @@ export const orderRouter = router({
         new DiscountRepository(ctx.serviceDb),
       );
       return orderService.createOrder(input.storeId, input);
+    }),
+
+  /**
+   * Initiate online payment — creates our DB order, then creates a Razorpay order.
+   * Returns the Razorpay key + order details needed to open the checkout modal.
+   */
+  initiatePayment: publicProcedure
+    .input(InitiatePaymentInput)
+    .mutation(async ({ ctx, input }) => {
+      if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Payment gateway not configured' });
+      }
+
+      // Verify store is active
+      const { data: store } = await ctx.serviceDb
+        .from('stores')
+        .select('id, status')
+        .eq('id', input.storeId)
+        .single();
+
+      if (!store) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Store not found' });
+      }
+      if (store.status !== 'active' && store.status !== 'onboarding') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Store is not accepting orders' });
+      }
+
+      const orderRepo = new OrderRepository(ctx.serviceDb);
+      const orderService = new OrderService(
+        orderRepo,
+        new VariantRepository(ctx.serviceDb),
+        new DiscountRepository(ctx.serviceDb),
+      );
+
+      // Create DB order with paymentMethod = 'upi' (generic online; updated after payment)
+      const order = await orderService.createOrder(input.storeId, {
+        ...input,
+        paymentMethod: 'upi',
+      });
+
+      // Create Razorpay order first so we have the ID for the single state transition
+      const razorpay = new RazorpayService(env.RAZORPAY_KEY_ID, env.RAZORPAY_KEY_SECRET);
+      const amountInPaise = Math.round(order.total * 100);
+      const rzpOrder = await razorpay.createOrder(amountInPaise, 'INR', order.orderNumber, {
+        storeId: input.storeId,
+        orderId: order.id,
+      });
+
+      // Single transition: created → payment_pending, storing razorpay order ID as reference
+      await orderService.updateStatus(input.storeId, order.id, 'payment_pending', {
+        paymentReference: rzpOrder.id,
+      });
+
+      return {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        razorpayOrderId: rzpOrder.id,
+        razorpayKeyId: env.RAZORPAY_KEY_ID,
+        amount: amountInPaise,
+        currency: 'INR',
+      };
+    }),
+
+  /**
+   * Verify Razorpay payment signature and mark the order as paid.
+   */
+  verifyPayment: publicProcedure
+    .input(VerifyPaymentInput)
+    .mutation(async ({ ctx, input }) => {
+      if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Payment gateway not configured' });
+      }
+
+      const razorpay = new RazorpayService(env.RAZORPAY_KEY_ID, env.RAZORPAY_KEY_SECRET);
+      const valid = razorpay.verifyPaymentSignature(
+        input.razorpayOrderId,
+        input.razorpayPaymentId,
+        input.razorpaySignature,
+      );
+
+      if (!valid) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Payment verification failed' });
+      }
+
+      const orderService = new OrderService(
+        new OrderRepository(ctx.serviceDb),
+        new VariantRepository(ctx.serviceDb),
+        new DiscountRepository(ctx.serviceDb),
+      );
+
+      const order = await orderService.updateStatus(input.storeId, input.orderId, 'paid', {
+        paymentStatus: 'captured',
+        paymentReference: input.razorpayPaymentId,
+      });
+
+      return order;
     }),
 
   get: storeProcedure
