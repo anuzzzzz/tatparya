@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, ShoppingBag, Menu, X, MessageCircle } from 'lucide-react';
+import { Search, ShoppingBag, Menu, X, MessageCircle, ChevronDown } from 'lucide-react';
 import { useStore } from './store-provider';
 import { useScrolled } from '@/hooks/use-scrolled';
 import { cn } from '@/lib/utils';
@@ -81,19 +81,54 @@ export function Navbar() {
           <Link href={storeUrl} className="transition-opacity duration-200 hover:opacity-70" style={{ color: textColor }}>
             Home
           </Link>
-          <Link href={`${storeUrl}/collections/all`} className="transition-opacity duration-200 hover:opacity-70" style={{ color: textColor }}>
-            Shop
-          </Link>
-          {categories.slice(0, 4).map((cat: any) => (
-            <Link
-              key={cat.id}
-              href={`${storeUrl}/collections/${cat.slug}`}
-              className="transition-opacity duration-200 hover:opacity-70"
+          {/* Collections dropdown */}
+          <div className="relative group">
+            <button
+              className="flex items-center gap-1 transition-opacity duration-200 hover:opacity-70"
               style={{ color: textColor }}
             >
-              {cat.name}
-            </Link>
-          ))}
+              Collections
+              <ChevronDown size={14} className="transition-transform duration-200 group-hover:rotate-180" />
+            </button>
+            {/* Dropdown panel */}
+            <div
+              className="absolute left-1/2 -translate-x-1/2 top-full pt-3 hidden group-hover:block z-50"
+              style={{ minWidth: '180px' }}
+            >
+              <div
+                className="py-2 shadow-lg border"
+                style={{
+                  backgroundColor: design.palette.background,
+                  borderRadius: 'var(--radius-lg, 12px)',
+                  borderColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
+                }}
+              >
+                <Link
+                  href={`${storeUrl}/collections/all`}
+                  className="block px-4 py-2 text-sm font-medium transition-opacity duration-200 hover:opacity-70"
+                  style={{ color: textColor }}
+                >
+                  All Products
+                </Link>
+                {categories.length > 0 && (
+                  <div
+                    className="my-1.5 mx-3"
+                    style={{ height: '1px', backgroundColor: `color-mix(in srgb, ${design.palette.text} 8%, transparent)` }}
+                  />
+                )}
+                {categories.map((cat: any) => (
+                  <Link
+                    key={cat.id}
+                    href={`${storeUrl}/collections/${cat.slug}`}
+                    className="block px-4 py-2 text-sm transition-opacity duration-200 hover:opacity-70"
+                    style={{ color: textColor }}
+                  >
+                    {cat.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
           <Link href={`${storeUrl}/about`} className="transition-opacity duration-200 hover:opacity-70" style={{ color: textColor }}>
             About
           </Link>

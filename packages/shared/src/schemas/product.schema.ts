@@ -73,6 +73,7 @@ export const ListProductsInput = z.object({
   tags: z.array(z.string()).optional(),
   minPrice: INRAmount.optional(),
   maxPrice: INRAmount.optional(),
+  sort: z.enum(['price-asc', 'price-desc', 'name-asc', 'name-desc', 'newest']).optional(),
   pagination: PaginationInput.default({ page: 1, limit: 20 }),
 });
 

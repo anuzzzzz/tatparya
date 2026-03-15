@@ -80,6 +80,7 @@ export class ProductRepository {
     tags?: string[];
     minPrice?: number;
     maxPrice?: number;
+    sort?: string;
     page?: number;
     limit?: number;
   } = {}) {
@@ -87,11 +88,21 @@ export class ProductRepository {
     const limit = filters.limit || 20;
     const offset = (page - 1) * limit;
 
+    let orderCol = 'created_at';
+    let orderAsc = false;
+    switch (filters.sort) {
+      case 'price-asc':  orderCol = 'price'; orderAsc = true;  break;
+      case 'price-desc': orderCol = 'price'; orderAsc = false; break;
+      case 'name-asc':   orderCol = 'name';  orderAsc = true;  break;
+      case 'name-desc':  orderCol = 'name';  orderAsc = false; break;
+      default:           orderCol = 'created_at'; orderAsc = false; break;
+    }
+
     let query = this.db
       .from('products')
       .select('*, categories(id, name, slug)', { count: 'exact' })
       .eq('store_id', storeId)
-      .order('created_at', { ascending: false })
+      .order(orderCol, { ascending: orderAsc })
       .range(offset, offset + limit - 1);
 
     if (filters.categoryId) {

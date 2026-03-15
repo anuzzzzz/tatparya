@@ -3,6 +3,7 @@ import { api } from '@/lib/trpc';
 import { ProductGrid } from '@/components/product-grid';
 import { CollectionFilters } from './collection-filters';
 import Link from 'next/link';
+import { SearchX } from 'lucide-react';
 import type { Metadata } from 'next';
 
 interface CollectionPageProps {
@@ -80,23 +81,14 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   if (searchParams.maxPrice) {
     productQuery.maxPrice = parseFloat(searchParams.maxPrice);
   }
+  if (searchParams.sort) {
+    productQuery.sort = searchParams.sort;
+  }
 
   const result = await api.product.list.query(productQuery);
-  let products = (result as any).items || [];
+  const products = (result as any).items || [];
   const total = (result as any).total || 0;
   const hasMore = (result as any).hasMore || false;
-
-  // Client-side sorting (API doesn't support sort param)
-  if (searchParams.sort) {
-    const sorted = [...products];
-    switch (searchParams.sort) {
-      case 'price-asc': sorted.sort((a: any, b: any) => a.price - b.price); break;
-      case 'price-desc': sorted.sort((a: any, b: any) => b.price - a.price); break;
-      case 'name-asc': sorted.sort((a: any, b: any) => a.name.localeCompare(b.name)); break;
-      case 'name-desc': sorted.sort((a: any, b: any) => b.name.localeCompare(a.name)); break;
-    }
-    products = sorted;
-  }
 
   const title = isAll ? 'All Products' : category?.name || 'Collection';
 
@@ -184,8 +176,37 @@ export default async function CollectionPage({ params, searchParams }: Collectio
         </div>
       )}
 
-      {/* Product grid */}
-      <ProductGrid products={products} />
+      {/* Product grid or empty state */}
+      {products.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-text) 6%, transparent)' }}
+          >
+            <SearchX size={28} style={{ color: 'var(--color-text-muted)' }} />
+          </div>
+          <h3 className="font-display text-lg font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+            No products found
+          </h3>
+          <p className="text-sm mb-6 max-w-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {searchParams.search
+              ? 'Try a different search term'
+              : (searchParams.minPrice || searchParams.maxPrice)
+                ? 'Try adjusting your filters'
+                : 'Check back soon for new products'}
+          </p>
+          {(searchParams.search || searchParams.minPrice || searchParams.maxPrice || searchParams.sort) && (
+            <Link
+              href={`${storeUrl}/collections/${params.categorySlug}`}
+              className="btn-secondary text-xs !py-2 !px-4"
+            >
+              Clear filters
+            </Link>
+          )}
+        </div>
+      ) : (
+        <ProductGrid products={products} />
+      )}
 
       {/* Pagination */}
       {total > limit && (

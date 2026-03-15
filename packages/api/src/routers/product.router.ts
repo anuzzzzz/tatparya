@@ -57,6 +57,7 @@ export const productRouter = router({
         tags: input.tags,
         minPrice: input.minPrice,
         maxPrice: input.maxPrice,
+        sort: input.sort,
         page: input.pagination.page,
         limit: input.pagination.limit,
       });
