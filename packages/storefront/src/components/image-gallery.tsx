@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { imageUrl as resolveImage, cn } from '@/lib/utils';
 import { useStore } from './store-provider';
+import { ImageLightbox } from './image-lightbox';
 
 interface ImageGalleryProps {
   images: Array<{
@@ -19,6 +20,8 @@ interface ImageGalleryProps {
 export function ImageGallery({ images }: ImageGalleryProps) {
   const { design } = useStore();
   const [current, setCurrent] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   if (!images || images.length === 0) {
     return (
@@ -35,6 +38,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
   const mainImage = images[current]!;
   const mainSrc = resolveImage(mainImage.heroUrl || mainImage.originalUrl);
+  const allImageUrls = images.map(img => resolveImage(img.heroUrl || img.originalUrl));
 
   // Build srcSet for responsive loading
   const mainSrcSet = [
@@ -61,7 +65,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             sizes="(max-width: 768px) 100vw, 50vw"
             alt={mainImage.alt || 'Product image'}
             className="w-full h-full object-cover"
-            style={{ borderRadius: 'var(--radius-lg)' }}
+            style={{ borderRadius: 'var(--radius-lg)', cursor: 'zoom-in' }}
+            onClick={() => { setLightboxIndex(current); setLightboxOpen(true); }}
           />
         </div>
 
@@ -102,6 +107,14 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           </div>
         )}
       </div>
+
+      {lightboxOpen && (
+        <ImageLightbox
+          images={allImageUrls}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
 
       {/* Thumbnail strip (desktop) */}
       {images.length > 1 && (

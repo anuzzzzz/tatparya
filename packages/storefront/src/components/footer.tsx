@@ -277,11 +277,27 @@ function BottomBar({ storeName }: { storeName: string }) {
   const { design } = useStore();
   return (
     <div
-      className="mt-12 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-3"
+      className="mt-12 pt-6 border-t"
       style={{ borderColor: `color-mix(in srgb, ${design.palette.text} 6%, transparent)` }}
     >
-      <p className="text-[10px]">© {new Date().getFullYear()} {storeName}. All rights reserved.</p>
-      <span className="text-[10px] opacity-40">Powered by Tatparya</span>
+      <div className="flex flex-wrap items-center gap-2 mb-4 opacity-40">
+        {['Visa', 'Mastercard', 'UPI', 'COD', 'Net Banking'].map(method => (
+          <span
+            key={method}
+            className="text-[10px] font-medium px-2 py-1 border rounded"
+            style={{
+              borderColor: `${design.palette.text}20`,
+              color: design.palette.textMuted,
+            }}
+          >
+            {method}
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+        <p className="text-[10px]">© {new Date().getFullYear()} {storeName}. All rights reserved.</p>
+        <span className="text-[10px] opacity-40">Powered by Tatparya</span>
+      </div>
     </div>
   );
 }

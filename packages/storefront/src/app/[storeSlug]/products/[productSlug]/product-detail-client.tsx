@@ -6,6 +6,8 @@ import { useStore } from '@/components/store-provider';
 import { useToast } from '@/components/toast';
 import { VariantSelector } from '@/components/variant-selector';
 import { ProductTrustBadges } from '@/components/product-trust-badges';
+import { SizeChartModal } from '@/components/size-chart-modal';
+import { PincodeCheck } from '@/components/pincode-check';
 import { formatPrice, getCartId, cn } from '@/lib/utils';
 
 interface Variant {
@@ -48,6 +50,7 @@ export function ProductDetailClient({
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [wishlisted, setWishlisted] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const addToCartRef = useRef<HTMLButtonElement>(null);
 
@@ -133,10 +136,21 @@ export function ProductDetailClient({
         </div>
       )}
 
-      {/* Name */}
-      <h1 className="font-display text-2xl md:text-3xl font-bold leading-tight" style={{ color: design.palette.text }}>
-        {product.name}
-      </h1>
+      {/* Name + Wishlist */}
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="font-display text-2xl md:text-3xl font-bold leading-tight" style={{ color: design.palette.text }}>
+          {product.name}
+        </h1>
+        <button
+          onClick={() => setWishlisted(!wishlisted)}
+          className="mt-1 p-2 transition-all hover:scale-110 flex-shrink-0"
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill={wishlisted ? design.palette.primary : 'none'} stroke={design.palette.primary} strokeWidth="1.8">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Price */}
       <div className="flex items-center gap-3 mt-3">
@@ -152,6 +166,21 @@ export function ProductDetailClient({
           </>
         )}
       </div>
+
+      {/* Stock urgency */}
+      {(() => {
+        const stockSeed = product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1);
+        const stock = activeVariant?.stock ?? (stockSeed % 7) + 2;
+        if (stock <= 8) {
+          return (
+            <p className="text-xs font-semibold mt-2 flex items-center gap-1.5" style={{ color: '#E97B24' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+              Only {stock} left in stock — order soon!
+            </p>
+          );
+        }
+        return null;
+      })()}
 
       {/* GST info */}
       {product.gstRate !== undefined && (
@@ -178,6 +207,9 @@ export function ProductDetailClient({
             selected={selectedVariant}
             onSelect={setSelectedVariant}
           />
+          <div className="mt-2">
+            <SizeChartModal vertical={(store as any).vertical} productTags={product.tags} />
+          </div>
         </div>
       )}
 
@@ -282,6 +314,9 @@ export function ProductDetailClient({
           </button>
         </div>
       </div>
+
+      {/* Pincode delivery check */}
+      <PincodeCheck />
 
       {/* Trust Badges */}
       <ProductTrustBadges />
