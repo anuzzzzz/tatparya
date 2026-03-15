@@ -1,40 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { SellerAuthProvider, useSellerAuth } from '@/lib/chat/auth-provider';
-import { LoginScreen } from '@/components/chat/login-screen';
+import React from 'react';
+import { useSellerAuth } from '@/lib/chat/auth-provider';
 import { ChatShell } from '@/components/chat/chat-shell';
 
-// ============================================================
-// Dashboard Page
-//
-// If not logged in → LoginScreen (phone OTP)
-// If logged in → ChatShell (the entire seller experience)
-// ============================================================
+export default function DashboardPage() {
+  const { storeId } = useSellerAuth();
 
-function DashboardContent() {
-  const { user, loading } = useSellerAuth();
-
-  if (loading) {
+  if (!storeId) {
     return (
-      <div className="chat-loading">
-        <div className="chat-loading-logo">त</div>
-        <p>Loading...</p>
+      <div className="db-empty">
+        <p>No store found. Start chatting to create your first store.</p>
       </div>
     );
   }
 
-  if (!user && process.env.NODE_ENV !== 'development') {
-    return <LoginScreen onLogin={() => window.location.reload()} />;
-  }
-
   return <ChatShell />;
-}
-
-export default function DashboardPage() {
-  return (
-    <SellerAuthProvider>
-      <DashboardContent />
-    </SellerAuthProvider>
-  );
 }
