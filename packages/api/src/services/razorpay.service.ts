@@ -1,5 +1,5 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import Razorpay from 'razorpay';
-import { validatePaymentVerification, validateWebhookSignature } from 'razorpay/dist/utils/razorpay-utils.js';
 
 export class RazorpayService {
   private client: Razorpay;
@@ -31,19 +31,28 @@ export class RazorpayService {
     razorpaySignature: string,
   ): boolean {
     try {
-      return validatePaymentVerification(
-        { order_id: razorpayOrderId, payment_id: razorpayPaymentId },
-        razorpaySignature,
-        this.keySecret,
-      );
+      const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
+      const expected = createHmac('sha256', this.keySecret)
+        .update(payload)
+        .digest('hex');
+      const expectedBuf = Buffer.from(expected, 'utf8');
+      const signatureBuf = Buffer.from(razorpaySignature, 'utf8');
+      if (expectedBuf.length !== signatureBuf.length) return false;
+      return timingSafeEqual(expectedBuf, signatureBuf);
     } catch {
       return false;
     }
   }
 
-  verifyWebhookSignature(body: string, signature: string, webhookSecret: string): boolean {
+  verifyWebhookSignature(rawBody: string, signature: string, webhookSecret: string): boolean {
     try {
-      return validateWebhookSignature(body, signature, webhookSecret);
+      const expected = createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex');
+      const expectedBuf = Buffer.from(expected, 'utf8');
+      const signatureBuf = Buffer.from(signature, 'utf8');
+      if (expectedBuf.length !== signatureBuf.length) return false;
+      return timingSafeEqual(expectedBuf, signatureBuf);
     } catch {
       return false;
     }

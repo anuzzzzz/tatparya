@@ -35,18 +35,18 @@ const INDIAN_STATES = [
   { code: '37', name: 'Andhra Pradesh (new)' }, { code: '38', name: 'Ladakh' },
 ];
 
-let razorpayScriptPromise: Promise<void> | null = null;
+let razorpayScriptPromise: Promise<boolean> | null = null;
 
-function loadRazorpayScript(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.resolve();
-  if (window.Razorpay) return Promise.resolve();
+function loadRazorpayScript(): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if (window.Razorpay) return Promise.resolve(true);
   if (razorpayScriptPromise) return razorpayScriptPromise;
 
-  razorpayScriptPromise = new Promise((resolve, reject) => {
+  razorpayScriptPromise = new Promise((resolve) => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
 
@@ -167,7 +167,12 @@ export function CheckoutForm() {
           notes: form.notes.trim() || undefined,
         });
 
-        await loadRazorpayScript();
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          setErrors({ form: 'Failed to load payment gateway. Please try again.' });
+          setSubmitting(false);
+          return;
+        }
 
         const modal = new window.Razorpay({
           key: initiated.razorpayKeyId,
@@ -182,6 +187,9 @@ export function CheckoutForm() {
             contact: form.phone,
           },
           theme: { color: design.palette.primary },
+          modal: {
+            ondismiss: () => setSubmitting(false),
+          },
           handler: async (response: {
             razorpay_order_id: string;
             razorpay_payment_id: string;
@@ -201,22 +209,21 @@ export function CheckoutForm() {
               router.push(`${storeUrl}/order/${initiated.orderId}`);
             } catch {
               setErrors({
-                form: 'Payment received but verification failed. Your order will be confirmed shortly.',
+                form: 'Payment received but verification pending. Your order will be confirmed shortly.',
               });
               setSubmitting(false);
-              // Navigate anyway — webhook will confirm the order
               router.push(`${storeUrl}/order/${initiated.orderId}`);
             }
           },
         });
 
-        modal.on('payment.failed', () => {
-          setErrors({ form: 'Payment failed. Please try again or choose Cash on Delivery.' });
+        modal.on('payment.failed', (response: any) => {
+          setErrors({ form: `Payment failed: ${response?.error?.description || 'Please try again or choose Cash on Delivery.'}` });
           setSubmitting(false);
         });
 
         modal.open();
-        // Keep submitting=true until handler callback resolves
+        // Keep submitting=true — ondismiss/handler/payment.failed will reset it
         return;
       }
     } catch (err: any) {

@@ -82,13 +82,16 @@ export const orderRouter = router({
         new DiscountRepository(ctx.serviceDb),
       );
 
-      // Create DB order with paymentMethod = 'upi' (generic online; updated after payment)
+      // Create DB order with paymentMethod = 'card' (updated to actual method after payment)
       const order = await orderService.createOrder(input.storeId, {
         ...input,
-        paymentMethod: 'upi',
+        paymentMethod: 'card',
       });
 
-      // Create Razorpay order first so we have the ID for the single state transition
+      // Transition created → payment_pending
+      await orderService.updateStatus(input.storeId, order.id, 'payment_pending');
+
+      // Create Razorpay order
       const razorpay = new RazorpayService(env.RAZORPAY_KEY_ID, env.RAZORPAY_KEY_SECRET);
       const amountInPaise = Math.round(order.total * 100);
       const rzpOrder = await razorpay.createOrder(amountInPaise, 'INR', order.orderNumber, {
@@ -96,10 +99,13 @@ export const orderRouter = router({
         orderId: order.id,
       });
 
-      // Single transition: created → payment_pending, storing razorpay order ID as reference
-      await orderService.updateStatus(input.storeId, order.id, 'payment_pending', {
-        paymentReference: rzpOrder.id,
-      });
+      // Store razorpay order ID as payment_reference via direct DB update
+      // (updateStatus validates state transitions; we only want to set a field here)
+      await ctx.serviceDb
+        .from('orders')
+        .update({ payment_reference: rzpOrder.id })
+        .eq('id', order.id)
+        .eq('store_id', input.storeId);
 
       return {
         orderId: order.id,
@@ -132,16 +138,29 @@ export const orderRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Payment verification failed' });
       }
 
+      const orderRepo = new OrderRepository(ctx.serviceDb);
       const orderService = new OrderService(
-        new OrderRepository(ctx.serviceDb),
+        orderRepo,
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
       );
 
-      const order = await orderService.updateStatus(input.storeId, input.orderId, 'paid', {
-        paymentStatus: 'captured',
-        paymentReference: input.razorpayPaymentId,
-      });
+      let order;
+      try {
+        order = await orderService.updateStatus(input.storeId, input.orderId, 'paid', {
+          paymentStatus: 'captured',
+          paymentReference: input.razorpayPaymentId,
+        });
+      } catch (err: any) {
+        // If the transition failed because the webhook already processed this payment,
+        // just fetch and return the current order state
+        if (err?.message?.includes('Invalid transition')) {
+          order = await orderRepo.findById(input.storeId, input.orderId);
+          if (!order) throw new TRPCError({ code: 'NOT_FOUND', message: 'Order not found' });
+        } else {
+          throw err;
+        }
+      }
 
       return order;
     }),

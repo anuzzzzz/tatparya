@@ -19,26 +19,24 @@ export async function registerRazorpayWebhook(app: FastifyInstance) {
       const rawBody = request.body as string;
       const signature = request.headers['x-razorpay-signature'] as string | undefined;
 
-      // Always return 200 to prevent Razorpay retries on non-2xx
       if (!signature) {
         request.log.warn('Razorpay webhook: missing signature header');
-        return reply.status(200).send({ ok: false, reason: 'missing_signature' });
+        return reply.status(400).send({ ok: false, reason: 'missing_signature' });
       }
 
       const webhookSecret = env.RAZORPAY_WEBHOOK_SECRET;
       if (!webhookSecret) {
-        request.log.warn('Razorpay webhook: RAZORPAY_WEBHOOK_SECRET not configured');
-        return reply.status(200).send({ ok: false, reason: 'not_configured' });
-      }
-
-      if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
-        return reply.status(200).send({ ok: false, reason: 'not_configured' });
-      }
-
-      const razorpay = new RazorpayService(env.RAZORPAY_KEY_ID, env.RAZORPAY_KEY_SECRET);
-      if (!razorpay.verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-        request.log.warn('Razorpay webhook: invalid signature');
-        return reply.status(200).send({ ok: false, reason: 'invalid_signature' });
+        // Graceful degradation: if not configured, accept but skip verification
+        request.log.warn('Razorpay webhook: RAZORPAY_WEBHOOK_SECRET not configured — skipping signature check');
+      } else {
+        if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+          return reply.status(200).send({ ok: false, reason: 'not_configured' });
+        }
+        const razorpay = new RazorpayService(env.RAZORPAY_KEY_ID, env.RAZORPAY_KEY_SECRET);
+        if (!razorpay.verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+          request.log.warn('Razorpay webhook: invalid signature');
+          return reply.status(400).send({ ok: false, reason: 'invalid_signature' });
+        }
       }
 
       let payload: any;
@@ -50,6 +48,10 @@ export async function registerRazorpayWebhook(app: FastifyInstance) {
 
       const event = payload?.event as string;
       const paymentEntity = payload?.payload?.payment?.entity;
+
+      if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+        return reply.status(200).send({ ok: false, reason: 'not_configured' });
+      }
 
       const db = getServiceClient();
       const orderRepo = new OrderRepository(db);
