@@ -30,7 +30,7 @@ export function CollectionFilters({ currentSlug, storeUrl, searchParams }: Colle
       if (searchParams.maxPrice) params.set('maxPrice', searchParams.maxPrice);
       if (searchParams.sort) params.set('sort', searchParams.sort);
       const qs = params.toString();
-      router.push(`${storeUrl}/collections/${currentSlug}${qs ? `?${qs}` : ''}`);
+      router.replace(`${storeUrl}/collections/${currentSlug}${qs ? `?${qs}` : ''}`);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
