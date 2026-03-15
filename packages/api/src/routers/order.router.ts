@@ -7,7 +7,13 @@ import { VariantRepository } from '../repositories/product.repository.js';
 import { DiscountRepository } from '../repositories/discount.repository.js';
 import { OrderService } from '../services/order.service.js';
 import { RazorpayService } from '../services/razorpay.service.js';
+import { EmailService } from '../services/email.service.js';
 import { env } from '../env.js';
+
+function getEmailService(): EmailService | null {
+  if (!env.RESEND_API_KEY) return null;
+  return new EmailService(env.RESEND_API_KEY, env.RESEND_FROM_EMAIL);
+}
 
 export const orderRouter = router({
   create: storeProcedure
@@ -31,7 +37,7 @@ export const orderRouter = router({
       // Verify store exists and is active
       const { data: store } = await ctx.serviceDb
         .from('stores')
-        .select('id, status')
+        .select('id, status, name, slug, owner_id')
         .eq('id', input.storeId)
         .single();
 
@@ -47,7 +53,70 @@ export const orderRouter = router({
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
       );
-      return orderService.createOrder(input.storeId, input);
+      const order = await orderService.createOrder(input.storeId, input);
+
+      // Fire-and-forget emails — never block the order flow
+      const email = getEmailService();
+      if (email) {
+        const storeUrl = `${env.STOREFRONT_BASE_URL}/${store.slug}`;
+        const addr = input.shippingAddress as any;
+
+        // Buyer confirmation (only if email provided)
+        if (input.buyerEmail) {
+          email.sendOrderConfirmation({
+            to: input.buyerEmail,
+            buyerName: input.buyerName,
+            orderNumber: order.orderNumber,
+            lineItems: (order.lineItems as any[]).map((li) => ({
+              name: li.name,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+              totalPrice: li.totalPrice,
+              imageUrl: li.imageUrl,
+            })),
+            subtotal: order.subtotal,
+            discountAmount: order.discountAmount,
+            taxAmount: order.taxAmount,
+            shippingCost: order.shippingCost,
+            total: order.total,
+            paymentMethod: order.paymentMethod,
+            shippingAddress: {
+              name: addr.name ?? input.buyerName,
+              line1: addr.line1,
+              line2: addr.line2,
+              city: addr.city,
+              state: addr.state,
+              pincode: addr.pincode,
+              phone: addr.phone ?? input.buyerPhone,
+            },
+            storeName: store.name,
+            storeUrl,
+          }).catch((err) => console.error('Buyer confirmation email failed:', err));
+        }
+
+        // Seller notification
+        if (store.owner_id) {
+          ctx.serviceDb.auth.admin.getUserById(store.owner_id).then(({ data }) => {
+            const sellerEmail = data?.user?.email;
+            if (sellerEmail) {
+              email.sendNewOrderNotification({
+                to: sellerEmail,
+                sellerName: store.name,
+                orderNumber: order.orderNumber,
+                buyerName: order.buyerName,
+                buyerPhone: order.buyerPhone,
+                total: order.total,
+                paymentMethod: order.paymentMethod,
+                itemCount: (order.lineItems as any[]).length,
+                storeName: store.name,
+                dashboardUrl: `${env.STOREFRONT_BASE_URL}/dashboard/orders/${order.id}`,
+              }).catch((err) => console.error('Seller notification email failed:', err));
+            }
+          }).catch((err) => console.error('Failed to fetch seller email:', err));
+        }
+      }
+
+      return order;
     }),
 
   /**
@@ -162,6 +231,50 @@ export const orderRouter = router({
         }
       }
 
+      // Fire-and-forget buyer confirmation after Razorpay payment verified
+      const email = getEmailService();
+      const buyerEmail = (order as any).buyerEmail as string | undefined;
+      if (email && buyerEmail) {
+        const { data: storeRow } = await ctx.serviceDb
+          .from('stores')
+          .select('name, slug')
+          .eq('id', input.storeId)
+          .single();
+        if (storeRow) {
+          const storeUrl = `${env.STOREFRONT_BASE_URL}/${storeRow.slug}`;
+          const addr = (order as any).shippingAddress as any;
+          email.sendOrderConfirmation({
+            to: buyerEmail,
+            buyerName: order.buyerName,
+            orderNumber: order.orderNumber,
+            lineItems: (order.lineItems as any[]).map((li) => ({
+              name: li.name,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+              totalPrice: li.totalPrice,
+              imageUrl: li.imageUrl,
+            })),
+            subtotal: order.subtotal,
+            discountAmount: order.discountAmount,
+            taxAmount: order.taxAmount,
+            shippingCost: order.shippingCost,
+            total: order.total,
+            paymentMethod: order.paymentMethod,
+            shippingAddress: {
+              name: addr?.name ?? order.buyerName,
+              line1: addr?.line1 ?? '',
+              line2: addr?.line2,
+              city: addr?.city ?? '',
+              state: addr?.state ?? '',
+              pincode: addr?.pincode ?? '',
+              phone: addr?.phone ?? order.buyerPhone,
+            },
+            storeName: storeRow.name,
+            storeUrl,
+          }).catch((err) => console.error('Buyer confirmation email (Razorpay) failed:', err));
+        }
+      }
+
       return order;
     }),
 
@@ -210,12 +323,38 @@ export const orderRouter = router({
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
       );
-      return orderService.updateStatus(input.storeId, input.orderId, input.status, {
+      const order = await orderService.updateStatus(input.storeId, input.orderId, input.status, {
         trackingNumber: input.trackingNumber,
         trackingUrl: input.trackingUrl,
         awbNumber: input.awbNumber,
         notes: input.notes,
       });
+
+      // Fire-and-forget shipping update email when order is marked shipped
+      if (input.status === 'shipped') {
+        const email = getEmailService();
+        const buyerEmail = (order as any).buyerEmail as string | undefined;
+        if (email && buyerEmail) {
+          const { data: storeRow } = await ctx.serviceDb
+            .from('stores')
+            .select('name, slug')
+            .eq('id', input.storeId)
+            .single();
+          if (storeRow) {
+            email.sendShippingUpdate({
+              to: buyerEmail,
+              buyerName: order.buyerName,
+              orderNumber: order.orderNumber,
+              trackingNumber: input.trackingNumber,
+              trackingUrl: input.trackingUrl,
+              storeName: storeRow.name,
+              storeUrl: `${env.STOREFRONT_BASE_URL}/${storeRow.slug}`,
+            }).catch((err) => console.error('Shipping update email failed:', err));
+          }
+        }
+      }
+
+      return order;
     }),
 
   revenue: storeProcedure

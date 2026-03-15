@@ -48,6 +48,10 @@ const EnvSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+  // Email (Resend)
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().email().default('orders@tatparya.in'),
+
   // WhatsApp (for later phases)
   GUPSHUP_API_KEY: z.string().optional(),
 
