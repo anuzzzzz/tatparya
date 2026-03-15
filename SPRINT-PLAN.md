@@ -69,29 +69,62 @@
 
 ---
 
-## Day 5-6: Multi-Vertical + Catalog AI
+## Day 5-6: All 8 Verticals + Catalog AI
 
-### Blueprints
-- [ ] `HomeDecorBlueprint.tsx` — hero, featured products, lifestyle grid, testimonials, about, trust
-- [ ] `BeautyBlueprint.tsx` — hero, bestsellers, ingredients spotlight, before-after, reviews, routine builder
-- [ ] `FoodBlueprint.tsx` — hero, menu/categories, bestsellers, freshness promise, reviews
-- [ ] Blueprint selector — store vertical → correct blueprint (fallback to RunwayBlueprint)
-- [ ] Each blueprint reads from same config schema as RunwayBlueprint
-- [ ] Test with Rad Living (home_decor) — should use HomeDecorBlueprint
+### Architecture: BaseBlueprint + Vertical Overrides
+All 8 verticals need distinct storefronts. Build shared infrastructure, not 8 copies:
 
-### Catalog AI Extension
-- [ ] Extend GPT-4o Vision prompt to generate `vertical_data` fields:
-  - Fashion: material, care_instructions, fit (relaxed/regular/slim), occasion
-  - Home decor: dimensions, material, weight, care_instructions
-  - Beauty: ingredients, skin_type, usage_instructions, volume/weight
-  - Food: ingredients, allergens, shelf_life, storage, nutritional_info
-- [ ] PDP reads `vertical_data` and renders appropriate sections
-- [ ] PDP layout adapts per vertical (tab labels, section order, which fields show)
+1. `BaseBlueprint.tsx` — shared section renderer, component registry
+   - Takes ordered list of section configs, renders each
+   - Shared sections: hero, product_grid, testimonials, newsletter, about, footer_trust
+   - Reads config.sections array
+
+2. Each vertical blueprint extends BaseBlueprint by defining:
+   - Section order (which sections appear and in what sequence)
+   - Section variants (e.g. hero_editorial vs hero_product_focus)
+   - Unique sections only that vertical needs
+   - PDP field configuration
+
+### Blueprints (all 8 verticals)
+- [ ] `BaseBlueprint.tsx` — shared section renderer, section component registry
+- [ ] `RunwayBlueprint` — REFACTOR to use BaseBlueprint (fashion: hero_editorial, lookbook, style guide, trend)
+- [ ] `HomeDecorBlueprint` — hero, room inspiration grid, material spotlight, lifestyle gallery, testimonials (Chumbak, Ellementry)
+- [ ] `BeautyBlueprint` — hero, bestsellers, ingredient spotlight, routine builder, before-after, reviews (Minimalist, Plum, Sugar, Forest Essentials, Mamaearth, Bella Vita, Beardo)
+- [ ] `FoodBlueprint` — hero, menu/categories, bestsellers, freshness promise, nutritional highlights, reviews (Whole Truth, Sleepy Owl)
+- [ ] `JewelleryBlueprint` — hero, collections by occasion, bestsellers, craftsmanship, certification trust, reviews (CaratLane, Melorra, Tarinika, Amama)
+- [ ] `ElectronicsBlueprint` — hero, product categories, specs comparison, tech features, warranty trust, reviews (boAt, Noise, CrossBeats)
+- [ ] `FMCGBlueprint` — hero, shop by category, combo deals, value packs, subscription CTA, trust badges (derive from food + general patterns)
+- [ ] `GeneralBlueprint` — safe default: hero, featured products, categories, testimonials, about, newsletter
+
+### Blueprint Selector
+- [ ] `getBlueprintForVertical(vertical: string)` utility
+- [ ] Homepage `page.tsx` calls it with `store.vertical`
+- [ ] Fallback: unknown vertical → GeneralBlueprint
+
+### Scraping (composition engine)
+- [ ] Add FMCG source URLs to `indian-d2c-brands.json` (Mamaearth essentials, The Man Company, Pee Safe, Sirona)
+- [ ] Run homepage scraper for FMCG stores
+- [ ] Run PDP scraper for all verticals with new URLs
+- [ ] Generate updated `section-frequency-matrix.json` and `pdp-frequency-matrix.json`
+
+### Catalog AI Extension (all 8 verticals)
+- [ ] Extend GPT-4o Vision prompt per vertical to generate `vertical_data`:
+  - Fashion: material, care_instructions, fit, occasion, style_notes
+  - Home decor: dimensions (L×W×H), material, weight, care_instructions, room_suggestion
+  - Beauty: ingredients, skin_type, usage_instructions, volume/weight, concerns_addressed
+  - Food: ingredients, allergens, shelf_life, storage_instructions, nutritional_info
+  - Jewellery: metal_type, purity, stone_type, certification, occasion, weight_grams
+  - Electronics: specifications (key-value), warranty, compatibility, in_the_box
+  - FMCG: quantity, usage_frequency, ingredients, certifications, shelf_life
+  - General: key_features (bullets), specifications (key-value)
+- [ ] PDP reads `vertical_data` per vertical
+- [ ] PDP tab labels adapt per vertical ("Specifications" for electronics, "Ingredients" for beauty, etc.)
 
 ### PDP Frequency Matrix
-- [ ] Load `pdp-frequency-matrix.json` from composition engine output
-- [ ] Decide which PDP elements render per vertical based on frequency thresholds
-- [ ] >80% frequency = always show, 50-80% = show if data exists, <30% = hide
+- [ ] Load `pdp-frequency-matrix.json` as static asset
+- [ ] PDP checks vertical + element → frequency threshold
+- [ ] >80% = always show, 50-80% = show if data, <30% = hide
+- [ ] Elements: size_chart, reviews, pincode, delivery_estimate, share, wishlist, compare, EMI, bulk_pricing, certification
 
 ---
 
@@ -151,7 +184,7 @@
 - [ ] Redis-based rate limiter on API
 - [ ] Per-IP limits: 100 req/min general, 10 req/min for mutations
 - [ ] Per-store limits: 1000 req/min
-- [ ] Webhook endpoints exempt from rate limiting
+- [ ] Webhook endpoints exempt
 
 ### Image Optimization
 - [ ] remove.bg integration on product card images (or at upload time)
@@ -174,105 +207,107 @@
 ### Payment Edge Cases
 - [ ] Razorpay modal closed without paying → order stays payment_pending → cleanup cron
 - [ ] Double-click submit prevention (disable button, debounce)
-- [ ] Webhook arrives before client verify → idempotent (already handled in design)
+- [ ] Webhook arrives before client verify → idempotent
 - [ ] Webhook retry handling (Razorpay retries for 24h)
-- [ ] Partial payment / payment amount mismatch detection
+- [ ] Partial payment / amount mismatch detection
 - [ ] Refund initiation via dashboard
 
 ### Stock & Cart Edge Cases
-- [ ] Out of stock → disable "Add to Cart" button, show badge
+- [ ] Out of stock → disable Add to Cart, show badge
 - [ ] Low stock warning ("Only X left!")
-- [ ] Stock check at checkout time (not just at cart add)
-- [ ] Concurrent stock updates — use DB CHECK(stock >= 0) constraint
+- [ ] Stock check at checkout time (not just cart add)
+- [ ] Concurrent stock updates — DB CHECK(stock >= 0)
 - [ ] Cart item removed if product archived/deleted
 - [ ] Cart expiry: Redis TTL or periodic cleanup
-- [ ] Price change between add-to-cart and checkout → show warning
+- [ ] Price change between cart and checkout → warning
 
 ### Order Edge Cases
 - [ ] Buyer cancellation (within X hours)
 - [ ] Duplicate order prevention (idempotency key)
-- [ ] Order status can only transition forward (already enforced by ORDER_TRANSITIONS)
+- [ ] Order transitions enforced (already via ORDER_TRANSITIONS)
 - [ ] Refund state: only from delivered/paid/processing
-- [ ] RTO handling: auto-restock
+- [ ] RTO: auto-restock
 
 ### Security
-- [ ] Input sanitization: all user inputs (XSS prevention)
-- [ ] SQL injection: already using Supabase client (parameterized), verify no raw SQL
-- [ ] CSRF: verify Origin/Referer headers on mutations
-- [ ] Rate limiting on auth endpoints (brute force prevention)
-- [ ] Webhook signature verification (already designed)
-- [ ] RLS policies audit — verify no bypass possible
-- [ ] Secrets: no hardcoded keys, all from env
-- [ ] CORS: lock down to known domains in production
+- [ ] Input sanitization: XSS prevention
+- [ ] SQL injection: verify Supabase parameterized, no raw SQL
+- [ ] CSRF: verify Origin/Referer on mutations
+- [ ] Rate limiting on auth endpoints (brute force)
+- [ ] Webhook signature verification
+- [ ] RLS policies audit — no bypass possible
+- [ ] Secrets: no hardcoded keys
+- [ ] CORS: lock to known domains in production
 - [ ] Content Security Policy headers
 
 ### UI Completeness
-- [ ] Empty states: cart empty, no orders, no products, no collections, search no results
-- [ ] Error states: API failure, network error, 500 page
-- [ ] Loading states: skeleton loaders on all data-fetching pages
-- [ ] Form validation: inline errors, submit disabled until valid
-- [ ] Toast notifications: success/error/info for all mutations
-- [ ] Confirm dialogs: delete product, cancel order, remove from cart
+- [ ] Empty states: cart, orders, products, collections, search
+- [ ] Error states: API failure, network, 500 page
+- [ ] Loading states: skeleton loaders on all data pages
+- [ ] Form validation: inline errors, disabled submit
+- [ ] Toast notifications: success/error/info
+- [ ] Confirm dialogs: delete, cancel, remove
 
 ---
 
 ## Day 13-14: Testing + Polish
 
-### E2E Flows (manual test each)
-- [ ] Seller: signup → upload photos → store generates → customize via chat → see storefront
-- [ ] Buyer: browse → search → filter → PDP → add to cart → checkout COD → confirmation
-- [ ] Buyer: same flow but pay via Razorpay (test mode)
-- [ ] Seller: receive order notification → view in dashboard → process → ship → deliver
-- [ ] Seller: apply discount code → buyer uses at checkout → discount reflected
-- [ ] Buyer: attempt purchase of out-of-stock item → blocked
-- [ ] Buyer: payment fails → retry → success
-- [ ] Seller: cancel order → stock restored
-- [ ] Multiple stores: create 2nd store, verify complete isolation
+### E2E Flows
+- [ ] Seller: signup → upload photos → store generates → customize → storefront
+- [ ] Buyer: browse → search → filter → PDP → cart → COD checkout → confirmation
+- [ ] Buyer: same flow, Razorpay test mode
+- [ ] Seller: order notification → dashboard → process → ship → deliver
+- [ ] Discount: seller creates code → buyer applies → reflected in total
+- [ ] Out of stock: buyer blocked at add-to-cart
+- [ ] Payment fail → retry → success
+- [ ] Seller cancel → stock restored
+- [ ] Multi-tenant: 2nd store, verify isolation
 
 ### Mobile
-- [ ] Full responsive audit on iPhone SE, iPhone 14, Pixel 7
-- [ ] Touch targets: minimum 44px
-- [ ] Bottom nav doesn't overlap content
-- [ ] Cart drawer works on mobile
-- [ ] Checkout form: proper input modes (numeric for phone/pincode)
+- [ ] Responsive audit: iPhone SE, iPhone 14, Pixel 7
+- [ ] Touch targets ≥ 44px
+- [ ] Bottom nav clear of content
+- [ ] Cart drawer on mobile
+- [ ] Checkout: numeric inputMode for phone/pincode
 - [ ] Razorpay modal on mobile
 
-### Multi-Vertical Testing
-- [ ] Fashion store (Saskia) — RunwayBlueprint
-- [ ] Home decor store (Rad Living) — HomeDecorBlueprint
-- [ ] Beauty store (test) — BeautyBlueprint
-- [ ] Food store (test) — FoodBlueprint
-- [ ] Each: PDP shows correct vertical-specific fields
+### Multi-Vertical Testing (all 8)
+- [ ] Fashion (Saskia) — RunwayBlueprint, PDP: material/fit/care
+- [ ] Home decor (Rad Living) — HomeDecorBlueprint, PDP: dimensions/material/room
+- [ ] Beauty (test store) — BeautyBlueprint, PDP: ingredients/skin_type/usage
+- [ ] Food (test store) — FoodBlueprint, PDP: nutritional/allergens/shelf_life
+- [ ] Jewellery (test store) — JewelleryBlueprint, PDP: purity/certification/metal
+- [ ] Electronics (test store) — ElectronicsBlueprint, PDP: specs/warranty/compatibility
+- [ ] FMCG (test store) — FMCGBlueprint, PDP: quantity/shelf_life/certifications
+- [ ] General (test store) — GeneralBlueprint, PDP: features/specifications
+- [ ] Each: correct homepage blueprint sections
+- [ ] Each: correct PDP vertical fields shown/hidden
 
 ### Code Quality
-- [ ] Remove all console.log (replace with proper logger)
-- [ ] Remove dead code / commented code
-- [ ] TypeScript strict mode: no `any` escape hatches
-- [ ] Consistent error handling patterns
-- [ ] API error messages: user-friendly, no stack traces
-- [ ] README.md: setup instructions, architecture overview, env vars
+- [ ] Remove console.log → proper logger
+- [ ] Remove dead/commented code
+- [ ] TypeScript strict: eliminate `any`
+- [ ] Consistent error handling
+- [ ] User-friendly API errors (no stack traces)
+- [ ] README.md: setup, architecture, env vars
 
 ### Performance Final Pass
 - [ ] Lighthouse: Performance >90, Accessibility >90, SEO >90
-- [ ] First Contentful Paint <1.5s
-- [ ] Time to Interactive <3s
-- [ ] Largest Contentful Paint <2.5s
-- [ ] No layout shift (CLS <0.1)
+- [ ] FCP <1.5s, TTI <3s, LCP <2.5s, CLS <0.1
 
 ---
 
-## Daily Execution Pattern
+## Execution Pattern
 
-1. Morning: Opus (this chat) audits yesterday's work via GitHub, identifies issues
+1. Opus audits yesterday's work via GitHub, identifies issues
 2. Opus writes Claude CLI prompts for the day's features
 3. Anuj executes prompts in Claude Code
-4. Evening: Opus reviews, writes fixes/next batch
-5. End of day: Update ROADMAP.md checkboxes
+4. Opus reviews, writes fixes/next batch
+5. Update ROADMAP.md checkboxes
 
-## Definition of Done (per feature)
-- TypeScript compiles (`pnpm build` passes)
-- Works on mobile and desktop
-- Error/empty/loading states handled
-- Input validation (client + server)
+## Definition of Done
+- `pnpm build` passes
+- Works on mobile + desktop
+- Error/empty/loading states
+- Client + server validation
 - No console errors
-- Follows existing code patterns
+- Follows existing patterns
