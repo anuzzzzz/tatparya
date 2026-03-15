@@ -186,6 +186,15 @@ store.undo_design         {}
   USE FOR: "undo", "go back", "revert", "I don't like this, change it back",
   "restore the old design", "undo that change".
 
+store.update_hero_cta     { ctaText?: string, ctaSecondaryText?: string }
+  → Updates the hero section call-to-action button text.
+  USE FOR: "change the shop button to X", "update the CTA", "change the hero button text".
+
+store.update_announcement { messages?: string[], bgColor?: string, textColor?: string, visible?: boolean }
+  → Updates the announcement bar at the top of the store.
+  USE FOR: "change the announcement", "update the banner text", "hide/show the announcement bar",
+  "add a sale announcement", "change announcement bar color".
+
 ── Sections ──
 section.toggle         { sectionType: string, visible: boolean }
 section.reorder        { order: string[] }

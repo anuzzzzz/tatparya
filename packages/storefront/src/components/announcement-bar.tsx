@@ -9,10 +9,15 @@ export function AnnouncementBar() {
   const [dismissed, setDismissed] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const announcementConfig = (config as any)?.announcementBar || {};
+  const visible = announcementConfig.visible !== false;
   const messages: string[] =
+    announcementConfig.messages ||
     (config as any)?.announcementMessages ||
     (config as any)?.content?.marquee ||
     ['Free Shipping on Orders Above \u20B9499', 'COD Available Across India', 'Easy 7-Day Returns'];
+  const bgColor = announcementConfig.bgColor || design.palette.text;
+  const textColor = announcementConfig.textColor || design.palette.background;
 
   useEffect(() => {
     if (messages.length <= 1) return;
@@ -22,12 +27,12 @@ export function AnnouncementBar() {
     return () => clearInterval(t);
   }, [messages.length]);
 
-  if (dismissed || messages.length === 0) return null;
+  if (!visible || dismissed || messages.length === 0) return null;
 
   return (
     <div
       className="relative z-[60] flex items-center justify-center px-8 py-2"
-      style={{ backgroundColor: design.palette.text, color: design.palette.background }}
+      style={{ backgroundColor: bgColor, color: textColor }}
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-center truncate">
         {messages[currentIndex]}

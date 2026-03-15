@@ -70,6 +70,15 @@ async function executeSingle(
     case 'store.update_bio':
       return updateStoreConfig(db, storeId, { storeBio: action.payload.storeBio });
 
+    case 'store.update_hero_cta':
+      return updateStoreConfig(db, storeId, {
+        heroCtaText: action.payload.ctaText,
+        heroCtaSecondaryText: action.payload.ctaSecondaryText,
+      });
+
+    case 'store.update_announcement':
+      return updateStoreConfig(db, storeId, { announcementBar: action.payload });
+
     // ── Store Design ────────────────────────────────────
     case 'store.update_palette': {
       // Haiku sometimes wraps in { palette: {...} }, sometimes puts fields directly in payload

@@ -8,7 +8,6 @@
  *  FIXED DECISIONS (AI cannot change):
  *  - Section order: hero → trust → products → about → newsletter → footer
  *  - Hero: full-bleed slideshow, 85vh, bottom-left text
- *  - Font: Cormorant Garamond display / DM Sans body
  *  - Product grid: 4-col desktop, 2-col mobile, 3:4 ratio
  *  - Spacing: 80px between sections, 0 vibeWeight nonsense
  *  - Overlay: 4-stop cinematic gradient, guaranteed readable
@@ -53,10 +52,21 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
   const subtext = (config as any)?.heroSubtext || 'Discover our curated collection.';
   const bio = (config as any)?.storeBio || store.description || '';
 
+  const displayFont = design.fonts?.display || 'Cormorant Garamond';
+  const bodyFont = design.fonts?.body || 'DM Sans';
+
+  const sectionContent = (config as any)?.content?.sectionContent || {};
+  const productContent = sectionContent.product_carousel || sectionContent.featured_products || {};
+  const testimonialContent = sectionContent.testimonials || {};
+  const newsletterContent = sectionContent.newsletter || {};
+
+  const heroCtaText = (config as any)?.heroCtaText || 'Shop Collection';
+  const heroCtaSecondary = (config as any)?.heroCtaSecondaryText || 'Our Story';
+
   return (
     <div
       style={{
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: `'${bodyFont}', sans-serif`,
         color: p.text,
         backgroundColor: p.background,
         '--runway-primary': p.primary,
@@ -67,9 +77,8 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         '--runway-accent': p.accent || p.primary,
       } as React.CSSProperties}
     >
-      {/* Google Fonts — always Cormorant Garamond + DM Sans */}
       <link
-        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@400;500;600&display=swap"
+        href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(displayFont)}:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=${encodeURIComponent(bodyFont)}:wght@400;500;600&display=swap`}
         rel="stylesheet"
       />
 
@@ -108,6 +117,9 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
         subtext={subtext}
         link={`${storeUrl}/collections/all`}
         storeUrl={storeUrl}
+        ctaText={heroCtaText}
+        ctaSecondary={heroCtaSecondary}
+        displayFont={displayFont}
       />
 
       {/* ── 3. MARQUEE — only if content exists ── */}
@@ -119,10 +131,11 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
       {products.length > 0 && (
         <RunwayProductSection
           products={products.slice(0, 8)}
-          eyebrow="The Collection"
-          title="New Arrivals"
+          eyebrow={productContent.eyebrow || 'The Collection'}
+          title={productContent.title || 'New Arrivals'}
           storeUrl={storeUrl}
           primary={p.primary}
+          displayFont={displayFont}
         />
       )}
 
@@ -134,18 +147,25 @@ export function RunwayBlueprint({ products, heroImages, storeUrl }: RunwayProps)
           imageUrl={heroImages[1] || heroImages[0]}
           primary={p.primary}
           surface={p.surface || '#f5f0eb'}
+          displayFont={displayFont}
         />
       )}
 
       {/* ── 6. TESTIMONIALS — only if content exists ── */}
       {content.testimonials?.length >= 3 && (
-        <RunwayTestimonials testimonials={content.testimonials} primary={p.primary} />
+        <RunwayTestimonials
+          testimonials={content.testimonials}
+          primary={p.primary}
+          eyebrow={testimonialContent.eyebrow || 'Reviews'}
+          title={testimonialContent.title || 'What They Say'}
+          displayFont={displayFont}
+        />
       )}
 
       {/* ── 7. NEWSLETTER ── */}
       <RunwayNewsletter
-        headline={content.newsletter?.heading || `Join the ${store.name} Club`}
-        subtext={content.newsletter?.subtext || 'New drops, exclusive offers & styling tips.'}
+        headline={newsletterContent.title || content.newsletter?.heading || `Join the ${store.name} Club`}
+        subtext={newsletterContent.subtext || content.newsletter?.subtext || 'New drops, exclusive offers & styling tips.'}
         primary={p.primary}
         surface={p.surface || '#f5f0eb'}
       />
@@ -185,7 +205,7 @@ function RunwayNavbar({ storeName, storeUrl, primary }: { storeName: string; sto
       <Link
         href={storeUrl}
         style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: "'Cormorant Garamond', serif" /* fallback — component doesn't receive displayFont */,
           fontSize: 22, fontWeight: 600, letterSpacing: '0.02em',
           color: scrolled ? '#1a1a1a' : '#fff',
           textDecoration: 'none',
@@ -234,7 +254,7 @@ function RunwayNavbar({ storeName, storeUrl, primary }: { storeName: string; sto
 // ============================================================
 // HERO — 85vh, slideshow, cinematic 4-stop gradient
 // ============================================================
-function RunwayHero({ images, tagline, subtext, link, storeUrl }: { images: string[]; tagline: string; subtext: string; link: string; storeUrl: string }) {
+function RunwayHero({ images, tagline, subtext, link, storeUrl, ctaText, ctaSecondary, displayFont }: { images: string[]; tagline: string; subtext: string; link: string; storeUrl: string; ctaText: string; ctaSecondary: string; displayFont: string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -283,7 +303,7 @@ function RunwayHero({ images, tagline, subtext, link, storeUrl }: { images: stri
         className="runway-stagger"
       >
         <h1 style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: `'${displayFont}', serif`,
           fontSize: 'clamp(2.2rem, 5.5vw, 3.8rem)',
           fontWeight: 500, fontStyle: 'italic',
           lineHeight: 1.05, letterSpacing: '-0.02em',
@@ -313,7 +333,7 @@ function RunwayHero({ images, tagline, subtext, link, storeUrl }: { images: stri
             onMouseEnter={e => (e.currentTarget.style.transform = 'scale(0.97)')}
             onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            Shop Collection
+            {ctaText}
           </Link>
           <Link
             href={`${storeUrl}/about`}
@@ -325,7 +345,7 @@ function RunwayHero({ images, tagline, subtext, link, storeUrl }: { images: stri
               textDecoration: 'none', letterSpacing: '0.04em',
             }}
           >
-            Our Story
+            {ctaSecondary}
           </Link>
         </div>
 
@@ -377,8 +397,8 @@ function RunwayMarquee({ phrases, primary, bg }: { phrases: string[]; primary: s
 // ============================================================
 // PRODUCTS — one grid, 4-col, 3:4 ratio, minimal cards
 // ============================================================
-function RunwayProductSection({ products, eyebrow, title, storeUrl, primary }: {
-  products: any[]; eyebrow: string; title: string; storeUrl: string; primary: string;
+function RunwayProductSection({ products, eyebrow, title, storeUrl, primary, displayFont }: {
+  products: any[]; eyebrow: string; title: string; storeUrl: string; primary: string; displayFont: string;
 }) {
   return (
     <section style={{ padding: '80px clamp(16px, 4vw, 48px)' }}>
@@ -392,7 +412,7 @@ function RunwayProductSection({ products, eyebrow, title, storeUrl, primary }: {
             {eyebrow}
           </p>
           <h2 style={{
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: `'${displayFont}', serif`,
             fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 500,
             margin: 0,
           }}>
@@ -513,8 +533,8 @@ function RunwayProductCard({ product, storeUrl, index }: { product: any; storeUr
 // ============================================================
 // ABOUT — image left, text right, editorial feel
 // ============================================================
-function RunwayAbout({ storeName, bio, imageUrl, primary, surface }: {
-  storeName: string; bio: string; imageUrl?: string; primary: string; surface: string;
+function RunwayAbout({ storeName, bio, imageUrl, primary, surface, displayFont }: {
+  storeName: string; bio: string; imageUrl?: string; primary: string; surface: string; displayFont: string;
 }) {
   return (
     <section style={{ backgroundColor: surface, padding: '0' }}>
@@ -546,7 +566,7 @@ function RunwayAbout({ storeName, bio, imageUrl, primary, surface }: {
             Our Story
           </p>
           <h2 style={{
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: `'${displayFont}', serif`,
             fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', fontWeight: 500,
             margin: '0 0 20px 0', lineHeight: 1.2,
           }}>
@@ -566,9 +586,9 @@ function RunwayAbout({ storeName, bio, imageUrl, primary, surface }: {
 // ============================================================
 // TESTIMONIALS — 3 cards, clean
 // ============================================================
-function RunwayTestimonials({ testimonials, primary }: {
+function RunwayTestimonials({ testimonials, primary, eyebrow, title, displayFont }: {
   testimonials: { text: string; name: string; city: string; rating: number }[];
-  primary: string;
+  primary: string; eyebrow: string; title: string; displayFont: string;
 }) {
   return (
     <section style={{ padding: '80px clamp(16px, 4vw, 48px)' }}>
@@ -577,14 +597,14 @@ function RunwayTestimonials({ testimonials, primary }: {
           fontSize: 11, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase',
           color: primary, marginBottom: 8,
         }}>
-          Reviews
+          {eyebrow}
         </p>
         <h2 style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: `'${displayFont}', serif`,
           fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 500,
           marginBottom: 48,
         }}>
-          What They Say
+          {title}
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
           {testimonials.slice(0, 3).map((t, i) => (
@@ -618,7 +638,7 @@ function RunwayNewsletter({ headline, subtext, primary, surface }: {
     <section style={{ backgroundColor: surface, padding: '80px clamp(16px, 4vw, 48px)', textAlign: 'center' }}>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
         <h2 style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: "'Cormorant Garamond', serif" /* fallback — component doesn't receive displayFont */,
           fontSize: 'clamp(1.3rem, 3vw, 1.8rem)', fontWeight: 500,
           marginBottom: 8,
         }}>
@@ -660,7 +680,7 @@ function RunwayFooter({ storeName, bio, storeUrl, textColor, mutedColor, primary
     <footer style={{ borderTop: '1px solid rgba(0,0,0,0.06)', padding: '64px clamp(16px, 4vw, 48px) 32px' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 48 }}>
         <div>
-          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif" /* fallback — component doesn't receive displayFont */, fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
             {storeName}
           </h3>
           {bio && <p style={{ fontSize: 12, lineHeight: 1.7, opacity: 0.5, maxWidth: 280 }}>{bio.slice(0, 160)}</p>}
