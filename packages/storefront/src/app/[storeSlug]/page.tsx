@@ -54,11 +54,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   // ── Blueprint check: fashion vertical gets the Runway blueprint ──
   const vertical = config?.vertical || (store as any).vertical;
   if (vertical === 'fashion' || config?.blueprint === 'runway') {
-    return (
-      <div style={{ marginTop: '-64px' }}>
-        <RunwayBlueprint products={productItems} heroImages={heroImages} storeUrl={storeUrl} />
-      </div>
-    );
+    return <RunwayBlueprint products={productItems} heroImages={heroImages} storeUrl={storeUrl} />;
   }
 
   const sectionLayout = config?.sections?.homepage || [];
@@ -90,7 +86,7 @@ export default async function StoreHomePage({ params }: HomePageProps) {
   const firstSectionIsHero = sectionLayout[0]?.type?.startsWith('hero_');
 
   return (
-    <div style={{ marginTop: firstSectionIsHero ? '-64px' : '0' }}>
+    <div>
       {sectionLayout.map((section: any, index: number) => {
         const isProductSection = ['product_carousel', 'featured_products', 'product_grid'].includes(section.type);
         if (isProductSection) productSectionCount++;
@@ -365,7 +361,7 @@ function ClassicLayout({
   useBgVariation: boolean;
 }) {
   return (
-    <div style={{ marginTop: '-64px' }}>
+    <div>
       <HeroSection imageUrl={heroImages[0]} images={heroImages} variant="full_bleed" />
       <TrustBar />
 

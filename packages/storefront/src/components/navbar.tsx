@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, ShoppingBag, Menu, X, MessageCircle } from 'lucide-react';
 import { useStore } from './store-provider';
@@ -8,10 +8,11 @@ import { useScrolled } from '@/hooks/use-scrolled';
 import { cn } from '@/lib/utils';
 
 export function Navbar() {
-  const { store, design, cartCount } = useStore();
+  const { store, design, cartCount, trpc } = useStore();
   const nav = design.nav || { style: 'sticky_minimal', showSearch: true, showCart: true, showWhatsapp: false };
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
   const scrolled = useScrolled(60);
 
   const storeUrl = `/${store.slug}`;
@@ -20,34 +21,29 @@ export function Navbar() {
     : '#';
 
   const useGlass = design.decorativeTokens?.useGlassmorphism !== false;
-  const isSticky = nav.style === 'sticky_minimal' || nav.style === 'top_bar';
+  // Navbar is now in a sticky container — use glass on scroll, solid bg otherwise
+  const textColor = design.palette.text;
 
-  // V3: Transparent navbar over hero — white text when unscrolled
-  const heroStyle = design.hero?.style || 'full_bleed';
-  const hasImageHero = ['full_bleed', 'parallax', 'carousel', 'video', 'gradient'].includes(heroStyle);
-  const isTransparent = !scrolled && hasImageHero;
-  const textColor = isTransparent ? '#fff' : design.palette.text;
-  const textMuted = isTransparent ? 'rgba(255,255,255,0.7)' : design.palette.textMuted;
+  useEffect(() => {
+    trpc.category.getTree.query({ storeId: store.id })
+      .then((cats: any) => setCategories(Array.isArray(cats) ? cats : []))
+      .catch(() => {});
+  }, [store.id]);
 
   return (
     <header
-      className={cn(
-        'w-full z-50 transition-all duration-500',
-        isSticky && 'fixed top-0 left-0 right-0',
-      )}
+      className="w-full transition-all duration-500"
       style={{
         backgroundColor: scrolled
           ? (useGlass ? 'rgba(255,255,255,0.0)' : design.palette.background)
-          : 'transparent',
+          : design.palette.background,
         backdropFilter: scrolled && useGlass ? 'blur(20px) saturate(180%)' : undefined,
         WebkitBackdropFilter: scrolled && useGlass ? 'blur(20px) saturate(180%)' : undefined,
-        borderBottom: scrolled
-          ? `1px solid color-mix(in srgb, ${design.palette.text} 8%, transparent)`
-          : '1px solid transparent',
+        borderBottom: `1px solid color-mix(in srgb, ${design.palette.text} 8%, transparent)`,
         boxShadow: scrolled ? '0 1px 12px rgba(0,0,0,0.04)' : 'none',
       }}
     >
-      {/* Glass background layer — separate so we can tint it with the store's bg color */}
+      {/* Glass background layer */}
       {scrolled && useGlass && (
         <div
           className="absolute inset-0 -z-10"
@@ -82,19 +78,24 @@ export function Navbar() {
 
         {/* Center: nav links (desktop) */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link
-            href={storeUrl}
-            className="transition-opacity duration-200 hover:opacity-70"
-            style={{ color: textColor }}
-          >
+          <Link href={storeUrl} className="transition-opacity duration-200 hover:opacity-70" style={{ color: textColor }}>
             Home
           </Link>
-          <Link
-            href={`${storeUrl}/collections/all`}
-            className="transition-opacity duration-200 hover:opacity-70"
-            style={{ color: textColor }}
-          >
+          <Link href={`${storeUrl}/collections/all`} className="transition-opacity duration-200 hover:opacity-70" style={{ color: textColor }}>
             Shop
+          </Link>
+          {categories.slice(0, 4).map((cat: any) => (
+            <Link
+              key={cat.id}
+              href={`${storeUrl}/collections/${cat.slug}`}
+              className="transition-opacity duration-200 hover:opacity-70"
+              style={{ color: textColor }}
+            >
+              {cat.name}
+            </Link>
+          ))}
+          <Link href={`${storeUrl}/about`} className="transition-opacity duration-200 hover:opacity-70" style={{ color: textColor }}>
+            About
           </Link>
         </div>
 
@@ -120,7 +121,7 @@ export function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               className="hidden md:flex p-2 transition-opacity duration-200 hover:opacity-70"
-              style={{ color: isTransparent ? '#25D366' : '#25D366' }}
+              style={{ color: '#25D366' }}
               aria-label="WhatsApp"
             >
               <MessageCircle size={20} />
@@ -188,6 +189,11 @@ export function Navbar() {
         >
           <Link href={storeUrl} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Home</Link>
           <Link href={`${storeUrl}/collections/all`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Shop All</Link>
+          {categories.slice(0, 4).map((cat: any) => (
+            <Link key={cat.id} href={`${storeUrl}/collections/${cat.slug}`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>
+              {cat.name}
+            </Link>
+          ))}
           <Link href={`${storeUrl}/about`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Our Story</Link>
           <Link href={`${storeUrl}/pages/contact`} className="block text-sm font-medium py-1" onClick={() => setMenuOpen(false)} style={{ color: design.palette.text }}>Contact</Link>
           {nav.showWhatsapp && (

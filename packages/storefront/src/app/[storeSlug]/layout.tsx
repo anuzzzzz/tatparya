@@ -62,9 +62,12 @@ export default async function StoreLayout({ children, params }: StoreLayoutProps
       <div style={cssVarsToStyle(cssVars)} className="min-h-screen flex flex-col">
         <StoreProvider store={store as any}>
           <ToastProvider>
-            <AnnouncementBar />
-            <Navbar />
-            <main className="flex-1 pt-16 pb-16 md:pb-0">{children}</main>
+            {/* Sticky header stack — announcement bar sits above navbar, both stick together */}
+            <div className="sticky top-0 z-50 w-full">
+              <AnnouncementBar />
+              <Navbar />
+            </div>
+            <main className="flex-1 pb-16 md:pb-0">{children}</main>
             <Footer />
             <WhatsAppButton />
             <MobileBottomNav />

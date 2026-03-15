@@ -465,7 +465,8 @@ function RunwayProductSection({ products, eyebrow, title, storeUrl, primary, dis
 function RunwayProductCard({ product, storeUrl, index }: { product: any; storeUrl: string; index: number }) {
   const [hovered, setHovered] = useState(false);
   const img = product.images?.[0];
-  const imgSrc = resolveImage(typeof img === 'object' ? (img.cardUrl || img.originalUrl) : img);
+  const rawSrc = typeof img === 'object' ? (img.cardUrl || img.originalUrl) : img;
+  const imgSrc = rawSrc ? resolveImage(rawSrc) : null;
   const discount = product.compareAtPrice ? discountPercent(product.price, product.compareAtPrice) : 0;
 
   return (
@@ -480,17 +481,29 @@ function RunwayProductCard({ product, storeUrl, index }: { product: any; storeUr
         position: 'relative', paddingBottom: '133%', overflow: 'hidden',
         backgroundColor: '#f0ebe5',
       }}>
-        <img
-          src={imgSrc}
-          alt={product.name}
-          loading="lazy"
-          style={{
-            position: 'absolute', inset: 0, width: '100%', height: '100%',
-            objectFit: 'cover',
-            transform: hovered ? 'scale(1.04)' : 'scale(1)',
-            transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        />
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt={product.name}
+            loading="lazy"
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover',
+              transform: hovered ? 'scale(1.04)' : 'scale(1)',
+              transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          />
+        ) : (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, #f0ebe5 0%, #e8e0d8 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: 11, opacity: 0.35, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              No image
+            </span>
+          </div>
+        )}
         {/* Discount badge — only if >0 */}
         {discount > 0 && (
           <span style={{

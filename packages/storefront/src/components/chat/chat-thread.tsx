@@ -21,9 +21,14 @@ interface ChatThreadProps {
 export function ChatThread({ messages, isTyping, messagesEndRef, onAction }: ChatThreadProps) {
   return (
     <div className="chat-thread">
-      {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} onAction={onAction} />
-      ))}
+      {messages.map((msg, i) => {
+        // Suppress timestamp if same role sent a message within 60s before this one
+        const prev = messages[i - 1];
+        const hideTimestamp = !!prev &&
+          prev.role === msg.role &&
+          msg.timestamp.getTime() - prev.timestamp.getTime() < 60_000;
+        return <MessageBubble key={msg.id} message={msg} onAction={onAction} hideTimestamp={hideTimestamp} />;
+      })}
       {isTyping && <TypingIndicator />}
       <div ref={messagesEndRef} />
     </div>
@@ -34,10 +39,10 @@ export function ChatThread({ messages, isTyping, messagesEndRef, onAction }: Cha
 // Message Router
 // ============================================================
 
-function MessageBubble({ message, onAction }: { message: ChatMessage; onAction?: (action: string, params?: Record<string, unknown>) => void }) {
+function MessageBubble({ message, onAction, hideTimestamp }: { message: ChatMessage; onAction?: (action: string, params?: Record<string, unknown>) => void; hideTimestamp?: boolean }) {
   switch (message.type) {
     case 'text':
-      return <TextBubble role={message.role} text={message.text} timestamp={message.timestamp} />;
+      return <TextBubble role={message.role} text={message.text} timestamp={message.timestamp} hideTimestamp={hideTimestamp} />;
     case 'image':
       return <ImageBubble imageUrls={message.imageUrls} caption={message.caption} timestamp={message.timestamp} />;
     case 'product_card':
@@ -61,7 +66,7 @@ function MessageBubble({ message, onAction }: { message: ChatMessage; onAction?:
 // Text Bubble
 // ============================================================
 
-function TextBubble({ role, text, timestamp }: { role: 'seller' | 'ai'; text: string; timestamp: Date }) {
+function TextBubble({ role, text, timestamp, hideTimestamp }: { role: 'seller' | 'ai'; text: string; timestamp: Date; hideTimestamp?: boolean }) {
   const isAi = role === 'ai';
 
   return (
@@ -76,9 +81,11 @@ function TextBubble({ role, text, timestamp }: { role: 'seller' | 'ai'; text: st
             </React.Fragment>
           ))}
         </div>
-        <span className="chat-timestamp">
-          {formatDistanceToNow(timestamp, { addSuffix: true })}
-        </span>
+        {!hideTimestamp && (
+          <span className="chat-timestamp">
+            {formatDistanceToNow(timestamp, { addSuffix: true })}
+          </span>
+        )}
       </div>
     </div>
   );
