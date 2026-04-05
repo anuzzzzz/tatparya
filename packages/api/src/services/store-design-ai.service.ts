@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { selectArchetype, getRepresentativeComposition } from '../lib/archetypes.js';
 import type { SectionPattern, Composition } from '../lib/archetypes.js';
 import { validateDesignOutput, buildCorrectiveGuidance } from './design-validator.service.js';
+import { getBlueprint } from '@tatparya/shared';
 
 // ============================================================
 // Section Frequency Matrix — real data from 162 Indian D2C stores
@@ -332,6 +333,12 @@ function buildDirectorPrompt(
     .join(' > ');
   p += `\n\nSections (${sectionPattern.length}): ${sectionList}`;
   p += `\nGenerate rhythm array with exactly ${sectionPattern.length} numbers.`;
+
+  // Inform the AI about the blueprint's recommended layout for this vertical
+  const bp = getBlueprint(input.vertical);
+  const bpList = bp.sections.map(s => s.type).join(' > ');
+  p += `\n\nBlueprint "${bp.label}" recommended layout for ${input.vertical}: ${bpList}.`;
+  p += `\nThis is the default section order derived from 168 Indian D2C stores. Follow it unless you have a specific reason to deviate for this brand.`;
 
   if (representative?.typography_hint) {
     p += `\nReference fonts: ${representative.typography_hint.heading_font} + ${representative.typography_hint.body_font}. Use or improve.`;
@@ -771,68 +778,63 @@ function sanitizeCustomCSS(raw: unknown): string | undefined {
  * 4. Ensure sensible ordering (hero → content → social proof → footer-adjacent)
  */
 function sanitizeSectionPattern(sections: SectionPattern[], vertical?: string): SectionPattern[] {
-  if (!sections.length) return sections;
+  // ── Blueprint-driven ordering ──
+  // Use the vertical's blueprint config as the canonical section order.
+  // The archetype sections are merged in: any archetype section not in the
+  // blueprint is appended, any blueprint section missing from the archetype
+  // is injected. The blueprint order always wins.
+  const blueprint = getBlueprint(vertical || 'general');
+  const blueprintOrder = blueprint.sections.map(s => s.type);
 
-  // Separate hero and non-hero sections
-  const heroes = sections.filter(s => s.type.startsWith('hero_'));
-  const nonHeroes = sections.filter(s => !s.type.startsWith('hero_'));
-
-  // Keep only the first hero (best one)
-  const bestHero = heroes[0];
-
-  // Deduplicate: keep max 1 of each type (except product sections which can repeat)
-  const repeatAllowed = new Set(['product_carousel', 'featured_products', 'product_grid', 'collection_banner']);
-  const seen = new Set<string>();
-  const deduped: SectionPattern[] = [];
-  for (const s of nonHeroes) {
-    if (s.type === 'announcement_bar') continue; // Skip empty announcement bars
-    if (!repeatAllowed.has(s.type) && seen.has(s.type)) continue;
-    seen.add(s.type);
-    deduped.push(s);
+  // Collect archetype sections into a map (preserving variant/config from archetype)
+  const archetypeMap = new Map<string, SectionPattern>();
+  for (const s of sections) {
+    // Deduplicate: keep first occurrence per type
+    if (!archetypeMap.has(s.type)) {
+      archetypeMap.set(s.type, s);
+    }
   }
 
-  // Inject high-frequency sections missing from archetype (>50% in real stores)
+  // Also inject high-frequency sections from real store data (>50%)
   if (vertical) {
     const freqs = getSectionFrequencies(vertical, 50);
     if (freqs) {
-      const existingTypes = new Set([
-        ...(bestHero ? [bestHero.type] : []),
-        ...deduped.map(s => s.type),
-      ]);
-      // Hero types are handled separately — skip them
       const heroTypes = new Set(['hero_full_bleed', 'hero_split', 'hero_slideshow', 'hero_bento', 'hero_minimal']);
       for (const { section } of freqs) {
-        if (heroTypes.has(section) || existingTypes.has(section)) continue;
+        if (heroTypes.has(section) || archetypeMap.has(section)) continue;
         if (section === 'announcement_bar') continue;
-        deduped.push({
+        archetypeMap.set(section, {
           type: section,
           position: 0,
           required: false,
           background_hint: 'light',
         });
-        existingTypes.add(section);
       }
     }
   }
 
-  // Prioritize section ordering
-  const topSections = ['trust_bar'];
-  const midSections = ['category_grid', 'product_carousel', 'featured_products', 'product_grid', 'collection_banner'];
-  const bottomSections = ['testimonials', 'testimonial_cards', 'stats_bar', 'newsletter', 'about_brand', 'ugc_gallery', 'logo_bar', 'video_section', 'quote_block'];
+  // Build ordered list: follow blueprint order, pulling config from archetype when available
+  const ordered: SectionPattern[] = [];
+  const placed = new Set<string>();
 
-  const top = deduped.filter(s => topSections.includes(s.type));
-  const mid = deduped.filter(s => midSections.includes(s.type));
-  const bottom = deduped.filter(s => bottomSections.includes(s.type));
-  const rest = deduped.filter(s => !topSections.includes(s.type) && !midSections.includes(s.type) && !bottomSections.includes(s.type));
+  for (const bpType of blueprintOrder) {
+    const existing = archetypeMap.get(bpType);
+    ordered.push(existing || {
+      type: bpType,
+      position: 0,
+      required: false,
+      background_hint: 'light',
+    });
+    placed.add(bpType);
+  }
 
-  // Assemble: hero → trust → products/categories → social proof → rest
-  const ordered = [
-    ...(bestHero ? [bestHero] : []),
-    ...top,
-    ...mid,
-    ...rest,
-    ...bottom,
-  ];
+  // Append any archetype sections not in the blueprint (AI additions, extras)
+  for (const [type, section] of archetypeMap) {
+    if (!placed.has(type)) {
+      ordered.push(section);
+      placed.add(type);
+    }
+  }
 
   // Cap at 12 sections
   const capped = ordered.slice(0, 12);

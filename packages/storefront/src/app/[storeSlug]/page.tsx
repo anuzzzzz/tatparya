@@ -86,9 +86,12 @@ export default async function StoreHomePage({ params }: HomePageProps) {
     </>
   );
 
-  // ── Blueprint check: fashion vertical gets the Runway blueprint ──
+  // ── Blueprint check: fashion vertical gets the handcrafted Runway blueprint ──
+  // All other verticals fall through to the data-driven SectionRenderer path,
+  // which reads config.sections.homepage (populated by the blueprint-driven AI pipeline).
   const vertical = config?.vertical || (store as any).vertical;
-  if (vertical === 'fashion' || config?.blueprint === 'runway') {
+  const blueprintName = config?.blueprint || '';
+  if (blueprintName === 'runway' || vertical === 'fashion') {
     return <>{jsonLdScripts}<RunwayBlueprint products={productItems} heroImages={heroImages} storeUrl={storeUrl} /></>;
   }
 

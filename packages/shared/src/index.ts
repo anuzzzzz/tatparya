@@ -15,3 +15,6 @@ export * from './types/chat.types.js';
 // Constants
 export * from './constants/gst-rates.js';
 export * from './constants/verticals.js';
+
+// Blueprints
+export { getBlueprint, BLUEPRINTS, type BlueprintConfig, type SectionEntry } from './blueprints/index.js';
