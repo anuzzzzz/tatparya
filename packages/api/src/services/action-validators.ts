@@ -34,6 +34,11 @@ export function validateAction(
     return { valid: false, error: `Unknown action type "${action.type}". No changes were made.` };
   }
 
+  // Store creation — no storeId required
+  if (action.type === 'store.create') {
+    return validateStoreCreate(action);
+  }
+
   // Design actions — WCAG validation
   if (DESIGN_ACTIONS.has(action.type)) {
     return validateDesignAction(action);
@@ -50,6 +55,40 @@ export function validateAction(
   }
 
   // All other actions pass through
+  return { valid: true };
+}
+
+// ============================================================
+// Store Creation Validator
+// ============================================================
+
+const VALID_VERTICALS = new Set([
+  'fashion', 'jewellery', 'beauty', 'electronics', 'food', 'home_decor', 'fmcg', 'pets', 'general',
+]);
+
+function validateStoreCreate(action: TatparyaAction): ValidationResult {
+  const p = action.payload as any;
+
+  if (!p.name || typeof p.name !== 'string') {
+    return { valid: false, error: 'Store name is required.' };
+  }
+  if (p.name.length < 2 || p.name.length > 100) {
+    return { valid: false, error: 'Store name must be 2-100 characters.' };
+  }
+
+  if (!p.vertical || typeof p.vertical !== 'string') {
+    return { valid: false, error: 'Vertical is required (e.g. fashion, beauty, food).' };
+  }
+  if (!VALID_VERTICALS.has(p.vertical)) {
+    return { valid: false, error: `Invalid vertical "${p.vertical}". Must be one of: ${[...VALID_VERTICALS].join(', ')}.` };
+  }
+
+  if (p.priceRange) {
+    if (typeof p.priceRange.min !== 'number' || typeof p.priceRange.max !== 'number') {
+      return { valid: false, error: 'Price range min and max must be numbers.' };
+    }
+  }
+
   return { valid: true };
 }
 

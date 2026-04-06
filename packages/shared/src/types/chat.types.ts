@@ -140,6 +140,8 @@ export const DESTRUCTIVE_ACTIONS = new Set([
 
 /** Complete whitelist of valid action types — used in validator to reject hallucinated types */
 export const VALID_ACTION_TYPES = new Set([
+  // Store creation
+  'store.create',
   // Store identity
   'store.update_name',
   'store.update_description',
@@ -224,6 +226,11 @@ export const VALID_ACTION_TYPES = new Set([
 
 export function generateActionSchemaReference(): string {
   return `AVAILABLE ACTIONS:
+
+── Store Creation ──
+store.create             { name: string, vertical: string, audience?: string, priceRange?: { min: number, max: number } }
+  → Creates a new store. Collect name and vertical through followUp turns if not provided.
+  Valid verticals: fashion, jewellery, beauty, electronics, food, home_decor, fmcg, pets, general.
 
 ── Store Identity ──
 store.update_name        { name: string }

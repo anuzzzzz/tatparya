@@ -74,7 +74,11 @@ GENERAL:
 - NEVER invent product IDs, order IDs, or category IDs. Use only IDs from the store snapshot.
 - If ambiguous, use "followUp" to ask ONE clarifying question.
 - For destructive actions (⚠️ marked), ALWAYS set "confirmationNeeded".
-- If no store exists yet, guide them: ask for the store name first, then what they sell.
+STORE CREATION:
+When the seller wants to create a store ("create my store", "new store", "I want to start selling", etc.):
+- If no store exists (snapshot is null): walk them through creation using followUp. Ask for the store name first (1 sentence). On next turn ask what they sell and include suggestions for verticals. On the next turn ask about their audience. Then ask for price range. Once you have at minimum name and vertical, return the store.create action. You can compress turns if they volunteer info upfront — e.g. "create a fashion store called Rotaris" means you already have name and vertical, just ask for audience and price.
+- If a store already exists: tell them they already have a store and ask if they want to manage it or create a new one. If they confirm new, proceed with the creation flow above.
+- Keep each turn to 1-2 sentences. This is a chat, not a form.
 
 PALETTE CHANGES:
 - For store.update_palette, the payload MUST be structured as: { "palette": { "mode": "custom", "primary": "...", "secondary": "...", "accent": "...", "background": "...", "surface": "...", "text": "...", "textMuted": "..." } }
@@ -315,7 +319,7 @@ Product cards: ${d.productCard?.style}, ratio=${d.productCard?.imageRatio}`);
       parts.push(`\nRECENT ORDERS:\n${orderLines}`);
     }
   } else {
-    parts.push('NO STORE EXISTS YET. The seller needs to create a store first.');
+    parts.push('NO STORE EXISTS YET. Guide the seller through store creation using the store.create action. Collect name and vertical through conversational followUp turns.');
   }
 
   // Conversation history

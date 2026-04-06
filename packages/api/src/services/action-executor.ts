@@ -51,6 +51,10 @@ async function executeSingle(
   db: SupabaseClient,
 ): Promise<unknown> {
   switch (action.type) {
+    // ── Store Creation ──────────────────────────────────
+    case 'store.create':
+      return createStore(db, action.payload);
+
     // ── Store Identity ──────────────────────────────────
     case 'store.update_name':
       return updateStore(db, storeId, { name: action.payload.name });
@@ -288,6 +292,37 @@ function slugify(text: string): string {
   return text.toLowerCase().trim()
     .replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
     + '-' + Date.now().toString(36);
+}
+
+async function createStore(db: SupabaseClient, payload: Record<string, any>) {
+  const name = payload.name as string;
+  const vertical = payload.vertical as string;
+  const slug = slugify(name);
+
+  const storeConfig: Record<string, any> = {};
+  if (payload.audience || payload.priceRange) {
+    storeConfig.sellerContext = {
+      ...(payload.audience ? { audience: payload.audience } : {}),
+      ...(payload.priceRange ? { priceRange: payload.priceRange } : {}),
+    };
+  }
+  storeConfig.vertical = vertical;
+
+  const { data, error } = await db.from('stores')
+    .insert({
+      name,
+      slug,
+      vertical,
+      status: 'active',
+      description: `${name} — your ${vertical.replace(/_/g, ' ')} store on Tatparya.`,
+      owner_id: null,
+      store_config: storeConfig,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to create store: ${error.message}`);
+  return data;
 }
 
 async function getStoreConfig(db: SupabaseClient, storeId: string): Promise<Record<string, any>> {

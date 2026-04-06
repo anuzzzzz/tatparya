@@ -109,15 +109,41 @@ export const chatRouter = router({
         data?: unknown;
         error?: string;
       }[] = [];
+      let newStoreId: string | null = null;
 
-      if (validatedActions.length > 0 && input.storeId) {
-        const results = await executeActions(validatedActions, input.storeId, ctx.serviceDb);
-        executionResults = results.map((r) => ({
-          type: r.action.type,
-          success: r.success,
-          data: r.data,
-          error: r.error,
-        }));
+      if (validatedActions.length > 0) {
+        // Split: store.create runs first (no storeId needed), then everything else
+        const storeCreateActions = validatedActions.filter((a) => a.type === 'store.create');
+        const otherActions = validatedActions.filter((a) => a.type !== 'store.create');
+
+        // Execute store.create actions first
+        if (storeCreateActions.length > 0) {
+          const createResults = await executeActions(storeCreateActions, '', ctx.serviceDb);
+          executionResults.push(...createResults.map((r) => ({
+            type: r.action.type,
+            success: r.success,
+            data: r.data,
+            error: r.error,
+          })));
+
+          // Extract the new storeId from a successful creation
+          const created = createResults.find((r) => r.success && (r.data as any)?.id);
+          if (created) {
+            newStoreId = (created.data as any).id;
+          }
+        }
+
+        // Execute remaining actions with the existing or newly created storeId
+        const effectiveStoreId = input.storeId || newStoreId;
+        if (otherActions.length > 0 && effectiveStoreId) {
+          const otherResults = await executeActions(otherActions, effectiveStoreId, ctx.serviceDb);
+          executionResults.push(...otherResults.map((r) => ({
+            type: r.action.type,
+            success: r.success,
+            data: r.data,
+            error: r.error,
+          })));
+        }
       }
 
       // 7. Collect query results (for query.* actions) to render rich cards on the client
@@ -165,6 +191,7 @@ export const chatRouter = router({
         confirmationNeeded: null,
         suggestions: llmResult.suggestions || [],
         queryResults: queryResults.length > 0 ? queryResults : null,
+        newStoreId,
         processingTimeMs: Date.now() - startTime,
       };
     }),

@@ -13,7 +13,6 @@ import {
   createMessageId,
 } from './types';
 import { ChatApiService } from './chat-api';
-import { FlowManager } from './flow-manager';
 import { useSellerAuth } from './auth-provider';
 import { resizeAll } from './image-resizer';
 import { DESIGN_ACTIONS } from '@tatparya/shared';
@@ -64,7 +63,6 @@ export function useChat(): UseChatReturn {
   const [previousDesignConfig, setPreviousDesignConfig] = useState<Record<string, unknown> | null>(null);
   const [pendingActions, setPendingActions] = useState<unknown[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const flowManager = useRef(new FlowManager()).current;
   const { trpc, storeId, setStoreId } = useSellerAuth();
 
   const api = useMemo(() => new ChatApiService(trpc, storeId), [trpc, storeId]);
@@ -228,30 +226,6 @@ export function useChat(): UseChatReturn {
         setPendingActions([]);
       }
 
-      // ── If flow manager is active (fallback store creation) ──
-      if (flowManager.isActive()) {
-        const flowResponses = await flowManager.processInput(trimmed, api, {
-          lastProductId,
-        });
-
-        for (const msg of flowResponses) {
-          if (msg.type === 'text' && msg.role === 'ai' && (msg.text as string).includes('is live!')) {
-            const storesResult = await api.listStores();
-            if (storesResult.success) {
-              const stores = storesResult.data as any[];
-              if (stores.length > 0) {
-                setStoreId(stores[0].id);
-                api.setStoreId(stores[0].id);
-              }
-            }
-          }
-        }
-
-        setIsTyping(false);
-        addMessages(flowResponses);
-        return;
-      }
-
       // ── Call server LLM router ─────────────────────────────
       const conversationHistory = buildConversationHistory(messages);
 
@@ -318,31 +292,18 @@ export function useChat(): UseChatReturn {
 
       addMessages(responseMessages);
 
-      // ── Check if store was created ─────────────────────────
-      if (result.actions?.includes('store.create') || result.actions?.includes('store.update_name')) {
-        const storesResult = await api.listStores();
-        if (storesResult.success) {
-          const stores = storesResult.data as any[];
-          if (stores.length > 0) {
-            setStoreId(stores[0].id);
-            api.setStoreId(stores[0].id);
-          }
-        }
+      // ── Update auth context if a new store was created ─────
+      if (result.newStoreId) {
+        setStoreId(result.newStoreId);
+        api.setStoreId(result.newStoreId);
       }
 
     } catch (err: any) {
       console.error('Chat error:', err);
       setIsTyping(false);
-
-      // ── Fallback: flow manager for store creation ──────────
-      if (/\b(create|start|build|make|setup|set up)\b.*\b(store|shop|website|dukaan)\b/i.test(trimmed)) {
-        addMessages(flowManager.startStoreCreation());
-        return;
-      }
-
       addMessages([aiTextMessage('Something went wrong. Please try again.')]);
     }
-  }, [addMessages, api, buildConversationHistory, flowManager, lastProductId, messages, pendingActions, renderQueryResults, storeId, setStoreId, trpc]);
+  }, [addMessages, api, buildConversationHistory, lastProductId, messages, pendingActions, renderQueryResults, storeId, setStoreId, trpc]);
 
   // ============================================================
   // Send images → resize → triage → per-group catalog AI → store design
@@ -581,8 +542,7 @@ export function useChat(): UseChatReturn {
     setLastProductId(null);
     setPreviousDesignConfig(null);
     setPendingActions([]);
-    flowManager.cancel();
-  }, [flowManager]);
+  }, []);
 
   return {
     messages,
