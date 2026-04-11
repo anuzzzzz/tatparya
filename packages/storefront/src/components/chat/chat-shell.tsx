@@ -18,6 +18,20 @@ export function ChatShell() {
     // These are simple strings like "fashion", "jewellery"
     // that get fed directly to the flow manager via sendMessage
     switch (action) {
+      case 'suggestion': {
+        const text = params?.text as string;
+        if (!text) return;
+        sendMessage(text);
+        return;
+      }
+      case 'confirm': {
+        sendMessage('yes');
+        return;
+      }
+      case 'cancel': {
+        sendMessage('no');
+        return;
+      }
       case 'product.publish': {
         sendMessage(`publish product ${params?.productId || ''}`);
         break;
