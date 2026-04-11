@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   type ChatMessage,
   type TextMessage,
@@ -10,7 +10,6 @@ import {
   aiTextMessage,
   sellerTextMessage,
   sellerImageMessage,
-  checklistMessage,
   createMessageId,
 } from './types';
 import { ChatApiService } from './chat-api';
@@ -67,6 +66,19 @@ export function useChat(): UseChatReturn {
   const { trpc, storeId, setStoreId } = useSellerAuth();
 
   const api = useMemo(() => new ChatApiService(trpc, storeId), [trpc, storeId]);
+
+  // Reset state for clean store creation testing via ?newstore=true
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('newstore') === 'true') {
+        setMessages(WELCOME_MESSAGES);
+        setPendingActions([]);
+        setLastProductId(null);
+        setPreviousDesignConfig(null);
+      }
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -297,15 +309,6 @@ export function useChat(): UseChatReturn {
       if (result.newStoreId) {
         setStoreId(result.newStoreId);
         api.setStoreId(result.newStoreId);
-
-        // Show go-live checklist after store creation
-        addMessages([checklistMessage('Make your store live', [
-          { label: 'Store created', done: true },
-          { label: 'Add products (upload photos)', done: false, action: 'How do I add products?' },
-          { label: 'Set up payments', done: false, action: 'set up payments' },
-          { label: 'Configure shipping', done: false, action: 'set up shipping' },
-          { label: 'Add social links', done: false, action: 'add my social links' },
-        ])]);
       }
 
     } catch (err: any) {
