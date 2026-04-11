@@ -5,6 +5,7 @@ import { buildStoreSnapshot } from '../services/store-snapshot.service.js';
 import { classifyAndAct } from '../services/chat-llm.service.js';
 import { validateAction } from '../services/action-validators.js';
 import { executeActions } from '../services/action-executor.js';
+import { getOrCreateDevUser } from '../lib/dev-auth.js';
 
 // ============================================================
 // Chat Router
@@ -38,6 +39,18 @@ export const chatRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const startTime = Date.now();
+
+      // Dev-mode fallback: ensure a real auth user exists for owner_id
+      let effectiveUserId = ctx.user?.id;
+      if (process.env.NODE_ENV === 'development' && !effectiveUserId) {
+        try {
+          const devUser = await getOrCreateDevUser(ctx.serviceDb);
+          effectiveUserId = devUser.id;
+        } catch (err: any) {
+          console.warn('[chat.process] Dev auth fallback failed:', err.message);
+        }
+      }
+
       // 1. Build store snapshot (if store exists)
       let snapshot = null;
       if (input.storeId) {
@@ -115,7 +128,7 @@ export const chatRouter = router({
         // Split: store.create runs first (no storeId needed), then everything else
         const storeCreateActions = validatedActions.filter((a) => a.type === 'store.create');
         const otherActions = validatedActions.filter((a) => a.type !== 'store.create');
-        const userId = ctx.user?.id;
+        const userId = effectiveUserId;
 
         // Execute store.create actions first
         if (storeCreateActions.length > 0) {

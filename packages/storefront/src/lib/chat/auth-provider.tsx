@@ -86,6 +86,14 @@ export function SellerAuthProvider({ children }: { children: React.ReactNode }) 
       const params = new URLSearchParams(window.location.search);
       if (params.get('newstore') === 'true') return;
 
+      // Auto-sign-in as dev user so tRPC calls carry a valid JWT
+      supabase.auth.signInWithPassword({
+        email: 'dev@tatparya.local',
+        password: 'dev-tatparya-2024',
+      }).catch((err: any) => {
+        console.warn('[dev-auth] Auto sign-in failed (server will use fallback):', err.message);
+      });
+
       // In dev mode, auto-select the most recent store (or null if none exist)
       trpc.store.devList.query().then((stores: any[]) => {
         if (stores && stores.length > 0) {
