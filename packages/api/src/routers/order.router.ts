@@ -57,6 +57,11 @@ export const orderRouter = router({
       );
       const order = await orderService.createOrder(input.storeId, input);
 
+      // COD orders: auto-confirm so they enter the fulfillment pipeline
+      if (input.paymentMethod === 'cod') {
+        await orderService.updateStatus(input.storeId, order.id, 'cod_confirmed');
+      }
+
       // Fire-and-forget emails — never block the order flow
       const email = getEmailService();
       if (email) {

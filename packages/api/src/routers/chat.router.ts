@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { router, publicProcedure } from '../trpc/trpc.js';
 import type { TatparyaAction } from '@tatparya/shared';
@@ -59,6 +60,11 @@ export const chatRouter = router({
         } catch (err: any) {
           console.error('[chat.process] Failed to build snapshot for storeId', input.storeId, ':', err.message);
           // Continue without snapshot — LLM can still handle basic requests
+        }
+
+        // Enrich snapshot with products/orders mentioned by name but not in recent 10/5
+        if (snapshot) {
+          await enrichSnapshotWithMentions(ctx.serviceDb, input.storeId, input.message, snapshot);
         }
       }
 
@@ -272,3 +278,60 @@ export const chatRouter = router({
       };
     }),
 });
+
+// ============================================================
+// Snapshot enrichment — find products/orders mentioned by name
+// that aren't already in the recent 10/5
+// ============================================================
+
+async function enrichSnapshotWithMentions(
+  db: SupabaseClient,
+  storeId: string,
+  message: string,
+  snapshot: any,
+) {
+  try {
+    // Search products by name match
+    const { data: matchedProducts } = await db
+      .from('products')
+      .select('id, name, price, status, tags')
+      .eq('store_id', storeId)
+      .ilike('name', `%${message}%`)
+      .limit(5);
+
+    if (matchedProducts && matchedProducts.length > 0) {
+      const existingIds = new Set(
+        (snapshot.recentProducts || []).map((p: any) => p.id),
+      );
+      for (const p of matchedProducts) {
+        if (!existingIds.has(p.id)) {
+          snapshot.recentProducts = snapshot.recentProducts || [];
+          snapshot.recentProducts.push(p);
+        }
+      }
+    }
+
+    // Search orders by order number or buyer name
+    const { data: matchedOrders } = await db
+      .from('orders')
+      .select('id, order_number, buyer_name, total, status, line_items, created_at')
+      .eq('store_id', storeId)
+      .or(`order_number.ilike.%${message}%,buyer_name.ilike.%${message}%`)
+      .limit(5);
+
+    if (matchedOrders && matchedOrders.length > 0) {
+      const existingIds = new Set(
+        (snapshot.recentOrders || []).map((o: any) => o.id),
+      );
+      for (const o of matchedOrders) {
+        if (!existingIds.has(o.id)) {
+          snapshot.recentOrders = snapshot.recentOrders || [];
+          snapshot.recentOrders.push(o);
+        }
+      }
+    }
+  } catch (err: any) {
+    // Non-critical — snapshot still has the recent items
+    console.warn('[chat.process] Snapshot enrichment failed:', err.message);
+  }
+}

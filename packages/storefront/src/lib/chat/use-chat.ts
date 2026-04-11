@@ -383,21 +383,13 @@ export function useChat(): UseChatReturn {
     addMessages([aiTextMessage('Processing your photos...')]);
 
     try {
-      // Check if store exists
+      // Require a store before uploading photos
       if (!storeId) {
-        const storesResult = await apiRef.current.listStores();
-        if (storesResult.success) {
-          const stores = storesResult.data as any[];
-          if (stores.length === 0) {
-            setIsTyping(false);
-            addMessages([aiTextMessage(
-              'You need a store first before adding products. Say "create my store" to get started!',
-            )]);
-            return;
-          }
-          setStoreId(stores[0].id);
-          apiRef.current.setStoreId(stores[0].id);
-        }
+        setIsTyping(false);
+        addMessages([aiTextMessage(
+          'Please create your store first before uploading photos. Just tell me your store name to get started!',
+        )]);
+        return;
       }
 
       // ── Step 1: Resize all images (OffscreenCanvas Worker) ──

@@ -317,13 +317,13 @@ async function executeSingle(
 function slugify(text: string): string {
   return text.toLowerCase().trim()
     .replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
-    + '-' + Date.now().toString(36);
+    + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
 async function createStore(db: SupabaseClient, payload: Record<string, any>, userId?: string) {
   const name = payload.name as string;
   const vertical = payload.vertical as string;
-  const slug = slugify(name);
+  let slug = slugify(name);
 
   const storeConfig: Record<string, any> = {};
   if (payload.audience || payload.priceRange) {
@@ -334,7 +334,7 @@ async function createStore(db: SupabaseClient, payload: Record<string, any>, use
   }
   storeConfig.vertical = vertical;
 
-  const { data, error } = await db.from('stores')
+  let { data, error } = await db.from('stores')
     .insert({
       name,
       slug,
@@ -346,6 +346,23 @@ async function createStore(db: SupabaseClient, payload: Record<string, any>, use
     })
     .select()
     .single();
+
+  // Retry once on slug collision
+  if (error?.message?.includes('duplicate') || error?.message?.includes('unique')) {
+    slug = slugify(name);
+    ({ data, error } = await db.from('stores')
+      .insert({
+        name,
+        slug,
+        vertical,
+        status: 'active',
+        description: `${name} — your ${vertical.replace(/_/g, ' ')} store on Tatparya.`,
+        owner_id: userId || null,
+        store_config: storeConfig,
+      })
+      .select()
+      .single());
+  }
 
   if (error) throw new Error(`Failed to create store: ${error.message}`);
   return data;

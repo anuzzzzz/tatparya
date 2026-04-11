@@ -228,8 +228,9 @@ export function generateActionSchemaReference(): string {
   return `AVAILABLE ACTIONS:
 
 ── Store Creation ──
-store.create             { name: string, vertical: string, audience?: string, priceRange?: { min: number, max: number } }
-  → Creates a new store. Collect name and vertical through followUp turns if not provided.
+store.create             { name: string, vertical?: string }
+  → Creates a new store. Ask ONLY for the store name. Vertical defaults to "general" and is inferred from product photos later.
+  NEVER invent or guess a store name — always ask the seller.
   Valid verticals: fashion, jewellery, beauty, electronics, food, home_decor, fmcg, pets, general.
 
 ── Store Identity ──
