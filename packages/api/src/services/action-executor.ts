@@ -25,12 +25,13 @@ export async function executeActions(
   actions: TatparyaAction[],
   storeId: string,
   db: SupabaseClient,
+  userId?: string,
 ): Promise<ExecutionResult[]> {
   const results: ExecutionResult[] = [];
 
   for (const action of actions) {
     try {
-      const data = await executeSingle(action, storeId, db);
+      const data = await executeSingle(action, storeId, db, userId);
       results.push({ action, success: true, data });
     } catch (err: any) {
       console.error(`[action-executor] Failed ${action.type}:`, err.message);
@@ -49,11 +50,12 @@ async function executeSingle(
   action: TatparyaAction,
   storeId: string,
   db: SupabaseClient,
+  userId?: string,
 ): Promise<unknown> {
   switch (action.type) {
     // ── Store Creation ──────────────────────────────────
     case 'store.create':
-      return createStore(db, action.payload);
+      return createStore(db, action.payload, userId);
 
     // ── Store Identity ──────────────────────────────────
     case 'store.update_name':
@@ -294,7 +296,7 @@ function slugify(text: string): string {
     + '-' + Date.now().toString(36);
 }
 
-async function createStore(db: SupabaseClient, payload: Record<string, any>) {
+async function createStore(db: SupabaseClient, payload: Record<string, any>, userId?: string) {
   const name = payload.name as string;
   const vertical = payload.vertical as string;
   const slug = slugify(name);
@@ -315,7 +317,7 @@ async function createStore(db: SupabaseClient, payload: Record<string, any>) {
       vertical,
       status: 'active',
       description: `${name} — your ${vertical.replace(/_/g, ' ')} store on Tatparya.`,
-      owner_id: null,
+      owner_id: userId ?? '00000000-0000-0000-0000-000000000000',
       store_config: storeConfig,
     })
     .select()

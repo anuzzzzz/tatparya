@@ -115,10 +115,11 @@ export const chatRouter = router({
         // Split: store.create runs first (no storeId needed), then everything else
         const storeCreateActions = validatedActions.filter((a) => a.type === 'store.create');
         const otherActions = validatedActions.filter((a) => a.type !== 'store.create');
+        const userId = ctx.user?.id;
 
         // Execute store.create actions first
         if (storeCreateActions.length > 0) {
-          const createResults = await executeActions(storeCreateActions, '', ctx.serviceDb);
+          const createResults = await executeActions(storeCreateActions, '', ctx.serviceDb, userId);
           executionResults.push(...createResults.map((r) => ({
             type: r.action.type,
             success: r.success,
@@ -136,7 +137,7 @@ export const chatRouter = router({
         // Execute remaining actions with the existing or newly created storeId
         const effectiveStoreId = input.storeId || newStoreId;
         if (otherActions.length > 0 && effectiveStoreId) {
-          const otherResults = await executeActions(otherActions, effectiveStoreId, ctx.serviceDb);
+          const otherResults = await executeActions(otherActions, effectiveStoreId, ctx.serviceDb, userId);
           executionResults.push(...otherResults.map((r) => ({
             type: r.action.type,
             success: r.success,
