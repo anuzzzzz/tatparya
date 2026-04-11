@@ -82,6 +82,10 @@ export function SellerAuthProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (process.env.NODE_ENV === 'development') {
+      // Allow ?newstore=true to skip auto-select and trigger store creation flow
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('newstore') === 'true') return;
+
       // In dev mode, auto-select the most recent store (or null if none exist)
       trpc.store.devList.query().then((stores: any[]) => {
         if (stores && stores.length > 0) {
