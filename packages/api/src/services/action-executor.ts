@@ -317,7 +317,7 @@ async function createStore(db: SupabaseClient, payload: Record<string, any>, use
       vertical,
       status: 'active',
       description: `${name} — your ${vertical.replace(/_/g, ' ')} store on Tatparya.`,
-      owner_id: userId ?? '00000000-0000-0000-0000-000000000000',
+      owner_id: userId || null,
       store_config: storeConfig,
     })
     .select()
