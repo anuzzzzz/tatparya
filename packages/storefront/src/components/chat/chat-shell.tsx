@@ -10,7 +10,7 @@ import { LogOut } from 'lucide-react';
 
 export function ChatShell() {
   const { user, signOut } = useSellerAuth();
-  const { messages, isTyping, sendMessage, sendImages, messagesEndRef } = useChat();
+  const { messages, isTyping, sendMessage, sendImages, executeDirectAction, messagesEndRef } = useChat();
 
   // Handle action buttons from cards and flow steps
   const handleAction = useCallback((action: string, params?: Record<string, unknown>) => {
@@ -33,8 +33,12 @@ export function ChatShell() {
         return;
       }
       case 'product.publish': {
-        sendMessage(`publish product ${params?.productId || ''}`);
-        break;
+        executeDirectAction({ type: 'product.publish', payload: { productId: params?.productId } });
+        return;
+      }
+      case 'product.archive': {
+        executeDirectAction({ type: 'product.archive', payload: { productId: params?.productId } });
+        return;
       }
       case 'product.update_price': {
         sendMessage('change the price');
@@ -45,15 +49,15 @@ export function ChatShell() {
         break;
       }
       case 'order.ship': {
-        sendMessage(`ship order ${params?.orderId || ''}`);
-        break;
+        executeDirectAction({ type: 'order.ship', payload: { orderId: params?.orderId } });
+        return;
       }
       default:
         // For flow buttons (e.g. vertical selection: "fashion", "jewellery")
         // just send the action as text — the flow manager picks it up
         sendMessage(action);
     }
-  }, [sendMessage]);
+  }, [sendMessage, executeDirectAction]);
 
   return (
     <div className="chat-shell">

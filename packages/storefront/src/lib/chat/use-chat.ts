@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   type ChatMessage,
   type TextMessage,
+  type ImageMessage,
   type ProductCardMessage,
   type OrderCardMessage,
   type StatsMessage,
@@ -49,6 +50,7 @@ export interface UseChatReturn {
   isTyping: boolean;
   sendMessage: (text: string) => void;
   sendImages: (files: File[]) => void;
+  executeDirectAction: (action: { type: string; payload: Record<string, any> }) => void;
   clearChat: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   lastProductId: string | null;
@@ -98,13 +100,53 @@ export function useChat(): UseChatReturn {
   // Build conversation history from recent messages
   // ============================================================
   const buildConversationHistory = useCallback((msgs: ChatMessage[]) => {
-    return msgs
-      .filter((m): m is TextMessage => m.type === 'text')
-      .slice(-10)
-      .map((m) => ({
-        role: m.role === 'seller' ? ('seller' as const) : ('ai' as const),
-        content: m.text,
-      }));
+    const history: { role: 'seller' | 'ai'; content: string }[] = [];
+
+    for (const m of msgs) {
+      switch (m.type) {
+        case 'text':
+          history.push({
+            role: m.role === 'seller' ? 'seller' : 'ai',
+            content: m.text,
+          });
+          break;
+        case 'product_card': {
+          const p = (m as ProductCardMessage).product;
+          history.push({
+            role: 'ai',
+            content: `[Product card shown: ${p.name}, ₹${p.price}, status: ${p.status || 'draft'}, id: ${p.id || 'pending'}]`,
+          });
+          break;
+        }
+        case 'order_card': {
+          const o = (m as OrderCardMessage).order;
+          history.push({
+            role: 'ai',
+            content: `[Order card shown: #${o.orderNumber}, ${o.buyerName}, ₹${o.total}, status: ${o.status}, id: ${o.id}]`,
+          });
+          break;
+        }
+        case 'stats': {
+          const s = (m as StatsMessage).stats;
+          history.push({
+            role: 'ai',
+            content: `[Stats shown: ${s.map(st => st.label + ': ' + st.value).join(', ')}]`,
+          });
+          break;
+        }
+        case 'image': {
+          const img = m as ImageMessage;
+          history.push({
+            role: 'seller',
+            content: `[Seller uploaded ${img.imageUrls.length} photo${img.imageUrls.length > 1 ? 's' : ''}]`,
+          });
+          break;
+        }
+        // action_buttons, checklist, typing, system — skip
+      }
+    }
+
+    return history.slice(-20);
   }, []);
 
   // ============================================================
@@ -550,6 +592,23 @@ export function useChat(): UseChatReturn {
     }
   }, [addMessages, storeId, setStoreId]);
 
+  // ============================================================
+  // Execute a known action directly (bypasses Haiku)
+  // ============================================================
+  const executeDirectAction = useCallback(async (action: { type: string; payload: Record<string, any> }) => {
+    if (!storeId) return;
+    setIsTyping(true);
+    try {
+      const result = await trpc.chat.confirm.mutate({ storeId, actions: [action] });
+      setIsTyping(false);
+      addMessages([aiTextMessage(result.response)]);
+    } catch (err: any) {
+      console.error('Direct action error:', err);
+      setIsTyping(false);
+      addMessages([aiTextMessage('Something went wrong. Please try again.')]);
+    }
+  }, [storeId, trpc, addMessages]);
+
   const clearChat = useCallback(() => {
     setMessages(WELCOME_MESSAGES);
     setLastProductId(null);
@@ -562,6 +621,7 @@ export function useChat(): UseChatReturn {
     isTyping,
     sendMessage,
     sendImages,
+    executeDirectAction,
     clearChat,
     messagesEndRef,
     lastProductId,

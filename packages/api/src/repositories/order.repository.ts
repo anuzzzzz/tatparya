@@ -158,18 +158,14 @@ export class OrderRepository {
     return mapOrderRow(updated);
   }
 
-  async generateOrderNumber(storeId: string): Promise<string> {
+  async generateOrderNumber(_storeId: string): Promise<string> {
     const now = new Date();
     const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    // Count existing orders this month for sequential number
-    const { count } = await this.db
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .eq('store_id', storeId)
-      .gte('created_at', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
-
-    const seq = String((count || 0) + 1).padStart(5, '0');
+    // Use Postgres sequence for globally unique, race-condition-free order numbers
+    const { data, error } = await this.db.rpc('next_order_number');
+    if (error) throw new Error(`Failed to generate order number: ${error.message}`);
+    const seq = String(data).padStart(5, '0');
     return `TTP-${yearMonth}-${seq}`;
   }
 
