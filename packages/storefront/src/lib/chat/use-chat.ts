@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   type ChatMessage,
   type TextMessage,
@@ -15,7 +15,6 @@ import {
 import { ChatApiService } from './chat-api';
 import { useSellerAuth } from './auth-provider';
 import { resizeAll } from './image-resizer';
-import { DESIGN_ACTIONS } from '@tatparya/shared';
 
 // ============================================================
 // Chat State Hook — LLM Router Edition
@@ -53,19 +52,23 @@ export interface UseChatReturn {
   clearChat: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   lastProductId: string | null;
-  previousDesignConfig: Record<string, unknown> | null;
 }
 
 export function useChat(): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
   const [isTyping, setIsTyping] = useState(false);
   const [lastProductId, setLastProductId] = useState<string | null>(null);
-  const [previousDesignConfig, setPreviousDesignConfig] = useState<Record<string, unknown> | null>(null);
   const [pendingActions, setPendingActions] = useState<unknown[]>([]);
+  const designGenerated = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { trpc, storeId, setStoreId } = useSellerAuth();
 
-  const api = useMemo(() => new ChatApiService(trpc, storeId), [trpc, storeId]);
+  const apiRef = useRef(new ChatApiService(trpc, storeId));
+
+  // Keep apiRef in sync with storeId changes across renders
+  useEffect(() => {
+    apiRef.current.setStoreId(storeId);
+  }, [storeId]);
 
   // Reset state for clean store creation testing via ?newstore=true
   useEffect(() => {
@@ -75,7 +78,7 @@ export function useChat(): UseChatReturn {
         setMessages(WELCOME_MESSAGES);
         setPendingActions([]);
         setLastProductId(null);
-        setPreviousDesignConfig(null);
+        designGenerated.current = false;
       }
     }
   }, []);
@@ -251,12 +254,6 @@ export function useChat(): UseChatReturn {
 
       setIsTyping(false);
 
-      // ── Cache previous design config before design actions ──
-      const designActionTypes = [...DESIGN_ACTIONS];
-      if (result.actions?.some((a: string) => designActionTypes.includes(a))) {
-        setPreviousDesignConfig((prev) => prev);
-      }
-
       // ── Handle confirmation needed ─────────────────────────
       if (result.confirmationNeeded) {
         setPendingActions(result.pendingActions || []);
@@ -308,7 +305,7 @@ export function useChat(): UseChatReturn {
       // ── Update auth context if a new store was created ─────
       if (result.newStoreId) {
         setStoreId(result.newStoreId);
-        api.setStoreId(result.newStoreId);
+        apiRef.current.setStoreId(result.newStoreId);
       }
 
     } catch (err: any) {
@@ -316,7 +313,7 @@ export function useChat(): UseChatReturn {
       setIsTyping(false);
       addMessages([aiTextMessage('Something went wrong. Please try again.')]);
     }
-  }, [addMessages, api, buildConversationHistory, lastProductId, messages, pendingActions, renderQueryResults, storeId, setStoreId, trpc]);
+  }, [addMessages, buildConversationHistory, lastProductId, messages, pendingActions, renderQueryResults, storeId, setStoreId, trpc]);
 
   // ============================================================
   // Send images → resize → triage → per-group catalog AI → store design
@@ -346,7 +343,7 @@ export function useChat(): UseChatReturn {
     try {
       // Check if store exists
       if (!storeId) {
-        const storesResult = await api.listStores();
+        const storesResult = await apiRef.current.listStores();
         if (storesResult.success) {
           const stores = storesResult.data as any[];
           if (stores.length === 0) {
@@ -357,7 +354,7 @@ export function useChat(): UseChatReturn {
             return;
           }
           setStoreId(stores[0].id);
-          api.setStoreId(stores[0].id);
+          apiRef.current.setStoreId(stores[0].id);
         }
       }
 
@@ -374,7 +371,7 @@ export function useChat(): UseChatReturn {
         photoGroups = [{ imageIndices: [0], confidence: 1.0, label: 'single product' }];
       } else {
         addMessages([aiTextMessage('Analyzing which photos go together...')]);
-        const triageResult = await api.triagePhotos(thumbnailDataUrls);
+        const triageResult = await apiRef.current.triagePhotos(thumbnailDataUrls);
 
         if (triageResult.success) {
           const triage = triageResult.data as any;
@@ -416,7 +413,7 @@ export function useChat(): UseChatReturn {
       // Start R2 uploads for ALL images in parallel (non-blocking)
       const r2UploadPromise = Promise.all(resized.map(async (r) => {
         try {
-          const uploadUrlResult = await api.getUploadUrl(r.filename, 'image/jpeg', r.full.size);
+          const uploadUrlResult = await apiRef.current.getUploadUrl(r.filename, 'image/jpeg', r.full.size);
           if (!uploadUrlResult.success) return null;
           const { uploadUrl, publicUrl, mediaAssetId } = uploadUrlResult.data as any;
           await fetch(uploadUrl, {
@@ -424,7 +421,7 @@ export function useChat(): UseChatReturn {
             body: r.full,
             headers: { 'Content-Type': 'image/jpeg' },
           });
-          await api.confirmUpload(mediaAssetId);
+          await apiRef.current.confirmUpload(mediaAssetId);
           return { mediaId: mediaAssetId, publicUrl, index: resized.indexOf(r) };
         } catch {
           return null;
@@ -434,7 +431,7 @@ export function useChat(): UseChatReturn {
       // Run catalog AI for each group (parallel across groups)
       const catalogPromises = photoGroups.map(async (group) => {
         const groupThumbnails = group.imageIndices.map((i) => thumbnailDataUrls[i]!);
-        const result = await api.generateFromPhotos(groupThumbnails);
+        const result = await apiRef.current.generateFromPhotos(groupThumbnails);
         return { group, result };
       });
 
@@ -510,51 +507,54 @@ export function useChat(): UseChatReturn {
       }
 
       // ── Step 5: Store design AI (Call 2) in background ──
-      // Only on first upload (don't redesign on every product add)
-      const allNames = allProducts.map((p) => p.suggestion.name);
-      const allPrices = allProducts
-        .map((p) => p.suggestion.suggestedPrice)
-        .filter(Boolean);
-      const priceRange = allPrices.length > 0
-        ? {
-            min: Math.min(...allPrices.map((p: any) => p.min)),
-            max: Math.max(...allPrices.map((p: any) => p.max)),
-          }
-        : undefined;
-      const allTags = [...new Set(allProducts.flatMap((p) => p.suggestion.tags || []))];
+      // Only on first upload — skip if design was already generated this session
+      if (!designGenerated.current) {
+        const allNames = allProducts.map((p) => p.suggestion.name);
+        const allPrices = allProducts
+          .map((p) => p.suggestion.suggestedPrice)
+          .filter(Boolean);
+        const priceRange = allPrices.length > 0
+          ? {
+              min: Math.min(...allPrices.map((p: any) => p.min)),
+              max: Math.max(...allPrices.map((p: any) => p.max)),
+            }
+          : undefined;
+        const allTags = [...new Set(allProducts.flatMap((p) => p.suggestion.tags || []))];
 
-      api.generateStoreDesign(
-        thumbnailDataUrls.slice(0, 3), // Max 3 images for design
-        {
-          names: allNames,
-          priceRange,
-          tags: allTags.slice(0, 15),
-        },
-      ).then((designResult) => {
-        if (designResult.success) {
-          const data = designResult.data as any;
-          addMessages([
-            aiTextMessage(
-              `✨ Store design updated! ${data.heroTagline ? `"${data.heroTagline}"` : ''}\nVisit your store to see the new look.`,
-            ),
-          ]);
-        }
-      }).catch(() => {
-        // Design generation is non-critical — don't block flow
-      });
+        apiRef.current.generateStoreDesign(
+          thumbnailDataUrls.slice(0, 3), // Max 3 images for design
+          {
+            names: allNames,
+            priceRange,
+            tags: allTags.slice(0, 15),
+          },
+        ).then((designResult) => {
+          if (designResult.success) {
+            designGenerated.current = true;
+            const data = designResult.data as any;
+            addMessages([
+              aiTextMessage(
+                `✨ Store design updated! ${data.heroTagline ? `"${data.heroTagline}"` : ''}\nVisit your store to see the new look.`,
+              ),
+            ]);
+          }
+        }).catch(() => {
+          // Design generation is non-critical — don't block flow
+        });
+      }
 
     } catch (err) {
       console.error('Photo processing error:', err);
       setIsTyping(false);
       addMessages([aiTextMessage('Something went wrong while processing your photos. Please try again.')]);
     }
-  }, [addMessages, api, storeId, setStoreId]);
+  }, [addMessages, storeId, setStoreId]);
 
   const clearChat = useCallback(() => {
     setMessages(WELCOME_MESSAGES);
     setLastProductId(null);
-    setPreviousDesignConfig(null);
     setPendingActions([]);
+    designGenerated.current = false;
   }, []);
 
   return {
@@ -565,6 +565,5 @@ export function useChat(): UseChatReturn {
     clearChat,
     messagesEndRef,
     lastProductId,
-    previousDesignConfig,
   };
 }

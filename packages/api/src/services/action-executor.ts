@@ -149,10 +149,14 @@ async function executeSingle(
       return updateStoreDesign(db, storeId, action.payload.design);
 
     case 'store.regenerate_design':
-      return regenerateDesign(db, storeId, action.payload);
+      regenerateDesign(db, storeId, action.payload).catch((err) =>
+        console.error('[action-executor] Background design regeneration failed:', err));
+      return { success: true, message: 'Design regeneration started — your store will update in about 30 seconds.' };
 
     case 'store.regenerate_catalog':
-      return regenerateCatalog(db, storeId, action.payload);
+      regenerateCatalog(db, storeId, action.payload).catch((err) =>
+        console.error('[action-executor] Background catalog regeneration failed:', err));
+      return { success: true, message: 'Catalog regeneration started — your products will update shortly.' };
 
     case 'store.undo_design':
       return undoDesign(db, storeId);
