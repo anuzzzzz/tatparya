@@ -2,6 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TatparyaAction } from '@tatparya/shared';
 import { generateStoreDesign } from './store-design-ai.service.js';
 import { generateBulkProducts } from './catalog-ai.service.js';
+import { OrderRepository } from '../repositories/order.repository.js';
+import { VariantRepository } from '../repositories/product.repository.js';
+import { DiscountRepository } from '../repositories/discount.repository.js';
+import { OrderService } from './order.service.js';
 
 // ============================================================
 // Action Executor
@@ -40,6 +44,19 @@ export async function executeActions(
   }
 
   return results;
+}
+
+// ============================================================
+// Order service factory (for state machine–validated order ops)
+// ============================================================
+
+function createOrderService(db: SupabaseClient) {
+  return new OrderService(
+    db,
+    new OrderRepository(db),
+    new VariantRepository(db),
+    new DiscountRepository(db),
+  );
 }
 
 // ============================================================
@@ -214,27 +231,30 @@ async function executeSingle(
     case 'collection.remove_products':
       return removeProductsFromCollection(db, action.payload.collectionId, action.payload.productIds);
 
-    // ── Orders ──────────────────────────────────────────
-    case 'order.update_status':
-      return updateRow(db, 'orders', storeId, action.payload.orderId, {
-        status: action.payload.status,
-        tracking_number: action.payload.trackingNumber,
-        tracking_url: action.payload.trackingUrl,
+    // ── Orders (routed through OrderService for state machine validation) ──
+    case 'order.update_status': {
+      const svc = createOrderService(db);
+      return svc.updateStatus(storeId, action.payload.orderId, action.payload.status, {
+        trackingNumber: action.payload.trackingNumber,
+        trackingUrl: action.payload.trackingUrl,
         notes: action.payload.notes,
       });
+    }
 
-    case 'order.ship':
-      return updateRow(db, 'orders', storeId, action.payload.orderId, {
-        status: 'shipped',
-        tracking_number: action.payload.trackingNumber,
-        tracking_url: action.payload.trackingUrl,
+    case 'order.ship': {
+      const svc = createOrderService(db);
+      return svc.updateStatus(storeId, action.payload.orderId, 'shipped', {
+        trackingNumber: action.payload.trackingNumber,
+        trackingUrl: action.payload.trackingUrl,
       });
+    }
 
-    case 'order.cancel':
-      return updateRow(db, 'orders', storeId, action.payload.orderId, {
-        status: 'cancelled',
+    case 'order.cancel': {
+      const svc = createOrderService(db);
+      return svc.updateStatus(storeId, action.payload.orderId, 'cancelled', {
         notes: action.payload.reason,
       });
+    }
 
     // ── Discounts ───────────────────────────────────────
     case 'discount.create':

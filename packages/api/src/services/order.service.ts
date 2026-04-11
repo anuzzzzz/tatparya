@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { OrderRepository } from '../repositories/order.repository.js';
 import type { VariantRepository } from '../repositories/product.repository.js';
 import type { DiscountRepository } from '../repositories/discount.repository.js';
@@ -5,6 +6,7 @@ import { emitEvent } from '../lib/event-bus.js';
 
 export class OrderService {
   constructor(
+    private db: SupabaseClient,
     private orderRepo: OrderRepository,
     private variantRepo: VariantRepository,
     private discountRepo: DiscountRepository,
@@ -35,6 +37,47 @@ export class OrderService {
     taxAmount?: number;
     notes?: string;
   }) {
+    // Validate line item prices against actual product/variant prices (Bug 12)
+    const productIds = [...new Set(data.lineItems.map(item => item.productId))];
+    const { data: products, error: productErr } = await this.db
+      .from('products')
+      .select('id, price, status')
+      .eq('store_id', storeId)
+      .in('id', productIds);
+
+    if (productErr) throw new Error(`Failed to validate product prices: ${productErr.message}`);
+
+    const priceMap = new Map<string, number>();
+    for (const p of products || []) {
+      if (p.status !== 'active') throw new Error(`Product ${p.id} is not available for purchase`);
+      priceMap.set(p.id as string, Number(p.price));
+    }
+
+    // Check variant-specific price overrides
+    const variantIds = data.lineItems.filter(item => item.variantId).map(item => item.variantId!);
+    if (variantIds.length > 0) {
+      const { data: variants } = await this.db
+        .from('variants')
+        .select('id, price')
+        .eq('store_id', storeId)
+        .in('id', variantIds);
+
+      for (const v of variants || []) {
+        if (v.price != null) {
+          priceMap.set(v.id as string, Number(v.price));
+        }
+      }
+    }
+
+    for (const item of data.lineItems) {
+      const lookupId = item.variantId || item.productId;
+      const actualPrice = priceMap.get(lookupId) ?? priceMap.get(item.productId);
+      if (actualPrice === undefined) throw new Error(`Product ${item.productId} not found or not active`);
+      if (item.unitPrice < actualPrice) {
+        item.unitPrice = actualPrice;
+      }
+    }
+
     // Calculate totals
     const subtotal = data.lineItems.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity, 0
@@ -45,7 +88,7 @@ export class OrderService {
       const discount = await this.discountRepo.findByCode(storeId, data.discountCode);
       if (discount && discount.active) {
         discountAmount = this.calculateDiscount(discount, subtotal);
-        await this.discountRepo.incrementUsage(storeId, discount.id);
+        // Usage increment deferred to updateStatus on paid/cod_confirmed (Bug 8)
       }
     }
 
@@ -83,16 +126,7 @@ export class OrderService {
       notes: data.notes,
     });
 
-    // Commit stock reservations (deduct from actual stock)
-    for (const item of data.lineItems) {
-      if (item.variantId) {
-        try {
-          await this.variantRepo.commitReservation(storeId, item.variantId, item.quantity);
-        } catch (err) {
-          console.error(`Failed to commit stock for variant ${item.variantId}:`, err);
-        }
-      }
-    }
+    // Stock deduction deferred to updateStatus on paid/cod_confirmed (Bug 7)
 
     // Emit order.created event
     await emitEvent('order.created', storeId, {
@@ -147,6 +181,34 @@ export class OrderService {
         trackingNumber: order.trackingNumber,
         trackingUrl: order.trackingUrl,
       }, { source: 'order-service' });
+    }
+
+    // Commit stock and discount usage on payment confirmation.
+    // Stock is deducted on 'paid' (online) or 'cod_confirmed' (COD) to prevent
+    // phantom deductions from abandoned payments.
+    if (newStatus === 'paid' || newStatus === 'cod_confirmed') {
+      const items = order.lineItems as Array<{ variantId?: string; quantity: number }>;
+      for (const item of items) {
+        if (item.variantId) {
+          try {
+            await this.variantRepo.commitReservation(storeId, item.variantId, item.quantity);
+          } catch (err) {
+            console.error(`Failed to commit stock for variant ${item.variantId}:`, err);
+          }
+        }
+      }
+
+      // Increment discount usage now that payment is confirmed
+      if (order.discountCode) {
+        try {
+          const discount = await this.discountRepo.findByCode(storeId, order.discountCode);
+          if (discount) {
+            await this.discountRepo.incrementUsage(storeId, discount.id);
+          }
+        } catch (err) {
+          console.error(`Failed to increment discount usage for ${order.discountCode}:`, err);
+        }
+      }
     }
 
     // Handle cancellation — restore stock

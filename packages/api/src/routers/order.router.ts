@@ -20,6 +20,7 @@ export const orderRouter = router({
     .input(CreateOrderInput)
     .mutation(async ({ ctx, input }) => {
       const orderService = new OrderService(
+        ctx.serviceDb,
         new OrderRepository(ctx.serviceDb),
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
@@ -49,6 +50,7 @@ export const orderRouter = router({
       }
 
       const orderService = new OrderService(
+        ctx.serviceDb,
         new OrderRepository(ctx.serviceDb),
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
@@ -146,6 +148,7 @@ export const orderRouter = router({
 
       const orderRepo = new OrderRepository(ctx.serviceDb);
       const orderService = new OrderService(
+        ctx.serviceDb,
         orderRepo,
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
@@ -209,6 +212,7 @@ export const orderRouter = router({
 
       const orderRepo = new OrderRepository(ctx.serviceDb);
       const orderService = new OrderService(
+        ctx.serviceDb,
         orderRepo,
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
@@ -319,6 +323,7 @@ export const orderRouter = router({
     .input(UpdateOrderStatusInput)
     .mutation(async ({ ctx, input }) => {
       const orderService = new OrderService(
+        ctx.serviceDb,
         new OrderRepository(ctx.serviceDb),
         new VariantRepository(ctx.serviceDb),
         new DiscountRepository(ctx.serviceDb),
