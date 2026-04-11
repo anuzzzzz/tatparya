@@ -84,7 +84,7 @@ export interface TatparyaAction {
 export const LLMRouterOutput = z.object({
   actions: z.array(z.object({
     type: z.string(),
-    payload: z.record(z.any()),
+    payload: z.record(z.any()).default({}),
   })).default([]),
   response: z.string(),
   followUp: z.string().optional(),
@@ -92,7 +92,7 @@ export const LLMRouterOutput = z.object({
     summary: z.string(),
     actions: z.array(z.object({
       type: z.string(),
-      payload: z.record(z.any()),
+      payload: z.record(z.any()).default({}),
     })),
   }).optional(),
   suggestions: z.array(z.object({
