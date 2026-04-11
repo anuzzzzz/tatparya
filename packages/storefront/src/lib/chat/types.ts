@@ -13,6 +13,7 @@ export type ChatMessage =
   | OrderCardMessage
   | StatsMessage
   | ActionButtonsMessage
+  | ChecklistMessage
   | TypingMessage
   | SystemMessage;
 
@@ -91,6 +92,19 @@ export interface ActionButtonsMessage {
   timestamp: Date;
 }
 
+export interface ChecklistMessage {
+  type: 'checklist';
+  id: string;
+  role: 'ai';
+  title: string;
+  items: {
+    label: string;
+    done: boolean;
+    action?: string; // chat message to send when tapped
+  }[];
+  timestamp: Date;
+}
+
 export interface TypingMessage {
   type: 'typing';
   id: string;
@@ -164,6 +178,17 @@ export function typingMessage(): TypingMessage {
     type: 'typing',
     id: createMessageId(),
     role: 'ai',
+    timestamp: new Date(),
+  };
+}
+
+export function checklistMessage(title: string, items: ChecklistMessage['items']): ChecklistMessage {
+  return {
+    type: 'checklist',
+    id: createMessageId(),
+    role: 'ai',
+    title,
+    items,
     timestamp: new Date(),
   };
 }

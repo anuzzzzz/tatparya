@@ -144,6 +144,14 @@ export const chatRouter = router({
           const created = createResults.find((r) => r.success && (r.data as any)?.id);
           if (created) {
             newStoreId = (created.data as any).id;
+
+            // Auto-fetch store link for the creation response
+            const storeSlug = (created.data as any)?.slug;
+            if (storeSlug) {
+              const baseUrl = process.env.STOREFRONT_BASE_URL || 'http://localhost:3000';
+              const storeUrl = `${baseUrl}/${storeSlug}`;
+              (created.data as any)._storeUrl = storeUrl;
+            }
           }
         }
 
@@ -178,6 +186,15 @@ export const chatRouter = router({
 
       if (validationErrors.length > 0) {
         finalResponse += '\n' + validationErrors.join('\n');
+      }
+
+      // Append store URL after creation
+      if (newStoreId) {
+        const storeCreateResult = executionResults.find((r) => r.type === 'store.create' && r.success);
+        const storeUrl = (storeCreateResult?.data as any)?._storeUrl;
+        if (storeUrl && !finalResponse.includes(storeUrl)) {
+          finalResponse += `\n${storeUrl}`;
+        }
       }
 
       // Append store URL hint after design changes

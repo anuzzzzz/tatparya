@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { ChatMessage, ChatAction, ProductCardMessage, OrderCardMessage, StatsMessage, ActionButtonsMessage } from '@/lib/chat/types';
+import type { ChatMessage, ChatAction, ProductCardMessage, OrderCardMessage, StatsMessage, ActionButtonsMessage, ChecklistMessage } from '@/lib/chat/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Package, ShoppingBag, TrendingUp } from 'lucide-react';
 
@@ -53,6 +53,8 @@ function MessageBubble({ message, onAction, hideTimestamp }: { message: ChatMess
       return <StatsCard message={message} />;
     case 'action_buttons':
       return <ActionButtons message={message} onAction={onAction} />;
+    case 'checklist':
+      return <ChecklistCard message={message} onAction={onAction} />;
     case 'system':
       return <SystemBubble text={message.text} />;
     case 'typing':
@@ -305,6 +307,55 @@ function ActionButtons({ message, onAction }: { message: ActionButtonsMessage; o
               {action.label}
             </button>
           ))}
+        </div>
+        <span className="chat-timestamp">
+          {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Checklist Card
+// ============================================================
+
+function ChecklistCard({ message, onAction }: { message: ChecklistMessage; onAction?: (action: string, params?: Record<string, unknown>) => void }) {
+  const doneCount = message.items.filter(i => i.done).length;
+  return (
+    <div className="chat-bubble-row chat-bubble-ai">
+      <div className="chat-avatar"><span>त</span></div>
+      <div className="chat-bubble-content">
+        <div className="chat-card">
+          <div className="chat-card-body">
+            <h4 className="chat-card-title">{message.title}</h4>
+            <p className="chat-card-desc">{doneCount}/{message.items.length} complete</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+              {message.items.map((item, i) => (
+                <div
+                  key={i}
+                  onClick={() => !item.done && item.action && onAction?.(item.action)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 8px',
+                    borderRadius: '6px',
+                    cursor: item.done || !item.action ? 'default' : 'pointer',
+                    opacity: item.done ? 0.6 : 1,
+                    background: item.done ? 'transparent' : 'var(--color-background-secondary)',
+                  }}
+                >
+                  <span style={{ fontSize: '14px' }}>{item.done ? '✅' : '⬜'}</span>
+                  <span style={{
+                    fontSize: '13px',
+                    textDecoration: item.done ? 'line-through' : 'none',
+                    color: item.done ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
+                  }}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <span className="chat-timestamp">
           {formatDistanceToNow(message.timestamp, { addSuffix: true })}

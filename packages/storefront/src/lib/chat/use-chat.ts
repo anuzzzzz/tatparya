@@ -10,6 +10,7 @@ import {
   aiTextMessage,
   sellerTextMessage,
   sellerImageMessage,
+  checklistMessage,
   createMessageId,
 } from './types';
 import { ChatApiService } from './chat-api';
@@ -296,6 +297,15 @@ export function useChat(): UseChatReturn {
       if (result.newStoreId) {
         setStoreId(result.newStoreId);
         api.setStoreId(result.newStoreId);
+
+        // Show go-live checklist after store creation
+        addMessages([checklistMessage('Make your store live', [
+          { label: 'Store created', done: true },
+          { label: 'Add products (upload photos)', done: false, action: 'How do I add products?' },
+          { label: 'Set up payments', done: false, action: 'set up payments' },
+          { label: 'Configure shipping', done: false, action: 'set up shipping' },
+          { label: 'Add social links', done: false, action: 'add my social links' },
+        ])]);
       }
 
     } catch (err: any) {

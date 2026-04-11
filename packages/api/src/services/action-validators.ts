@@ -77,7 +77,9 @@ function validateStoreCreate(action: TatparyaAction): ValidationResult {
   }
 
   if (!p.vertical || typeof p.vertical !== 'string') {
-    return { valid: false, error: 'Vertical is required (e.g. fashion, beauty, food).' };
+    // Default to "general" if vertical not provided (Phase 1: zero-friction creation)
+    const fixed = { ...action, payload: { ...p, vertical: 'general' } } as TatparyaAction;
+    return { valid: true, fixed };
   }
   if (!VALID_VERTICALS.has(p.vertical)) {
     return { valid: false, error: `Invalid vertical "${p.vertical}". Must be one of: ${[...VALID_VERTICALS].join(', ')}.` };
