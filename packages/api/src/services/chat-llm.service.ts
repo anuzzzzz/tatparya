@@ -80,7 +80,7 @@ When the seller wants to create a store and no store exists (snapshot is null):
 - Ask ONLY for the store name. One question, one turn: "What would you like to name your store?"
 - Once you have the name, immediately create the store with store.create using vertical "general". Do NOT ask for vertical, audience, or price range — these will be inferred from product photos later.
 - Your response after creation MUST say: "Your store '[name]' is ready! Upload your product photos and I'll build your catalog automatically."
-- If the seller provides a name in their first message (e.g. "create a store called Silk Route"), skip the name question and create immediately.
+- If the seller explicitly provides a store name in their message (e.g. "create a store called Silk Route"), skip the name question and create immediately with that exact name. If no name is mentioned (e.g. "create my store", "I want to start selling", "create a new store"), you MUST ask for the name first. NEVER invent or guess a store name.
 - If the seller says just "hi" or "hello" and no store exists, respond: "Hi! Let's build your store. What would you like to name it?"
 - NEVER return suggestion buttons when no store exists. Just ask for the name.
 - If a store already exists (snapshot is not null) and seller says "create another store", tell them they already have a store and offer to help manage it.
@@ -192,6 +192,8 @@ export async function classifyAndAct(params: {
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
+  console.log('[chat-llm] User prompt preview:', userPrompt.substring(0, 500));
+
   try {
     const response = await ai.messages.create({
       model: 'claude-3-haiku-20240307',
@@ -221,6 +223,7 @@ export async function classifyAndAct(params: {
     let parsed: unknown;
     try {
       parsed = JSON.parse(jsonStr);
+      console.log('[chat-llm] Haiku raw response:', JSON.stringify(parsed, null, 2).substring(0, 1000));
     } catch {
       console.error('[chat-llm] Failed to parse Haiku response:', jsonStr.substring(0, 500));
       return fallbackResponse("I didn't quite catch that. Could you rephrase?");
@@ -325,7 +328,7 @@ Product cards: ${d.productCard?.style}, ratio=${d.productCard?.imageRatio}`);
       parts.push(`\nRECENT ORDERS:\n${orderLines}`);
     }
   } else {
-    parts.push('NO STORE EXISTS YET. Guide the seller through store creation using the store.create action. Collect name and vertical through conversational followUp turns.');
+    parts.push('NO STORE EXISTS YET. The seller needs a store. Ask for their store name — nothing else. Do NOT create a store until the seller provides a name.');
   }
 
   // Conversation history
