@@ -296,6 +296,22 @@ export function useChat(): UseChatReturn {
           });
           setPendingActions([]);
           setIsTyping(false);
+
+          // Check if store was deleted via confirm path
+          const wasStoreDeleted = result.executionResults?.some(
+            (r: any) => r.type === 'store.delete' && r.success,
+          );
+          if (wasStoreDeleted) {
+            setStoreId(null);
+            apiRef.current.setStoreId(null);
+            designGenerated.current = false;
+            setMessages([
+              aiTextMessage('Store deleted. All data has been removed.'),
+              aiTextMessage('What would you like to name your new store?'),
+            ]);
+            return;
+          }
+
           addMessages([aiTextMessage(result.response)]);
           return;
         }
