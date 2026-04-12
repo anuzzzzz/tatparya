@@ -74,6 +74,9 @@ async function executeSingle(
     case 'store.create':
       return createStore(db, action.payload, userId);
 
+    case 'store.delete':
+      return deleteStore(db, storeId);
+
     // ── Store Identity ──────────────────────────────────
     case 'store.update_name':
       return updateStore(db, storeId, { name: action.payload.name });
@@ -318,6 +321,22 @@ function slugify(text: string): string {
   return text.toLowerCase().trim()
     .replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
     + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+async function deleteStore(db: SupabaseClient, storeId: string) {
+  if (!storeId) throw new Error('No store to delete');
+  await db.from('collection_products').delete().eq('store_id', storeId);
+  await db.from('product_categories').delete().eq('store_id', storeId);
+  await db.from('variants').delete().eq('store_id', storeId);
+  await db.from('media_assets').delete().eq('store_id', storeId);
+  await db.from('products').delete().eq('store_id', storeId);
+  await db.from('categories').delete().eq('store_id', storeId);
+  await db.from('collections').delete().eq('store_id', storeId);
+  await db.from('discounts').delete().eq('store_id', storeId);
+  await db.from('orders').delete().eq('store_id', storeId);
+  const { error } = await db.from('stores').delete().eq('id', storeId);
+  if (error) throw new Error('Failed to delete store: ' + error.message);
+  return { deleted: true, storeId };
 }
 
 async function createStore(db: SupabaseClient, payload: Record<string, any>, userId?: string) {

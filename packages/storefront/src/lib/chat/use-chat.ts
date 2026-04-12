@@ -379,6 +379,18 @@ export function useChat(): UseChatReturn {
         historyStartIndex.current = messages.length + responseMessages.length;
       }
 
+      if (result.storeDeleted) {
+        setStoreId(null);
+        apiRef.current.setStoreId(null);
+        designGenerated.current = false;
+        setMessages([
+          aiTextMessage('Store deleted. All data has been removed.'),
+          aiTextMessage('Ready to start fresh! What would you like to name your new store?'),
+        ]);
+        setIsTyping(false);
+        return;
+      }
+
     } catch (err: any) {
       console.error('Chat error:', err);
       setIsTyping(false);

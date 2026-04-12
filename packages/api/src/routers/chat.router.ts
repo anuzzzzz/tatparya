@@ -229,6 +229,7 @@ export const chatRouter = router({
         suggestions: llmResult.suggestions || [],
         queryResults: queryResults.length > 0 ? queryResults : null,
         newStoreId,
+        storeDeleted: executionResults.some((r) => r.type === 'store.delete' && r.success),
         processingTimeMs: Date.now() - startTime,
       };
     }),
