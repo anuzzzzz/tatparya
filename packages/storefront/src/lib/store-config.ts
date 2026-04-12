@@ -4,12 +4,18 @@ import type { DesignTokens } from '@tatparya/shared';
  * Convert DesignTokens into CSS custom properties.
  * These get injected into the store layout wrapper so all components
  * can use var(--color-primary) etc.
+ *
+ * IMPORTANT: tokens can be undefined if the design AI hasn't run yet
+ * (fire-and-forget on first photo upload). All reads must be null-safe.
  */
-export function designTokensToCssVars(tokens: DesignTokens): Record<string, string> {
+export function designTokensToCssVars(tokens: DesignTokens | undefined | null): Record<string, string> {
   const vars: Record<string, string> = {};
 
-  const palette = tokens?.palette || {} as any;
-  const fonts = tokens?.fonts || { display: 'Inter', body: 'Inter', scale: 1.0 };
+  // Guard: tokens may be undefined before design AI completes
+  const t = tokens || ({} as Partial<DesignTokens>);
+
+  const palette = t.palette || {} as any;
+  const fonts = t.fonts || { display: 'Inter', body: 'Inter', scale: 1.0 };
 
   // Palette
   vars['--color-primary'] = palette.primary || '#1a1a2e';
@@ -26,7 +32,7 @@ export function designTokensToCssVars(tokens: DesignTokens): Record<string, stri
   vars['--font-scale'] = String(fonts.scale ?? 1.0);
 
   // Radius
-  const radius = tokens.radius || 'rounded';
+  const radius = t.radius || 'rounded';
   const radiusMap: Record<string, string> = {
     sharp: '0px',
     subtle: '4px',
@@ -44,29 +50,29 @@ export function designTokensToCssVars(tokens: DesignTokens): Record<string, stri
     balanced: { section: '2.5rem', container: '1rem', gap: '1rem' },
     airy: { section: '4rem', container: '1.5rem', gap: '1.5rem' },
   };
-  const spacing = spacingMap[tokens.spacing || 'balanced'] || spacingMap['balanced']!;
+  const spacing = spacingMap[t.spacing || 'balanced'] || spacingMap['balanced']!;
   vars['--spacing-section'] = spacing.section;
   vars['--spacing-container'] = spacing.container;
   vars['--spacing-gap'] = spacing.gap;
 
   // Hero
-  vars['--hero-overlay-opacity'] = String(tokens.hero?.overlayOpacity ?? 0.3);
+  vars['--hero-overlay-opacity'] = String(t.hero?.overlayOpacity ?? 0.3);
 
   // V2: Tier 3 — Component tokens
-  if (tokens.heroTokens) {
-    vars['--hero-overlay-gradient'] = tokens.heroTokens.overlayGradient || 'cinematic-bottom';
-    vars['--hero-text-placement'] = tokens.heroTokens.textPlacement || 'bottom-left';
-    vars['--hero-slide-transition'] = tokens.heroTokens.slideTransition || 'crossfade';
+  if (t.heroTokens) {
+    vars['--hero-overlay-gradient'] = t.heroTokens.overlayGradient || 'cinematic-bottom';
+    vars['--hero-text-placement'] = t.heroTokens.textPlacement || 'bottom-left';
+    vars['--hero-slide-transition'] = t.heroTokens.slideTransition || 'crossfade';
   }
-  if (tokens.cardTokens) {
-    vars['--card-hover-effect'] = tokens.cardTokens.hoverEffect || 'zoom';
-    vars['--card-badge-style'] = tokens.cardTokens.badgeStyle || 'pill';
-    vars['--card-price-display'] = tokens.cardTokens.priceDisplay || 'stacked';
+  if (t.cardTokens) {
+    vars['--card-hover-effect'] = t.cardTokens.hoverEffect || 'zoom';
+    vars['--card-badge-style'] = t.cardTokens.badgeStyle || 'pill';
+    vars['--card-price-display'] = t.cardTokens.priceDisplay || 'stacked';
   }
-  if (tokens.decorativeTokens) {
-    vars['--divider-style'] = tokens.decorativeTokens.dividerStyle || 'gradient-fade';
-    vars['--section-bg-variation'] = tokens.decorativeTokens.sectionBgVariation ? '1' : '0';
-    vars['--use-glassmorphism'] = tokens.decorativeTokens.useGlassmorphism ? '1' : '0';
+  if (t.decorativeTokens) {
+    vars['--divider-style'] = t.decorativeTokens.dividerStyle || 'gradient-fade';
+    vars['--section-bg-variation'] = t.decorativeTokens.sectionBgVariation ? '1' : '0';
+    vars['--use-glassmorphism'] = t.decorativeTokens.useGlassmorphism ? '1' : '0';
   }
 
   return vars;
@@ -82,7 +88,7 @@ export function cssVarsToStyle(vars: Record<string, string>): React.CSSPropertie
 /**
  * Build Google Fonts URL from design tokens.
  */
-export function buildGoogleFontsUrl(tokens: DesignTokens): string {
+export function buildGoogleFontsUrl(tokens: DesignTokens | undefined | null): string {
   const families = new Set([tokens?.fonts?.display || 'Inter', tokens?.fonts?.body || 'Inter']);
   const params = Array.from(families)
     .map((f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800`)
@@ -93,7 +99,7 @@ export function buildGoogleFontsUrl(tokens: DesignTokens): string {
 /**
  * Get animation class based on design token.
  */
-export function getAnimationClass(animation: DesignTokens['animation']): string {
+export function getAnimationClass(animation: DesignTokens['animation'] | undefined): string {
   const map: Record<string, string> = {
     none: '',
     fade: 'animate-fade-in',
@@ -101,7 +107,7 @@ export function getAnimationClass(animation: DesignTokens['animation']): string 
     bounce: 'animate-bounce-in',
     staggered: 'animate-stagger',
   };
-  return map[animation] || '';
+  return map[animation || 'none'] || '';
 }
 
 /**
