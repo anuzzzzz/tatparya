@@ -62,6 +62,7 @@ export function useChat(): UseChatReturn {
   const [lastProductId, setLastProductId] = useState<string | null>(null);
   const [pendingActions, setPendingActions] = useState<unknown[]>([]);
   const designGenerated = useRef(false);
+  const historyStartIndex = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { trpc, storeId, setStoreId } = useSellerAuth();
 
@@ -70,6 +71,29 @@ export function useChat(): UseChatReturn {
   // Keep apiRef in sync with storeId changes across renders
   useEffect(() => {
     apiRef.current.setStoreId(storeId);
+    designGenerated.current = false;
+  }, [storeId]);
+
+  // Update welcome messages for returning users
+  useEffect(() => {
+    if (storeId && messages.length === 2 && messages[0]?.id === 'welcome-1') {
+      setMessages([
+        {
+          type: 'text',
+          id: 'welcome-1',
+          role: 'ai',
+          text: 'Welcome back! Your store is ready.',
+          timestamp: new Date(),
+        },
+        {
+          type: 'text',
+          id: 'welcome-2',
+          role: 'ai',
+          text: 'Upload product photos, customize your design, or ask me anything.',
+          timestamp: new Date(),
+        },
+      ]);
+    }
   }, [storeId]);
 
   // Reset state for clean store creation testing via ?newstore=true
@@ -101,8 +125,11 @@ export function useChat(): UseChatReturn {
   // ============================================================
   const buildConversationHistory = useCallback((msgs: ChatMessage[]) => {
     const history: { role: 'seller' | 'ai'; content: string }[] = [];
+    const relevantMsgs = historyStartIndex.current > 0
+      ? msgs.slice(historyStartIndex.current)
+      : msgs;
 
-    for (const m of msgs) {
+    for (const m of relevantMsgs) {
       switch (m.type) {
         case 'text':
           history.push({
@@ -335,7 +362,7 @@ export function useChat(): UseChatReturn {
           actions: result.suggestions.map((s: any) => ({
             label: s.label,
             action: 'suggestion',
-            params: { text: s.description || s.label },
+            params: { text: s.label },
             variant: 'secondary' as const,
           })),
           timestamp: new Date(),
@@ -348,6 +375,8 @@ export function useChat(): UseChatReturn {
       if (result.newStoreId) {
         setStoreId(result.newStoreId);
         apiRef.current.setStoreId(result.newStoreId);
+        // Reset history so next message starts fresh (prevents onboarding mode persistence)
+        historyStartIndex.current = messages.length + responseMessages.length;
       }
 
     } catch (err: any) {

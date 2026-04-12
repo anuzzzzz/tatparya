@@ -284,6 +284,15 @@ export const chatRouter = router({
 // that aren't already in the recent 10/5
 // ============================================================
 
+const SEARCH_STOP_WORDS = new Set([
+  'the', 'this', 'that', 'with', 'from', 'for', 'and', 'but', 'not', 'all',
+  'are', 'was', 'were', 'can', 'could', 'would', 'should', 'have', 'has',
+  'had', 'been', 'being', 'will', 'shall', 'may', 'might', 'must', 'need',
+  'change', 'update', 'delete', 'remove', 'show', 'find', 'get', 'set',
+  'make', 'price', 'name', 'product', 'order', 'ship', 'cancel', 'publish',
+  'archive', 'about', 'what', 'how', 'why', 'when', 'where', 'which', 'who',
+]);
+
 async function enrichSnapshotWithMentions(
   db: SupabaseClient,
   storeId: string,
@@ -291,15 +300,35 @@ async function enrichSnapshotWithMentions(
   snapshot: any,
 ) {
   try {
-    // Search products by name match
-    const { data: matchedProducts } = await db
+    // Extract meaningful search terms (skip stop words and short words)
+    const words = message.split(/\s+/).filter(w => w.length >= 3);
+    const searchTerms = words.filter(w => !SEARCH_STOP_WORDS.has(w.toLowerCase()));
+    if (searchTerms.length === 0) return;
+
+    // Try combined phrase first, then individual terms
+    const searchPattern = searchTerms.join(' ');
+    let { data: matchedProducts } = await db
       .from('products')
       .select('id, name, price, status, tags')
       .eq('store_id', storeId)
-      .ilike('name', `%${message}%`)
+      .ilike('name', `%${searchPattern}%`)
       .limit(5);
 
-    if (matchedProducts && matchedProducts.length > 0) {
+    if (!matchedProducts || matchedProducts.length === 0) {
+      // Fall back to individual term search
+      matchedProducts = [];
+      for (const term of searchTerms.slice(0, 3)) {
+        const { data: termMatches } = await db
+          .from('products')
+          .select('id, name, price, status, tags')
+          .eq('store_id', storeId)
+          .ilike('name', `%${term}%`)
+          .limit(3);
+        if (termMatches) matchedProducts.push(...termMatches);
+      }
+    }
+
+    if (matchedProducts.length > 0) {
       const existingIds = new Set(
         (snapshot.recentProducts || []).map((p: any) => p.id),
       );
@@ -307,16 +336,18 @@ async function enrichSnapshotWithMentions(
         if (!existingIds.has(p.id)) {
           snapshot.recentProducts = snapshot.recentProducts || [];
           snapshot.recentProducts.push(p);
+          existingIds.add(p.id);
         }
       }
     }
 
-    // Search orders by order number or buyer name
+    // Search orders by order number or buyer name (using filtered terms)
+    const orderSearchPattern = searchTerms.slice(0, 3).join(' ');
     const { data: matchedOrders } = await db
       .from('orders')
       .select('id, order_number, buyer_name, total, status, line_items, created_at')
       .eq('store_id', storeId)
-      .or(`order_number.ilike.%${message}%,buyer_name.ilike.%${message}%`)
+      .or(`order_number.ilike.%${orderSearchPattern}%,buyer_name.ilike.%${orderSearchPattern}%`)
       .limit(5);
 
     if (matchedOrders && matchedOrders.length > 0) {
