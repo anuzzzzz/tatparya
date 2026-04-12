@@ -26,15 +26,16 @@ export function designTokensToCssVars(tokens: DesignTokens): Record<string, stri
   vars['--font-scale'] = String(fonts.scale ?? 1.0);
 
   // Radius
+  const radius = tokens.radius || 'rounded';
   const radiusMap: Record<string, string> = {
     sharp: '0px',
     subtle: '4px',
     rounded: '8px',
     pill: '9999px',
   };
-  vars['--radius'] = radiusMap[tokens.radius] || '8px';
-  vars['--radius-sm'] = tokens.radius === 'sharp' ? '0px' : tokens.radius === 'pill' ? '9999px' : '4px';
-  vars['--radius-lg'] = tokens.radius === 'sharp' ? '0px' : tokens.radius === 'pill' ? '9999px' : '12px';
+  vars['--radius'] = radiusMap[radius] || '8px';
+  vars['--radius-sm'] = radius === 'sharp' ? '0px' : radius === 'pill' ? '9999px' : '4px';
+  vars['--radius-lg'] = radius === 'sharp' ? '0px' : radius === 'pill' ? '9999px' : '12px';
 
   // Spacing
   const spacingMap: Record<string, { section: string; container: string; gap: string }> = {
@@ -43,7 +44,7 @@ export function designTokensToCssVars(tokens: DesignTokens): Record<string, stri
     balanced: { section: '2.5rem', container: '1rem', gap: '1rem' },
     airy: { section: '4rem', container: '1.5rem', gap: '1.5rem' },
   };
-  const spacing = spacingMap[tokens.spacing] || spacingMap['balanced']!;
+  const spacing = spacingMap[tokens.spacing || 'balanced'] || spacingMap['balanced']!;
   vars['--spacing-section'] = spacing.section;
   vars['--spacing-container'] = spacing.container;
   vars['--spacing-gap'] = spacing.gap;
