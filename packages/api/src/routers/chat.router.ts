@@ -76,6 +76,40 @@ export const chatRouter = router({
         hasPhotos: input.hasPhotos,
       });
 
+      // 2b. Guard: Haiku sometimes invents store names despite instructions.
+      // Verify any store.create name actually came from the seller's message.
+      if (!input.storeId) {
+        const storeCreateAction = llmResult.actions.find(a => a.type === 'store.create');
+        if (storeCreateAction) {
+          const proposedName = (storeCreateAction.payload as any)?.name;
+          if (proposedName) {
+            const nameWords = proposedName.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 3);
+            const messageLower = input.message.toLowerCase();
+            const nameFoundInMessage = nameWords.some((w: string) => messageLower.includes(w));
+
+            if (!nameFoundInMessage) {
+              // Haiku hallucinated a store name — reject and ask properly
+              console.warn('[chat.process] Blocked Haiku-invented store name:', proposedName, '| message was:', input.message);
+              return {
+                response: 'What would you like to name your store?',
+                followUp: null,
+                actions: [],
+                pendingActions: [],
+                executionResults: [],
+                validationErrors: [],
+                confirmationNeeded: null,
+                suggestions: [],
+                queryResults: null,
+                processingTimeMs: Date.now() - startTime,
+              };
+            }
+          }
+        }
+
+        // Also strip suggestions when no store exists — buttons like "My Orders" make no sense
+        llmResult.suggestions = [];
+      }
+
       // 3. If confirmation needed, return without executing
       if (llmResult.confirmationNeeded) {
         return {
