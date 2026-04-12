@@ -1,19 +1,10 @@
 'use client';
 
 import React from 'react';
-import { useSellerAuth } from '@/lib/chat/auth-provider';
 import { ChatShell } from '@/components/chat/chat-shell';
 
+// Chat is ALWAYS visible — it's how sellers create stores (NO_STORE phase),
+// manage products, and do everything. Never hide it based on storeId.
 export default function DashboardPage() {
-  const { storeId } = useSellerAuth();
-
-  if (!storeId) {
-    return (
-      <div className="db-empty">
-        <p>No store found. Start chatting to create your first store.</p>
-      </div>
-    );
-  }
-
   return <ChatShell />;
 }
