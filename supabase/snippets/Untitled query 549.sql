@@ -1,3 +1,4 @@
-ALTER TABLE stores ALTER COLUMN owner_id DROP NOT NULL;
-ALTER TABLE stores DROP CONSTRAINT stores_vertical_check;
-ALTER TABLE stores ADD CONSTRAINT stores_vertical_check CHECK (vertical IN ('fashion','fmcg','electronics','jewellery','beauty','food','home_decor','general','pets'));
+SELECT p.name, p.images->0->>'originalUrl' as original_url, p.images->0->>'cardUrl' as card_url
+FROM public.products p 
+ORDER BY p.created_at DESC
+LIMIT 4;
