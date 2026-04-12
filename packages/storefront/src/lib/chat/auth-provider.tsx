@@ -17,7 +17,7 @@ interface SellerAuthContext {
   session: Session | null;
   loading: boolean;
   storeId: string | null;
-  setStoreId: (id: string) => void;
+  setStoreId: (id: string | null) => void;
   signOut: () => Promise<void>;
   trpc: ReturnType<typeof createAuthTrpc>;
 }
@@ -118,10 +118,14 @@ export function SellerAuthProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
-  const handleSetStoreId = useCallback((id: string) => {
+  const handleSetStoreId = useCallback((id: string | null) => {
     setStoreId(id);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('tatparya_active_store', id);
+      if (id) {
+        localStorage.setItem('tatparya_active_store', id);
+      } else {
+        localStorage.removeItem('tatparya_active_store');
+      }
     }
   }, []);
 
