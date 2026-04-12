@@ -562,6 +562,30 @@ export function useChat(): UseChatReturn {
         ]);
       }
 
+      // ── Step 4b: Link uploaded images to created products ──
+      for (const { group, result } of catalogResults) {
+        if (!result.success) continue;
+        const { productId } = result.data as any;
+        if (!productId) continue;
+
+        const groupMediaIds = group.imageIndices
+          .map((idx) => successfulUploads.find((u) => u.index === idx))
+          .filter(Boolean)
+          .map((u: any) => u.mediaId);
+
+        if (groupMediaIds.length > 0 && storeId) {
+          trpc.chat.confirm.mutate({
+            storeId,
+            actions: [{
+              type: 'media.set_product_images',
+              payload: { productId, mediaAssetIds: groupMediaIds },
+            }],
+          }).catch((err) => {
+            console.error(`Failed to link images to product ${productId}:`, err);
+          });
+        }
+      }
+
       // Summary for multi-product uploads
       if (allProducts.length > 1) {
         addMessages([aiTextMessage(
