@@ -187,6 +187,7 @@ export async function classifyAndAct(params: {
   conversationHistory: ConversationTurn[];
   storeSnapshot: StoreSnapshot | null;
   hasPhotos: boolean;
+  phaseContext?: string;
 }): Promise<LLMRouterOutput> {
   const ai = getClient();
   const systemPrompt = buildSystemPrompt();
@@ -267,6 +268,7 @@ function buildUserPrompt(params: {
   conversationHistory: ConversationTurn[];
   storeSnapshot: StoreSnapshot | null;
   hasPhotos: boolean;
+  phaseContext?: string;
 }): string {
   const parts: string[] = [];
 
@@ -329,6 +331,11 @@ Product cards: ${d.productCard?.style}, ratio=${d.productCard?.imageRatio}`);
     }
   } else {
     parts.push('NO STORE EXISTS YET. The seller needs a store. Ask for their store name — nothing else. Do NOT create a store until the seller provides a name.');
+  }
+
+  // Phase-specific guidance from the conversation state machine
+  if (params.phaseContext) {
+    parts.push('\nPHASE GUIDANCE (follow this): ' + params.phaseContext);
   }
 
   // Conversation history

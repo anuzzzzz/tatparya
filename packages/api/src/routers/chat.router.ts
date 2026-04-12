@@ -7,6 +7,7 @@ import { classifyAndAct } from '../services/chat-llm.service.js';
 import { validateAction } from '../services/action-validators.js';
 import { executeActions } from '../services/action-executor.js';
 import { getOrCreateDevUser } from '../lib/dev-auth.js';
+import { determinePhase, handleNoStorePhase, filterActionsByPhase } from '../services/conversation-phase.js';
 
 // ============================================================
 // Chat Router
@@ -68,49 +69,115 @@ export const chatRouter = router({
         }
       }
 
-      // 2. Call Claude Haiku
+      // 2. Determine conversation phase from snapshot
+      const phaseConfig = determinePhase(snapshot);
+      console.log(`[chat.process] Phase: ${phaseConfig.phase} | message: "${input.message.substring(0, 80)}"`);
+
+      // 2b. NO_STORE phase — deterministic handler, no LLM involved
+      if (phaseConfig.phase === 'NO_STORE') {
+        const noStoreResult = handleNoStorePhase(input.message, input.conversationHistory);
+
+        if (noStoreResult.action === 'ask_name') {
+          return {
+            response: noStoreResult.response,
+            followUp: null,
+            actions: [],
+            pendingActions: [],
+            executionResults: [],
+            validationErrors: [],
+            confirmationNeeded: null,
+            suggestions: [],
+            queryResults: null,
+            processingTimeMs: Date.now() - startTime,
+          };
+        }
+
+        // Create the store deterministically — no Haiku
+        const createAction = {
+          type: 'store.create',
+          payload: { name: noStoreResult.storeName, vertical: 'general' },
+        } as TatparyaAction;
+        const validation = validateAction(createAction, null);
+        if (!validation.valid) {
+          return {
+            response: validation.error || 'Invalid store name. Please try a different name.',
+            followUp: null,
+            actions: [],
+            pendingActions: [],
+            executionResults: [],
+            validationErrors: [],
+            confirmationNeeded: null,
+            suggestions: [],
+            queryResults: null,
+            processingTimeMs: Date.now() - startTime,
+          };
+        }
+
+        const createResults = await executeActions(
+          [validation.fixed || createAction],
+          '',
+          ctx.serviceDb,
+          effectiveUserId,
+        );
+        const created = createResults.find((r) => r.success && (r.data as any)?.id);
+
+        if (created) {
+          const newId = (created.data as any).id;
+          const storeSlug = (created.data as any)?.slug;
+          const baseUrl = process.env.STOREFRONT_BASE_URL || 'http://localhost:3000';
+          const storeUrl = storeSlug ? `${baseUrl}/${storeSlug}` : '';
+
+          return {
+            response: `Your store "${noStoreResult.storeName}" is ready! Upload your product photos and I'll build your catalog automatically.${storeUrl ? '\n' + storeUrl : ''}`,
+            followUp: null,
+            actions: ['store.create'],
+            pendingActions: [],
+            executionResults: [{ type: 'store.create', success: true }],
+            validationErrors: [],
+            confirmationNeeded: null,
+            suggestions: [],
+            queryResults: null,
+            newStoreId: newId,
+            processingTimeMs: Date.now() - startTime,
+          };
+        }
+
+        return {
+          response: 'Something went wrong creating your store. Please try again.',
+          followUp: null,
+          actions: [],
+          pendingActions: [],
+          executionResults: [{ type: 'store.create', success: false, error: createResults[0]?.error }],
+          validationErrors: [],
+          confirmationNeeded: null,
+          suggestions: [],
+          queryResults: null,
+          processingTimeMs: Date.now() - startTime,
+        };
+      }
+
+      // 3. Call Claude Haiku (store exists — EMPTY_STORE / HAS_PRODUCTS / OPERATIONAL)
       const llmResult = await classifyAndAct({
         message: input.message,
         conversationHistory: input.conversationHistory,
         storeSnapshot: snapshot,
         hasPhotos: input.hasPhotos,
+        phaseContext: phaseConfig.systemPromptContext,
       });
 
-      // 2b. Guard: Haiku sometimes invents store names despite instructions.
-      // Verify any store.create name actually came from the seller's message.
-      if (!input.storeId) {
-        const storeCreateAction = llmResult.actions.find(a => a.type === 'store.create');
-        if (storeCreateAction) {
-          const proposedName = (storeCreateAction.payload as any)?.name;
-          if (proposedName) {
-            const nameWords = proposedName.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 3);
-            const messageLower = input.message.toLowerCase();
-            const nameFoundInMessage = nameWords.some((w: string) => messageLower.includes(w));
+      // 3b. Filter actions by phase whitelist
+      const { allowed: phaseAllowed, blocked: phaseBlocked } = filterActionsByPhase(llmResult.actions, phaseConfig);
+      if (phaseBlocked.length > 0) {
+        console.warn('[chat.process] Phase blocked:', phaseBlocked);
+      }
+      llmResult.actions = phaseAllowed;
 
-            if (!nameFoundInMessage) {
-              // Haiku hallucinated a store name — reject and ask properly
-              console.warn('[chat.process] Blocked Haiku-invented store name:', proposedName, '| message was:', input.message);
-              return {
-                response: 'What would you like to name your store?',
-                followUp: null,
-                actions: [],
-                pendingActions: [],
-                executionResults: [],
-                validationErrors: [],
-                confirmationNeeded: null,
-                suggestions: [],
-                queryResults: null,
-                processingTimeMs: Date.now() - startTime,
-              };
-            }
-          }
-        }
-
-        // Also strip suggestions when no store exists — buttons like "My Orders" make no sense
-        llmResult.suggestions = [];
+      // 3c. Phase-appropriate default suggestions when Haiku returns none
+      if (!llmResult.suggestions || llmResult.suggestions.length === 0) {
+        llmResult.suggestions = phaseConfig.suggestionsForPhase;
       }
 
-      // 3. If confirmation needed, return without executing
+      // 4. If confirmation needed, return without executing
       if (llmResult.confirmationNeeded) {
         return {
           response: llmResult.response,
