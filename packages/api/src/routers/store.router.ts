@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure, publicProcedure } from '../trpc/trpc.js';
 import { CreateStoreInput, UpdateStoreInput, GetStoreInput } from '@tatparya/shared';
 import { emitEvent } from '../lib/event-bus.js';
+import { getOrCreateDevUser } from '../lib/dev-auth.js';
 import { generateStoreDesign } from '../services/store-design-ai.service.js';
 import { processSellerPhotos } from '../services/photo-pipeline-orchestrator.service.js';
 import { generateProductFromImages } from '../services/catalog-ai.service.js';
@@ -152,9 +153,11 @@ export const storeRouter = router({
    * TODO: Remove before production.
    */
   devList: publicProcedure.query(async ({ ctx }) => {
+    const devUser = await getOrCreateDevUser(ctx.serviceDb);
     const { data: stores, error } = await ctx.serviceDb
       .from('stores')
       .select('*')
+      .eq('owner_id', devUser.id)
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -250,8 +253,7 @@ export const storeRouter = router({
         .replace(/-+/g, '-').replace(/^-|-$/g, '')
         + '-' + Date.now().toString(36);
 
-      // Use existing dev user from auth.users
-      const DEV_OWNER_ID = '01e14d64-a028-4c4d-b6fe-7b13f4bbf007';
+      const devUser = await getOrCreateDevUser(ctx.serviceDb);
 
       const defaultConfig = {
         design: {
@@ -286,7 +288,7 @@ export const storeRouter = router({
       const { data: store, error } = await ctx.serviceDb
         .from('stores')
         .insert({
-          owner_id: DEV_OWNER_ID,
+          owner_id: devUser.id,
           name: input.name,
           slug,
           vertical: input.vertical,
@@ -438,12 +440,12 @@ export const storeRouter = router({
         .replace(/-+/g, '-').replace(/^-|-$/g, '')
         + '-' + Date.now().toString(36);
 
-      const DEV_OWNER_ID = '01e14d64-a028-4c4d-b6fe-7b13f4bbf007';
+      const devUser = await getOrCreateDevUser(ctx.serviceDb);
 
       const { data: store, error: storeError } = await ctx.serviceDb
         .from('stores')
         .insert({
-          owner_id: DEV_OWNER_ID,
+          owner_id: devUser.id,
           name: input.name,
           slug,
           vertical: input.vertical,

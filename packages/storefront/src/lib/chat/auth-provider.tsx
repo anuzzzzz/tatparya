@@ -82,26 +82,35 @@ export function SellerAuthProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (process.env.NODE_ENV === 'development') {
-      // Allow ?newstore=true to skip auto-select and trigger store creation flow
       const params = new URLSearchParams(window.location.search);
-      if (params.get('newstore') === 'true') return;
 
-      // Auto-sign-in as dev user so tRPC calls carry a valid JWT
+      // Sign in as dev user, then resolve store
       supabase.auth.signInWithPassword({
         email: 'dev@tatparya.local',
         password: 'dev-tatparya-2024',
-      }).catch((err: any) => {
-        console.warn('[dev-auth] Auto sign-in failed (server will use fallback):', err.message);
-      });
-
-      // In dev mode, auto-select the most recent store (or null if none exist)
-      trpc.store.devList.query().then((stores: any[]) => {
-        if (stores && stores.length > 0) {
-          setStoreId(stores[0].id);
+      }).then(({ error }) => {
+        if (error) {
+          console.warn('[dev-auth] Sign-in failed:', error.message);
+          return;
         }
-        // If no stores, storeId stays null — creation flow triggers in chat
-      }).catch(() => {
-        // Supabase not reachable — storeId stays null
+
+        // ?newstore=true → force storeId to null for creation testing
+        if (params.get('newstore') === 'true') {
+          setStoreId(null);
+          return;
+        }
+
+        // Find the dev user's stores (devList now filters by owner_id)
+        trpc.store.devList.query().then((stores: any[]) => {
+          if (stores && stores.length > 0) {
+            setStoreId(stores[0].id);
+          }
+          // No stores → storeId stays null → creation flow
+        }).catch((err: any) => {
+          console.warn('[dev-auth] devList failed:', err.message);
+        });
+      }).catch((err: any) => {
+        console.warn('[dev-auth] Sign-in failed:', err.message);
       });
     } else {
       const saved = localStorage.getItem('tatparya_active_store');

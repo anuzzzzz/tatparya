@@ -3,29 +3,53 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const DEV_EMAIL = 'dev@tatparya.local';
 const DEV_PASSWORD = 'dev-tatparya-2024';
 
-/**
- * In development, ensure a dev user exists in Supabase auth and return their ID.
- * Uses the admin API (service role) to create/fetch the user.
- */
+let cachedDevUser: { id: string; email: string } | null = null;
+
 export async function getOrCreateDevUser(
   serviceDb: SupabaseClient,
 ): Promise<{ id: string; email: string }> {
-  // Try to find existing dev user by email
-  const { data: list, error: listErr } = await serviceDb.auth.admin.listUsers();
-  if (listErr) throw new Error(`[dev-auth] Failed to list users: ${listErr.message}`);
+  if (cachedDevUser) return cachedDevUser;
 
-  const existing = list.users.find((u) => u.email === DEV_EMAIL);
-  if (existing) {
-    return { id: existing.id, email: DEV_EMAIL };
-  }
-
-  // Create a new dev user
+  // Try to create the dev user (idempotent — ignore "already exists")
   const { data: created, error: createErr } = await serviceDb.auth.admin.createUser({
     email: DEV_EMAIL,
     password: DEV_PASSWORD,
     email_confirm: true,
   });
-  if (createErr) throw new Error(`[dev-auth] Failed to create dev user: ${createErr.message}`);
 
-  return { id: created.user.id, email: DEV_EMAIL };
+  if (created?.user) {
+    cachedDevUser = { id: created.user.id, email: DEV_EMAIL };
+    console.log('[dev-auth] Created dev user:', cachedDevUser.id);
+    return cachedDevUser;
+  }
+
+  // User already exists — sign in to get their ID
+  if (createErr) {
+    console.log('[dev-auth] createUser returned:', createErr.message, '— trying sign-in');
+    const { data: signIn, error: signInErr } = await serviceDb.auth.signInWithPassword({
+      email: DEV_EMAIL,
+      password: DEV_PASSWORD,
+    });
+
+    if (signIn?.user) {
+      cachedDevUser = { id: signIn.user.id, email: DEV_EMAIL };
+      console.log('[dev-auth] Signed in as dev user:', cachedDevUser.id);
+      return cachedDevUser;
+    }
+
+    // Last resort: try admin.listUsers (may work on some Supabase versions)
+    try {
+      const { data: list } = await serviceDb.auth.admin.listUsers();
+      const existing = list?.users?.find((u) => u.email === DEV_EMAIL);
+      if (existing) {
+        cachedDevUser = { id: existing.id, email: DEV_EMAIL };
+        console.log('[dev-auth] Found dev user via listUsers:', cachedDevUser.id);
+        return cachedDevUser;
+      }
+    } catch {}
+
+    throw new Error(`[dev-auth] Cannot create or find dev user: ${createErr.message}${signInErr ? ', sign-in: ' + signInErr.message : ''}`);
+  }
+
+  throw new Error('[dev-auth] Unexpected state — no user created and no error');
 }
